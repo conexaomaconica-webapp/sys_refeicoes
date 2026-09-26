@@ -1,0 +1,2 @@
+# Diretório para migrations SQL versionadas e sequenciais do Supabase.
+# Inicia na Sprint 1 (ex: 20260926000001_initial_schema.sql)
