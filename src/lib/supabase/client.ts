@@ -18,3 +18,6 @@ export function createClient() {
 
   return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);
 }
+
+export { createClient as createBrowserClient };
+

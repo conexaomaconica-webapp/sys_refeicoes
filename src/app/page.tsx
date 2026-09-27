@@ -1,212 +1,134 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
+import { SplashScreen } from '@/components/branding/SplashScreen';
+import LoginPage from './(auth)/login/page';
+import { useBrand } from '@/components/branding/BrandProvider';
 import {
-  ShieldCheck,
-  Server,
   Layers,
+  Database,
+  ShieldCheck,
   CheckCircle2,
-  FileText,
   Lock,
-  Smartphone,
-  Terminal,
+  RefreshCw,
 } from 'lucide-react';
 
-export default function HomePage() {
-  const readinessItems = [
-    {
-      title: 'Next.js 15 & React 19',
-      status: 'Configurado',
-      desc: 'App Router moderno, TypeScript estrito e scripts de build/lint validados.',
-      icon: <Terminal size={20} color="#38bdf8" />,
-    },
-    {
-      title: 'Supabase SSR & Client',
-      status: 'Pronto',
-      desc: 'Clientes desacoplados para Browser e Server. Service role estritamente blindada contra o frontend.',
-      icon: <Server size={20} color="#34d399" />,
-    },
-    {
-      title: 'Políticas de Segurança e RLS',
-      status: 'Ativo',
-      desc: 'Diretrizes de RLS inabaláveis conforme SECURITY.md e PROJECT_RULES.md.',
-      icon: <ShieldCheck size={20} color="#818cf8" />,
-    },
-    {
-      title: 'PWA & Estratégia Offline',
-      status: 'Instalável',
-      desc: 'Manifest PWA e Service Worker inicial preparados sob premissa de consistência estrita.',
-      icon: <Smartphone size={20} color="#f472b6" />,
-    },
-    {
-      title: 'Arquitetura Multi-tenant',
-      status: 'Planejado',
-      desc: 'Estrutura de diretórios e tabelas conceituais alinhadas para isolamento total.',
-      icon: <Layers size={20} color="#fbbf24" />,
-    },
-    {
-      title: 'Governança & Docs',
-      status: 'Auditado',
-      desc: 'Regras mapeadas em /docs como única fonte da verdade com PROJECT_RULES.md e AGENTS.md.',
-      icon: <FileText size={20} color="#a78bfa" />,
-    },
-  ];
+export default function AppEntry() {
+  const [splashFinished, setSplashFinished] = useState<boolean>(false);
+  const [showStatusPanel, setShowStatusPanel] = useState<boolean>(false);
+  const { branding, tenantSlug, refreshBranding } = useBrand();
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        padding: '3rem 1.5rem',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'radial-gradient(ellipse at 50% 10%, #172554 0%, #0a0e17 70%)',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: '920px',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2.5rem',
-        }}
-      >
-        {/* Header */}
-        <header style={{ textAlign: 'center' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              backgroundColor: 'rgba(37, 99, 235, 0.15)',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              marginBottom: '1.25rem',
-            }}
-          >
-            <CheckCircle2 size={16} color="#60a5fa" />
-            <span
-              style={{
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: '#93c5fd',
-                letterSpacing: '0.04em',
-              }}
-            >
-              FASE 0 — PREPARAÇÃO TÉCNICA CONCLUÍDA
-            </span>
-          </div>
-
-          <h1
-            style={{
-              fontSize: 'clamp(2rem, 5vw, 2.75rem)',
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              marginBottom: '0.75rem',
-              background: 'linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            Sistema de Controle de Refeições
-          </h1>
-          <p
-            style={{
-              color: '#9ca3af',
-              fontSize: '1.1rem',
-              maxWidth: '650px',
-              margin: '0 auto',
-              lineHeight: 1.6,
-            }}
-          >
-            Fundação técnica e arquitetural inicial estabelecida em estrita conformidade com os
-            documentos de referência em <code>/docs</code>.
-          </p>
-        </header>
-
-        {/* Status Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '1.25rem',
+    <>
+      {/* 1. Splash Screen Animado com carregamento paralelo de branding e sessão */}
+      {!splashFinished && (
+        <SplashScreen
+          onFinish={() => {
+            setSplashFinished(true);
           }}
-        >
-          {readinessItems.map((item, idx) => (
-            <div
-              key={idx}
-              className="glass-panel"
-              style={{
-                padding: '1.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.75rem',
-                transition: 'transform 0.2s ease, border-color 0.2s ease',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '8px',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  }}
-                >
-                  {item.icon}
+        />
+      )}
+
+      {/* 2. Interface Principal: Página de Login preparada com Branding do Tenant */}
+      <div className="relative">
+        <LoginPage />
+
+        {/* Botão flutuante para auditoria técnica da Sprint 1 */}
+        <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2">
+          <button
+            onClick={() => setShowStatusPanel(!showStatusPanel)}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-full text-xs font-semibold text-slate-300 hover:text-white shadow-xl backdrop-blur-md cursor-pointer transition-all hover:border-slate-500"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Auditoria Sprint 1</span>
+          </button>
+        </div>
+
+        {/* Modal de Status da Sprint 1 */}
+        {showStatusPanel && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 text-slate-100">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold">Sprint 1: Fundação SaaS e Branding</h2>
+                    <p className="text-xs text-slate-400">Status dos entregáveis arquiteturais</p>
+                  </div>
                 </div>
-                <span className="badge-tag badge-success">{item.status}</span>
+                <button
+                  onClick={() => setShowStatusPanel(false)}
+                  className="text-slate-400 hover:text-white text-sm cursor-pointer p-1"
+                >
+                  ✕
+                </button>
               </div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#f3f4f6' }}>
-                {item.title}
-              </h3>
-              <p
-                style={{
-                  fontSize: '0.875rem',
-                  color: '#9ca3af',
-                  lineHeight: 1.5,
-                }}
-              >
-                {item.desc}
-              </p>
-            </div>
-          ))}
-        </div>
 
-        {/* Footer / Next Step Banner */}
-        <div
-          className="glass-panel"
-          style={{
-            padding: '1.5rem 2rem',
-            borderLeft: '4px solid #2563eb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '1rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Lock size={24} color="#60a5fa" />
-            <div>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#f3f4f6' }}>
-                Próximo Passo: Sprint 1 — Fundação SaaS e Branding
-              </h4>
-              <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
-                Aguardando conferência do usuário da estrutura base antes de criar migrations e
-                layouts.
-              </p>
+              <div className="space-y-3 text-xs">
+                <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-slate-200">Hierarquia de Domínio e Tenant</p>
+                    <p className="text-slate-400">
+                      Tenant atual: <span className="font-mono text-sky-400">{tenantSlug}</span> (Empresa de alimentação). Instituições e unidades subordinadas com FK composta.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-start gap-2.5">
+                  <Database className="w-4 h-4 text-sky-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-slate-200">4 Migrations Versionadas</p>
+                    <p className="text-slate-400">
+                      <code>tenants</code>, <code>tenant_branding</code>, <code>institutions</code>, <code>units</code> criadas em <code>supabase/migrations/</code>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-start gap-2.5">
+                  <Lock className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-slate-200">RLS Deny-by-Default & RPC Segura</p>
+                    <p className="text-slate-400">
+                      Tabelas administrativas bloqueadas para anon. Exposição pré-login exclusivamente pela RPC <code>get_public_tenant_branding</code> com <code>search_path = &apos;&apos;</code>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-slate-200">Proteção server-only</p>
+                    <p className="text-slate-400">
+                      <code>src/lib/supabase/admin.ts</code> protegido por <code>import &apos;server-only&apos;</code> contra importação acidental em client components.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-between items-center text-xs">
+                <button
+                  onClick={() => {
+                    setSplashFinished(false);
+                    setShowStatusPanel(false);
+                    refreshBranding();
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Reexecutar Splash
+                </button>
+
+                <span className="text-slate-500 font-mono">
+                  App: {branding.app_name}
+                </span>
+              </div>
             </div>
           </div>
-          <span className="badge-tag badge-neutral">Homologação Pendente</span>
-        </div>
+        )}
       </div>
-    </div>
+    </>
   );
 }

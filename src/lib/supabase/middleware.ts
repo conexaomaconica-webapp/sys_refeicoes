@@ -4,7 +4,7 @@ import type { Database } from '@/types/database.types';
 
 /**
  * Atualiza e renova a sessão Supabase Auth nos cookies da requisição/resposta.
- * Deve ser chamado a partir do middleware.ts na raiz do projeto Next.js.
+ * Valida a integridade da sessão e bloqueia contas inativas ou suspensas.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -36,7 +36,42 @@ export async function updateSession(request: NextRequest) {
   });
 
   // Executa getUser() para validar/renovar o token com o auth server de forma segura
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Se usuário autenticado, verificar se seu perfil está ativo
+  if (user) {
+    const { data: profile } = await (
+      supabase as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => {
+            eq: (col: string, val: string) => {
+              maybeSingle: () => Promise<{ data: { status: string } | null }>;
+            };
+          };
+        };
+      }
+    )
+      .from('profiles')
+      .select('status')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile && profile.status !== 'active') {
+
+      // Forçar logout e redirecionar para login com mensagem de erro
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = '/login';
+      redirectUrl.searchParams.set('error', 'account_inactive');
+      const response = NextResponse.redirect(redirectUrl);
+
+      // Limpa cookies de auth
+      response.cookies.delete('sb-access-token');
+      response.cookies.delete('sb-refresh-token');
+      return response;
+    }
+  }
 
   return supabaseResponse;
 }

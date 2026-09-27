@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { BrandProvider } from '@/components/branding/BrandProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+
 export default function RootLayout({
   children,
 }: {
@@ -29,7 +31,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body>
-        <main>{children}</main>
+        <BrandProvider>
+          <main>{children}</main>
+        </BrandProvider>
       </body>
     </html>
   );
