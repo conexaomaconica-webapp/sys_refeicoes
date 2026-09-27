@@ -30,12 +30,14 @@ function normalizeSql(sql) {
 
 const migrationsDir = path.join(__dirname, '..', 'supabase', 'migrations');
 
-// 1. Validar existência das 3 migrations da Sprint 3
-console.log('1. Validando existência e ordem das 3 migrations da Sprint 3:');
+// 1. Validar existência das migrations da Sprint 3
+console.log('1. Validando existência e ordem das migrations da Sprint 3:');
 const expectedMigrations = [
   '20260927000010_create_student_categories.sql',
   '20260927000011_create_students.sql',
   '20260927000012_create_student_security_policies_and_triggers.sql',
+  '20260927000013_create_student_photos_bucket.sql',
+  '20260927000014_hardening_student_photos_storage.sql',
 ];
 
 expectedMigrations.forEach((file) => {
@@ -65,7 +67,7 @@ assert(mig11Normalized.includes('fk_students_user_tenant FOREIGN KEY (user_id, t
 assert(mig11Normalized.includes('ON DELETE RESTRICT'), 'FK com profiles utiliza ON DELETE RESTRICT (sem SET NULL implícito)');
 assert(mig11Normalized.includes('photo_path TEXT'), 'Coluna photo_path configurada (sem assinar URLs no banco)');
 
-// 4. Validar Policies RLS Minimizadas e Trigger de Imutabilidade (20260927000012)
+// 4. Validar Policies RLS Minimizadas e Triggers (20260927000012)
 console.log('\n4. Validando minimização RLS LGPD e Triggers (20260927000012):');
 const mig12Content = fs.readFileSync(path.join(migrationsDir, expectedMigrations[2]), 'utf8');
 
@@ -74,13 +76,20 @@ assert(mig12Content.includes("public.get_auth_user_role() IN ('admin_general', '
 assert(!mig12Content.includes("'finance'"), 'finance EXCLUÍDO de sel_students para evitar exposição de email/phone (LGPD)');
 assert(!mig12Content.includes("'operator'"), 'operator EXCLUÍDO de sel_students (recepção usará projeção minimizada)');
 
-// 5. Validar Proteção Server-Only
-console.log('\n5. Validando proteção server-only nos serviços administrativos:');
+// 5. Validar Hardening de Storage (20260927000014)
+console.log('\n5. Validando hardening do bucket student-photos (20260927000014):');
+const mig14Normalized = normalizeSql(fs.readFileSync(path.join(migrationsDir, expectedMigrations[4]), 'utf8'));
+assert(mig14Normalized.includes("UPDATE storage.buckets SET public = false WHERE id = 'student-photos'"), 'Bucket student-photos configurado estritamente como privado');
+assert(mig14Normalized.includes('DROP POLICY sel_student_photos_storage ON storage.objects'), 'Policy de SELECT direto via client no bucket student-photos revogada (acesso 100% server-side)');
+
+
+// 6. Validar Proteção Server-Only nos Serviços Administrativos
+console.log('\n6. Validando proteção server-only nos serviços administrativos:');
 const adminStudentServicePath = path.join(__dirname, '..', 'src', 'services', 'admin-student.service.ts');
 assert(fs.readFileSync(adminStudentServicePath, 'utf8').startsWith("import 'server-only';"), "admin-student.service.ts protegido com import 'server-only'");
 
-// 6. Testes Lógicos e de Segurança (Simulação)
-console.log('\n6. Testando Regras de Negócio e Segurança da Sprint 3 (Simulação):');
+// 7. Testes Lógicos e de Segurança (Simulação)
+console.log('\n7. Testando Regras de Negócio e Segurança da Sprint 3 (Simulação):');
 
 const mockTenants = [{ id: 'tenant-A' }, { id: 'tenant-B' }];
 const mockInstitutions = [
