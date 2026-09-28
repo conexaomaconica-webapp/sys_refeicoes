@@ -343,9 +343,164 @@ export type Database = {
         };
         Relationships: [];
       };
+      imports: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          institution_id: string;
+          import_mode: 'general' | 'integral_snapshot';
+          created_by: string;
+          original_filename: string;
+          storage_path: string;
+          file_hash: string;
+          file_size_bytes: number;
+          status: 'preview' | 'processing' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
+          total_rows: number;
+          valid_rows: number;
+          insert_rows: number;
+          update_rows: number;
+          reclassify_rows: number;
+          ignored_rows: number;
+          error_rows: number;
+          is_official_snapshot: boolean;
+          created_at: string;
+          confirmed_at: string | null;
+          completed_at: string | null;
+          error_message: string | null;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          institution_id: string;
+          import_mode?: 'general' | 'integral_snapshot';
+          created_by: string;
+          original_filename: string;
+          storage_path: string;
+          file_hash: string;
+          file_size_bytes: number;
+          status?: 'preview' | 'processing' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
+          total_rows?: number;
+          valid_rows?: number;
+          insert_rows?: number;
+          update_rows?: number;
+          reclassify_rows?: number;
+          ignored_rows?: number;
+          error_rows?: number;
+          is_official_snapshot?: boolean;
+          created_at?: string;
+          confirmed_at?: string | null;
+          completed_at?: string | null;
+          error_message?: string | null;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          institution_id?: string;
+          import_mode?: 'general' | 'integral_snapshot';
+          created_by?: string;
+          original_filename?: string;
+          storage_path?: string;
+          file_hash?: string;
+          file_size_bytes?: number;
+          status?: 'preview' | 'processing' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
+          total_rows?: number;
+          valid_rows?: number;
+          insert_rows?: number;
+          update_rows?: number;
+          reclassify_rows?: number;
+          ignored_rows?: number;
+          error_rows?: number;
+          is_official_snapshot?: boolean;
+          created_at?: string;
+          confirmed_at?: string | null;
+          completed_at?: string | null;
+          error_message?: string | null;
+        };
+        Relationships: [];
+      };
+      import_rows: {
+        Row: {
+          id: string;
+          import_id: string;
+          tenant_id: string;
+          row_number: number;
+          registration_number: string | null;
+          raw_data: Json;
+          normalized_data: Json | null;
+          action: 'insert' | 'update' | 'reclassify_partial' | 'ignore' | 'error';
+          status: 'pending' | 'processed' | 'failed' | 'skipped';
+          errors: Json;
+          warnings: Json;
+          student_id: string | null;
+          before_snapshot: Json | null;
+          after_snapshot: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          import_id: string;
+          tenant_id: string;
+          row_number: number;
+          registration_number?: string | null;
+          raw_data: Json;
+          normalized_data?: Json | null;
+          action: 'insert' | 'update' | 'reclassify_partial' | 'ignore' | 'error';
+          status?: 'pending' | 'processed' | 'failed' | 'skipped';
+          errors?: Json;
+          warnings?: Json;
+          student_id?: string | null;
+          before_snapshot?: Json | null;
+          after_snapshot?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          import_id?: string;
+          tenant_id?: string;
+          row_number?: number;
+          registration_number?: string | null;
+          raw_data?: Json;
+          normalized_data?: Json | null;
+          action?: 'insert' | 'update' | 'reclassify_partial' | 'ignore' | 'error';
+          status?: 'pending' | 'processed' | 'failed' | 'skipped';
+          errors?: Json;
+          warnings?: Json;
+          student_id?: string | null;
+          before_snapshot?: Json | null;
+          after_snapshot?: Json | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      stage_import_batch: {
+        Args: {
+          p_institution_id: string;
+          p_import_mode: 'general' | 'integral_snapshot';
+          p_original_filename: string;
+          p_storage_path: string;
+          p_file_hash: string;
+          p_file_size_bytes: number;
+          p_is_official_snapshot: boolean;
+          p_force_reimport: boolean;
+          p_rows: Json;
+        };
+        Returns: string;
+      };
+      confirm_and_process_import: {
+        Args: {
+          p_import_id: string;
+        };
+        Returns: Json;
+      };
+      cancel_import: {
+        Args: {
+          p_import_id: string;
+        };
+        Returns: boolean;
+      };
       get_public_tenant_branding: {
         Args: {
           p_slug: string;
