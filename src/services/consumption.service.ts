@@ -1,0 +1,177 @@
+import { createClient as createBrowserClient } from '@/lib/supabase/client';
+import type {
+  ConsumeMealInput,
+  ConsumeMealResult,
+  CancelMealConsumptionInput,
+  CancelMealConsumptionResult,
+  MealConsumption,
+} from '@/types/consumption';
+
+/**
+ * ==============================================================================
+ * Serviço de Consumo de Refeições (Terminal de Atendimento / Caixa Operacional)
+ * Executa consume_meal e cancel_meal_consumption com garantias de idempotência.
+ * ==============================================================================
+ */
+
+/**
+ * Gera uma chave de idempotência aleatória de alta entropia para proteger retries de rede
+ */
+export function generateIdempotencyKey(unitId: string, terminalId?: string): string {
+  const prefix = terminalId ? `TERM-${terminalId}` : `UNIT-${unitId.substring(0, 8)}`;
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10).toUpperCase();
+  return `${prefix}_${timestamp}_${random}`;
+}
+
+/**
+ * Executa a liberação e débito atômico de uma refeição no terminal operacional
+ */
+export async function executeConsumeMeal(
+  input: ConsumeMealInput
+): Promise<ConsumeMealResult> {
+  const cleanId = input.identifier ? input.identifier.trim() : '';
+
+  if (!input.unit_id) {
+    return {
+      success: false,
+      error_code: 'ACCESS_DENIED_UNIT',
+      message: 'Unidade operacional não informada.',
+    };
+  }
+
+  if (!cleanId) {
+    return {
+      success: false,
+      error_code: 'INVALID_IDENTIFIER',
+      message: 'Matrícula, QR Code ou Cartão Físico não informado.',
+    };
+  }
+
+  const idempotencyKey = input.idempotency_key || generateIdempotencyKey(input.unit_id, input.terminal_id);
+
+  try {
+    const supabase = createBrowserClient();
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: string,
+          args: {
+            p_unit_id: string;
+            p_identifier: string;
+            p_meal_type_id: string | null;
+            p_idempotency_key: string | null;
+            p_terminal_id: string | null;
+          }
+        ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      }
+    ).rpc('consume_meal', {
+      p_unit_id: input.unit_id,
+      p_identifier: cleanId,
+      p_meal_type_id: input.meal_type_id || null,
+      p_idempotency_key: idempotencyKey,
+      p_terminal_id: input.terminal_id || null,
+    });
+
+    if (error) {
+      return {
+        success: false,
+        error_code: 'CONCURRENT_CONSUMPTION_CONFLICT',
+        message: error.message,
+      };
+    }
+
+    return data as unknown as ConsumeMealResult;
+  } catch (err) {
+    return {
+      success: false,
+      error_code: 'CONCURRENT_CONSUMPTION_CONFLICT',
+      message: (err as Error).message,
+    };
+  }
+}
+
+/**
+ * Executa o estorno financeiro ou cancelamento operacional de um consumo
+ */
+export async function executeCancelMealConsumption(
+  input: CancelMealConsumptionInput
+): Promise<CancelMealConsumptionResult> {
+  if (!input.consumption_id) {
+    return {
+      success: false,
+      error_code: 'CONSUMPTION_NOT_FOUND',
+      message: 'Identificador do consumo não informado.',
+    };
+  }
+
+  if (!input.reason || input.reason.trim().length < 5) {
+    return {
+      success: false,
+      error_code: 'REASON_REQUIRED',
+      message: 'Justificativa auditável obrigatória (mínimo de 5 caracteres).',
+    };
+  }
+
+  try {
+    const supabase = createBrowserClient();
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: string,
+          args: {
+            p_consumption_id: string;
+            p_cancel_type: string;
+            p_reason: string;
+          }
+        ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      }
+    ).rpc('cancel_meal_consumption', {
+      p_consumption_id: input.consumption_id,
+      p_cancel_type: input.cancel_type,
+      p_reason: input.reason.trim(),
+    });
+
+    if (error) {
+      return {
+        success: false,
+        error_code: 'CANCEL_ERROR',
+        message: error.message,
+      };
+    }
+
+    return data as unknown as CancelMealConsumptionResult;
+  } catch (err) {
+    return {
+      success: false,
+      error_code: 'CLIENT_ERROR',
+      message: (err as Error).message,
+    };
+  }
+}
+
+/**
+ * Consulta histórico de consumos do estudante
+ */
+export async function getStudentMealHistory(
+  studentId: string,
+  limit = 20
+): Promise<{ consumptions: MealConsumption[]; error?: string }> {
+  try {
+    const supabase = createBrowserClient();
+    const { data, error } = await supabase
+      .from('meal_consumptions')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('consumed_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      return { consumptions: [], error: error.message };
+    }
+
+    return { consumptions: (data || []) as unknown as MealConsumption[] };
+  } catch (err) {
+    return { consumptions: [], error: (err as Error).message };
+  }
+}

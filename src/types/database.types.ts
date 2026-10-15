@@ -992,10 +992,161 @@ export type Database = {
           }
         ];
       };
+      meal_consumptions: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          unit_id: string;
+          institution_id: string;
+          student_id: string;
+          category_id: string;
+          meal_type_id: string;
+          consumption_date: string;
+          consumed_at: string;
+          full_price: number;
+          student_price: number;
+          subsidy_amount: number;
+          wallet_transaction_id: string | null;
+          operator_id: string;
+          terminal_id: string | null;
+          verification_method: string;
+          idempotency_key: string | null;
+          request_hash: string | null;
+          qr_token_id: string | null;
+          status: 'approved' | 'financially_refunded' | 'cancelled_unserved';
+          reversal_reason: string | null;
+          reversed_at: string | null;
+          reversed_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          unit_id: string;
+          institution_id: string;
+          student_id: string;
+          category_id: string;
+          meal_type_id: string;
+          consumption_date: string;
+          consumed_at?: string;
+          full_price: number;
+          student_price: number;
+          subsidy_amount: number;
+          wallet_transaction_id?: string | null;
+          operator_id: string;
+          terminal_id?: string | null;
+          verification_method: string;
+          idempotency_key?: string | null;
+          request_hash?: string | null;
+          qr_token_id?: string | null;
+          status?: 'approved' | 'financially_refunded' | 'cancelled_unserved';
+          reversal_reason?: string | null;
+          reversed_at?: string | null;
+          reversed_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          unit_id?: string;
+          institution_id?: string;
+          student_id?: string;
+          category_id?: string;
+          meal_type_id?: string;
+          consumption_date?: string;
+          consumed_at?: string;
+          full_price?: number;
+          student_price?: number;
+          subsidy_amount?: number;
+          wallet_transaction_id?: string | null;
+          operator_id?: string;
+          terminal_id?: string | null;
+          verification_method?: string;
+          idempotency_key?: string | null;
+          request_hash?: string | null;
+          qr_token_id?: string | null;
+          status?: 'approved' | 'financially_refunded' | 'cancelled_unserved';
+          reversal_reason?: string | null;
+          reversed_at?: string | null;
+          reversed_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      blocked_attempts: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          unit_id: string;
+          student_id: string | null;
+          category_id: string | null;
+          meal_type_id: string | null;
+          registration_attempted: string | null;
+          verification_method: string;
+          reason_code: string;
+          reason_message: string;
+          terminal_id: string | null;
+          operator_id: string | null;
+          attempted_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          unit_id: string;
+          student_id?: string | null;
+          category_id?: string | null;
+          meal_type_id?: string | null;
+          registration_attempted?: string | null;
+          verification_method: string;
+          reason_code: string;
+          reason_message: string;
+          terminal_id?: string | null;
+          operator_id?: string | null;
+          attempted_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          unit_id?: string;
+          student_id?: string | null;
+          category_id?: string | null;
+          meal_type_id?: string | null;
+          registration_attempted?: string | null;
+          verification_method?: string;
+          reason_code?: string;
+          reason_message?: string;
+          terminal_id?: string | null;
+          operator_id?: string | null;
+          attempted_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      consume_meal: {
+        Args: {
+          p_unit_id: string;
+          p_identifier: string;
+          p_meal_type_id?: string | null;
+          p_idempotency_key?: string | null;
+          p_terminal_id?: string | null;
+        };
+        Returns: Json;
+      };
+      cancel_meal_consumption: {
+        Args: {
+          p_consumption_id: string;
+          p_cancel_type: 'financially_refunded' | 'cancelled_unserved';
+          p_reason: string;
+        };
+        Returns: Json;
+      };
       admin_issue_card: {
+
         Args: {
           p_student_id: string;
           p_card_type?: 'digital' | 'physical';

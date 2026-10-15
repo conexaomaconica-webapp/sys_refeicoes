@@ -3,6 +3,7 @@ export * from './meal';
 export * from './wallet';
 export * from './payment';
 export * from './card';
+export * from './consumption';
 
 
 export type UserRole =
