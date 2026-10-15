@@ -472,9 +472,473 @@ export type Database = {
         };
         Relationships: [];
       };
+      meal_types: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          code: 'breakfast' | 'lunch' | 'dinner';
+          name: string;
+          status: 'active' | 'inactive';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          code: 'breakfast' | 'lunch' | 'dinner';
+          name: string;
+          status?: 'active' | 'inactive';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          code?: 'breakfast' | 'lunch' | 'dinner';
+          name?: string;
+          status?: 'active' | 'inactive';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      unit_meal_types: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          unit_id: string;
+          meal_type_id: string;
+          enabled: boolean;
+          start_time: string | null;
+          end_time: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          unit_id: string;
+          meal_type_id: string;
+          enabled?: boolean;
+          start_time?: string | null;
+          end_time?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          unit_id?: string;
+          meal_type_id?: string;
+          enabled?: boolean;
+          start_time?: string | null;
+          end_time?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      meal_rules: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          unit_id: string;
+          meal_type_id: string;
+          category_id: string;
+          full_price: number;
+          student_price: number;
+          subsidy_amount: number;
+          enabled: boolean;
+          effective_from: string;
+          effective_to: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          unit_id: string;
+          meal_type_id: string;
+          category_id: string;
+          full_price: number;
+          student_price: number;
+          subsidy_amount: number;
+          enabled?: boolean;
+          effective_from?: string;
+          effective_to?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          unit_id?: string;
+          meal_type_id?: string;
+          category_id?: string;
+          full_price?: number;
+          student_price?: number;
+          subsidy_amount?: number;
+          enabled?: boolean;
+          effective_from?: string;
+          effective_to?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      wallets: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          student_id: string;
+          balance: number;
+          status: 'active' | 'frozen' | 'closed';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          student_id: string;
+          balance?: number;
+          status?: 'active' | 'frozen' | 'closed';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          student_id?: string;
+          balance?: number;
+          status?: 'active' | 'frozen' | 'closed';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      wallet_transactions: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          wallet_id: string;
+          student_id: string;
+          type: 'recharge' | 'meal_debit' | 'refund' | 'reversal' | 'manual_adjustment';
+          amount: number;
+          balance_before: number;
+          balance_after: number;
+          reference_type: string | null;
+          reference_id: string | null;
+          description: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          wallet_id: string;
+          student_id: string;
+          type: 'recharge' | 'meal_debit' | 'refund' | 'reversal' | 'manual_adjustment';
+          amount: number;
+          balance_before: number;
+          balance_after: number;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          description: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          wallet_id?: string;
+          student_id?: string;
+          type?: 'recharge' | 'meal_debit' | 'refund' | 'reversal' | 'manual_adjustment';
+          amount?: number;
+          balance_before?: number;
+          balance_after?: number;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          description?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      payment_providers: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          code: 'asaas' | 'mercadopago' | 'mock' | 'sitef';
+          name: string;
+          is_active: boolean;
+          credentials: Json;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          code: 'asaas' | 'mercadopago' | 'mock' | 'sitef';
+          name: string;
+          is_active?: boolean;
+          credentials?: Json;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          code?: 'asaas' | 'mercadopago' | 'mock' | 'sitef';
+          name?: string;
+          is_active?: boolean;
+          credentials?: Json;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      payments: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          provider_id: string;
+          student_id: string;
+          external_payment_id: string | null;
+          method: 'pix' | 'credit_card';
+          amount: number;
+          status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'refunded';
+          pix_qr_code: string | null;
+          pix_copy_paste: string | null;
+          raw_response: Json | null;
+          confirmed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          provider_id: string;
+          student_id: string;
+          external_payment_id?: string | null;
+          method: 'pix' | 'credit_card';
+          amount: number;
+          status?: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'refunded';
+          pix_qr_code?: string | null;
+          pix_copy_paste?: string | null;
+          raw_response?: Json | null;
+          confirmed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          provider_id?: string;
+          student_id?: string;
+          external_payment_id?: string | null;
+          method?: 'pix' | 'credit_card';
+          amount?: number;
+          status?: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'refunded';
+          pix_qr_code?: string | null;
+          pix_copy_paste?: string | null;
+          raw_response?: Json | null;
+          confirmed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fk_payments_provider_tenant";
+            columns: ["provider_id"];
+            isOneToOne: false;
+            referencedRelation: "payment_providers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_payments_student_tenant";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      recharges: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          student_id: string;
+          wallet_id: string;
+          payment_id: string | null;
+          amount: number;
+          status: 'pending' | 'confirmed' | 'failed' | 'reversed';
+          source: 'pix' | 'credit_card' | 'cash' | 'manual';
+          unit_id: string | null;
+          operator_id: string | null;
+          confirmed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          student_id: string;
+          wallet_id: string;
+          payment_id?: string | null;
+          amount: number;
+          status?: 'pending' | 'confirmed' | 'failed' | 'reversed';
+          source: 'pix' | 'credit_card' | 'cash' | 'manual';
+          unit_id?: string | null;
+          operator_id?: string | null;
+          confirmed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          student_id?: string;
+          wallet_id?: string;
+          payment_id?: string | null;
+          amount?: number;
+          status?: 'pending' | 'confirmed' | 'failed' | 'reversed';
+          source?: 'pix' | 'credit_card' | 'cash' | 'manual';
+          unit_id?: string | null;
+          operator_id?: string | null;
+          confirmed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fk_recharges_wallet_tenant";
+            columns: ["wallet_id"];
+            isOneToOne: false;
+            referencedRelation: "wallets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_recharges_payment_tenant";
+            columns: ["payment_id"];
+            isOneToOne: false;
+            referencedRelation: "payments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_recharges_student_tenant";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      payment_webhook_events: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          provider_code: string;
+          event_id: string;
+          event_type: string;
+          external_payment_id: string | null;
+          payload: Json;
+          processed: boolean;
+          processed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          provider_code: string;
+          event_id: string;
+          event_type: string;
+          external_payment_id?: string | null;
+          payload: Json;
+          processed?: boolean;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          provider_code?: string;
+          event_id?: string;
+          event_type?: string;
+          external_payment_id?: string | null;
+          payload?: Json;
+          processed?: boolean;
+          processed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      create_payment_order: {
+        Args: {
+          p_requesting_user_id: string;
+          p_student_id: string;
+          p_method: string;
+          p_amount: number;
+          p_provider_code: string;
+          p_external_payment_id: string;
+          p_pix_qr_code?: string | null;
+          p_pix_copy_paste?: string | null;
+          p_raw_response?: Json | null;
+        };
+        Returns: Json;
+      };
+      confirm_payment_recharge: {
+        Args: {
+          p_external_payment_id: string;
+          p_provider_code: string;
+          p_event_id?: string | null;
+          p_payload?: Json | null;
+        };
+        Returns: Json;
+      };
+      create_student_wallet: {
+        Args: {
+          p_requesting_user_id: string;
+          p_student_id: string;
+        };
+        Returns: string;
+      };
+      manual_wallet_adjustment: {
+        Args: {
+          p_requesting_user_id: string;
+          p_student_id: string;
+          p_amount: number;
+          p_description: string;
+        };
+        Returns: string;
+      };
+      reverse_wallet_transaction: {
+        Args: {
+          p_requesting_user_id: string;
+          p_transaction_id: string;
+          p_reason: string;
+        };
+        Returns: string;
+      };
+      set_meal_rule: {
+        Args: {
+          p_requesting_user_id: string;
+          p_unit_id: string;
+          p_meal_type_id: string;
+          p_category_id: string;
+          p_full_price: number;
+          p_student_price: number;
+          p_effective_from?: string;
+        };
+        Returns: string;
+      };
+
+
       stage_import_batch: {
         Args: {
           p_institution_id: string;
@@ -547,6 +1011,12 @@ export type Database = {
         };
         Returns: void;
       };
+      provision_default_meal_types: {
+        Args: {
+          p_tenant_id: string;
+        };
+        Returns: void;
+      };
     };
     Enums: {
       user_role: UserRole;
@@ -568,3 +1038,4 @@ export type Database = {
     };
   };
 };
+

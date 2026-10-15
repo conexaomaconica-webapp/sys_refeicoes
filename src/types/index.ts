@@ -1,4 +1,8 @@
 export * from './database.types';
+export * from './meal';
+export * from './wallet';
+export * from './payment';
+
 
 export type UserRole =
   | 'admin_general'
@@ -26,3 +30,4 @@ export interface ApiResponse<T = unknown> {
   error?: string;
   message?: string;
 }
+
