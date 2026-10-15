@@ -2,6 +2,7 @@ export * from './database.types';
 export * from './meal';
 export * from './wallet';
 export * from './payment';
+export * from './card';
 
 
 export type UserRole =

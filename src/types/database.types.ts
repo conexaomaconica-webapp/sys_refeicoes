@@ -875,10 +875,157 @@ export type Database = {
         };
         Relationships: [];
       };
+      cards: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          student_id: string;
+          card_number: string;
+          card_type: 'digital' | 'physical';
+          physical_code_hash: string | null;
+          status: 'active' | 'blocked' | 'cancelled' | 'replaced';
+          issued_at: string;
+          expires_at: string | null;
+          blocked_at: string | null;
+          blocked_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          student_id: string;
+          card_number: string;
+          card_type?: 'digital' | 'physical';
+          physical_code_hash?: string | null;
+          status?: 'active' | 'blocked' | 'cancelled' | 'replaced';
+          issued_at?: string;
+          expires_at?: string | null;
+          blocked_at?: string | null;
+          blocked_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          student_id?: string;
+          card_number?: string;
+          card_type?: 'digital' | 'physical';
+          physical_code_hash?: string | null;
+          status?: 'active' | 'blocked' | 'cancelled' | 'replaced';
+          issued_at?: string;
+          expires_at?: string | null;
+          blocked_at?: string | null;
+          blocked_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fk_cards_tenant";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_cards_student_tenant";
+            columns: ["student_id", "tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id", "tenant_id"];
+          }
+        ];
+      };
+      qr_tokens: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          card_id: string;
+          token_hash: string;
+          status: 'active' | 'used' | 'expired' | 'revoked';
+          issued_at: string;
+          expires_at: string;
+          used_at: string | null;
+          revoked_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          card_id: string;
+          token_hash: string;
+          status?: 'active' | 'used' | 'expired' | 'revoked';
+          issued_at?: string;
+          expires_at: string;
+          used_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          card_id?: string;
+          token_hash?: string;
+          status?: 'active' | 'used' | 'expired' | 'revoked';
+          issued_at?: string;
+          expires_at?: string;
+          used_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fk_qr_tokens_tenant";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_qr_tokens_card_tenant";
+            columns: ["card_id", "tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "cards";
+            referencedColumns: ["id", "tenant_id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      admin_issue_card: {
+        Args: {
+          p_student_id: string;
+          p_card_type?: 'digital' | 'physical';
+          p_physical_code?: string | null;
+        };
+        Returns: Json;
+      };
+      admin_update_card_status: {
+        Args: {
+          p_card_id: string;
+          p_new_status: 'active' | 'blocked' | 'cancelled' | 'replaced';
+          p_reason?: string | null;
+        };
+        Returns: Json;
+      };
+      generate_student_qr_token: {
+        Args: {
+          p_card_id?: string | null;
+        };
+        Returns: Json;
+      };
+      resolve_student_identity: {
+        Args: {
+          p_unit_id: string;
+          p_identifier: string;
+        };
+        Returns: Json;
+      };
       create_payment_order: {
+
         Args: {
           p_requesting_user_id: string;
           p_student_id: string;

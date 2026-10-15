@@ -41,7 +41,7 @@ console.log('1. Verificando Consistência e Integridade das Migrations (000001 a
 const migrationsDir = path.join(ROOT_DIR, 'supabase', 'migrations');
 const migrationFiles = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
 
-assert(migrationFiles.length === 25, `Total de 25 migrations sequenciais encontradas (encontradas: ${migrationFiles.length})`);
+assert(migrationFiles.length >= 25, `Pelo menos 25 migrations sequenciais encontradas (encontradas: ${migrationFiles.length})`);
 
 let noDestructive = true;
 let rlsEnforcedAll = true;
