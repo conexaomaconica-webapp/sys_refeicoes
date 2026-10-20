@@ -60,6 +60,11 @@ export type Database = {
           splash_duration_ms: number;
           primary_color: string | null;
           secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
           report_logo_url: string | null;
           report_header_text: string | null;
           report_footer_text: string | null;
@@ -76,6 +81,11 @@ export type Database = {
           splash_duration_ms?: number;
           primary_color?: string | null;
           secondary_color?: string | null;
+          terminal_theme?: 'light' | 'dark';
+          terminal_primary_color?: string;
+          terminal_accent_color?: string;
+          terminal_surface_color?: string;
+          terminal_show_kpi_values?: boolean;
           report_logo_url?: string | null;
           report_header_text?: string | null;
           report_footer_text?: string | null;
@@ -92,6 +102,11 @@ export type Database = {
           splash_duration_ms?: number;
           primary_color?: string | null;
           secondary_color?: string | null;
+          terminal_theme?: 'light' | 'dark';
+          terminal_primary_color?: string;
+          terminal_accent_color?: string;
+          terminal_surface_color?: string;
+          terminal_show_kpi_values?: boolean;
           report_logo_url?: string | null;
           report_header_text?: string | null;
           report_footer_text?: string | null;
@@ -363,6 +378,10 @@ export type Database = {
           ignored_rows: number;
           error_rows: number;
           is_official_snapshot: boolean;
+          effective_date: string;
+          processed_rows: number;
+          failed_rows: number;
+          skipped_rows: number;
           created_at: string;
           confirmed_at: string | null;
           completed_at: string | null;
@@ -387,6 +406,10 @@ export type Database = {
           ignored_rows?: number;
           error_rows?: number;
           is_official_snapshot?: boolean;
+          effective_date?: string;
+          processed_rows?: number;
+          failed_rows?: number;
+          skipped_rows?: number;
           created_at?: string;
           confirmed_at?: string | null;
           completed_at?: string | null;
@@ -411,6 +434,10 @@ export type Database = {
           ignored_rows?: number;
           error_rows?: number;
           is_official_snapshot?: boolean;
+          effective_date?: string;
+          processed_rows?: number;
+          failed_rows?: number;
+          skipped_rows?: number;
           created_at?: string;
           confirmed_at?: string | null;
           completed_at?: string | null;
@@ -1277,7 +1304,127 @@ export type Database = {
           splash_duration_ms: number;
           primary_color: string | null;
           secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
         }[];
+      };
+      get_public_tenant_branding_v2: {
+        Args: {
+          p_slug: string;
+        };
+        Returns: {
+          tenant_id: string;
+          slug: string;
+          app_name: string;
+          logo_url: string | null;
+          splash_background: string | null;
+          splash_animation_type: 'fade_pulse' | 'slide_up' | 'zoom_in' | 'none';
+          splash_duration_ms: number;
+          primary_color: string | null;
+          secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
+        }[];
+      };
+      update_tenant_branding_settings: {
+        Args: {
+          p_app_name: string;
+          p_logo_url: string;
+          p_primary_color: string;
+          p_secondary_color: string;
+          p_terminal_theme: string;
+          p_terminal_primary_color: string;
+          p_terminal_accent_color: string;
+          p_terminal_surface_color: string;
+          p_terminal_show_kpi_values: boolean;
+        };
+        Returns: Json;
+      };
+      preview_terminal_meal: {
+        Args: {
+          p_unit_id: string;
+          p_identifier: string;
+          p_meal_type_id?: string | null;
+        };
+        Returns: Json;
+      };
+      confirm_terminal_meal_payment: {
+        Args: {
+          p_unit_id: string;
+          p_identifier: string;
+          p_meal_type_id: string;
+          p_terminal_id: string;
+          p_idempotency_key: string;
+          p_payment_method: string;
+          p_amount_received?: number | null;
+        };
+        Returns: Json;
+      };
+      open_cash_shift: {
+        Args: { p_unit_id: string; p_terminal_id: string; p_meal_type_id: string; p_initial_float: number };
+        Returns: Json;
+      };
+      get_active_cash_shift: {
+        Args: { p_unit_id: string; p_terminal_id: string };
+        Returns: Json;
+      };
+      record_cash_movement: {
+        Args: { p_cash_shift_id: string; p_type: string; p_amount: number; p_payment_method: string; p_description: string | null };
+        Returns: Json;
+      };
+      close_cash_shift: {
+        Args: { p_cash_shift_id: string; p_counted_amount: number; p_closing_notes: string | null };
+        Returns: Json;
+      };
+      register_visitor_entry: {
+        Args: { p_unit_id: string; p_meal_type_id: string; p_terminal_id: string; p_payment_method: string };
+        Returns: Json;
+      };
+      register_terminal_visitor_entry: {
+        Args: { p_unit_id: string; p_meal_type_id: string | null; p_terminal_id: string | null; p_payment_method: string };
+        Returns: Json;
+      };
+      get_operator_terminal_shift: {
+        Args: { p_unit_id: string; p_terminal_id: string };
+        Returns: Json;
+      };
+      open_operator_cash_shift: {
+        Args: { p_unit_id: string; p_terminal_id: string; p_meal_type_id: string | null; p_initial_float: number };
+        Returns: Json;
+      };
+      close_operator_cash_shift: {
+        Args: { p_cash_shift_id: string; p_counted_amount: number; p_closing_notes: string | null };
+        Returns: Json;
+      };
+      record_operator_cash_movement: {
+        Args: { p_cash_shift_id: string; p_type: string; p_amount: number; p_payment_method: string; p_description: string | null };
+        Returns: Json;
+      };
+      consume_operator_terminal_meal: {
+        Args: { p_unit_id: string; p_identifier: string; p_meal_type_id: string | null; p_idempotency_key: string | null; p_terminal_id: string | null };
+        Returns: Json;
+      };
+      confirm_operator_terminal_payment: {
+        Args: { p_unit_id: string; p_identifier: string; p_meal_type_id: string; p_terminal_id: string; p_idempotency_key: string; p_payment_method: string; p_amount_received: number | null };
+        Returns: Json;
+      };
+      register_operator_visitor_entry: {
+        Args: { p_unit_id: string; p_meal_type_id: string | null; p_terminal_id: string | null; p_payment_method: string };
+        Returns: Json;
+      };
+      admin_list_cash_shifts: {
+        Args: { p_unit_id: string | null; p_meal_type_id: string | null; p_status: string | null; p_start_date: string | null; p_end_date: string | null };
+        Returns: Json;
+      };
+      get_terminal_shift_reports: {
+        Args: { p_unit_id: string; p_meal_type_id: string | null; p_terminal_id: string | null };
+        Returns: Json;
       };
       get_auth_tenant_id: {
         Args: Record<PropertyKey, never>;
@@ -1336,4 +1483,3 @@ export type Database = {
     };
   };
 };
-

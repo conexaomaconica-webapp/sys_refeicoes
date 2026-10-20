@@ -1691,3 +1691,38 @@ Mudanças de estrutura relevantes devem ser atualizadas aqui antes de migrations
 ---
 
 **Fim do documento.**
+
+---
+
+# Adendo — Migration 20261019000044
+
+`cash_movements` recebeu rastreabilidade para pagamentos avulsos: aluno/visitante, idempotência, valor recebido, troco, status, origem, reversão, snapshot do resultado e indicador `legacy_wallet_bridge`.
+
+Tipos adicionais:
+
+```text
+meal_sale  pagamento avulso de refeição
+refund     movimento compensatório de estorno
+```
+
+Pagamentos novos executam internamente `consume_meal_counter_payment()`, preservando validações de tenant, unidade, identidade, horário, regra, cota e idempotência, sem tocar `wallets` ou `wallet_transactions`.
+
+`cash_shifts` materializa totais por dinheiro, Pix, cartão e outros. `expected_cash_balance` considera fundo inicial, dinheiro, suprimentos e sangrias; Pix/cartão não entram no numerário contado.
+
+Pontes técnicas históricas não são apagadas: movimentos associados são identificados por `legacy_wallet_bridge = true`. Escrita direta nas tabelas de caixa foi revogada de `authenticated`; RLS permanece habilitada.
+
+### Correções verificadas na homologação remota (migrations 45–47)
+
+- `20261019000045` faz `confirm_operator_terminal_payment` delegar diretamente
+  ao fluxo de balcão, sem criar carteira ou recarga técnica.
+- `20261019000046` garante que `consume_meal` grave `meal_debit` com
+  `amount = -student_price` no ledger.
+- `20261019000047` restaura a sobrecarga interna de
+  `register_visitor_entry(UUID, UUID, VARCHAR, VARCHAR)` sobre o motor canônico
+  `consume_meal`, registra `consumer_type = 'visitor'` e
+  `origin = 'visitor_entry'`, e remove sua execução direta por
+  `authenticated`.
+
+As três migrations foram aplicadas no banco remoto de testes. A homologação
+transacional posterior aprovou 39/39 validações e reverteu integralmente os
+dados sintéticos.

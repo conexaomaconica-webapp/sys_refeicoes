@@ -24,7 +24,11 @@ export type BlockedReasonCode =
   | 'WALLET_NOT_FOUND'
   | 'WALLET_INACTIVE'
   | 'INSUFFICIENT_FUNDS'
-  | 'CONCURRENT_CONSUMPTION_CONFLICT';
+  | 'CONCURRENT_CONSUMPTION_CONFLICT'
+  | 'LOCK_TIMEOUT_EXCEEDED'
+  | 'MEAL_NOT_ALLOWED_FOR_CATEGORY'
+  | 'VISITOR_ERROR'
+  | 'CLIENT_ERROR';
 
 export interface MealConsumption {
   id: string;
@@ -95,14 +99,33 @@ export interface ConsumeMealResult {
     is_integral: boolean;
   };
   financial?: {
+    full_price?: number;
+    total_price?: number;
+    charged_amount?: number;
     student_price: number;
     subsidy_amount: number;
     balance_remaining: number | null;
+    current_balance?: number;
   };
   error_code?: BlockedReasonCode;
   message?: string;
   required_amount?: number;
   current_balance?: number;
+  payment_mode?: 'wallet' | 'on_entry';
+  wallet_status?: 'active' | 'frozen' | 'closed' | 'missing';
+  requires_counter_payment?: boolean;
+  payment?: {
+    method: 'cash' | 'pix' | 'card';
+    amount_charged: number;
+    amount_received: number;
+    change_amount: number;
+    cash_shift_id: string | null;
+  };
+}
+
+export interface ConfirmTerminalMealPaymentInput extends ConsumeMealInput {
+  payment_method: 'cash' | 'pix' | 'card';
+  amount_received?: number | null;
 }
 
 export interface CancelMealConsumptionInput {

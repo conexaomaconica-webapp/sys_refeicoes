@@ -5,6 +5,7 @@ import type {
   CancelMealConsumptionInput,
   CancelMealConsumptionResult,
   MealConsumption,
+  ConfirmTerminalMealPaymentInput,
 } from '@/types/consumption';
 
 /**
@@ -65,7 +66,7 @@ export async function executeConsumeMeal(
           }
         ) => Promise<{ data: unknown; error: { message: string } | null }>;
       }
-    ).rpc('consume_meal', {
+    ).rpc('consume_operator_terminal_meal', {
       p_unit_id: input.unit_id,
       p_identifier: cleanId,
       p_meal_type_id: input.meal_type_id || null,
@@ -88,6 +89,48 @@ export async function executeConsumeMeal(
       error_code: 'CONCURRENT_CONSUMPTION_CONFLICT',
       message: (err as Error).message,
     };
+  }
+}
+
+export async function previewTerminalMeal(input: ConsumeMealInput): Promise<ConsumeMealResult> {
+  const cleanId = input.identifier?.trim();
+  if (!cleanId) return { success: false, error_code: 'INVALID_IDENTIFIER', message: 'Identificação não informada.' };
+  try {
+    const supabase = createBrowserClient();
+    const { data, error } = await (supabase as unknown as {
+      rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    }).rpc('preview_operator_terminal_meal', {
+      p_unit_id: input.unit_id,
+      p_identifier: cleanId,
+      p_meal_type_id: input.meal_type_id || null,
+    });
+    if (error) return { success: false, error_code: 'CLIENT_ERROR', message: error.message };
+    return data as unknown as ConsumeMealResult;
+  } catch (err) {
+    return { success: false, error_code: 'CLIENT_ERROR', message: (err as Error).message };
+  }
+}
+
+export async function confirmTerminalMealPayment(
+  input: ConfirmTerminalMealPaymentInput
+): Promise<ConsumeMealResult> {
+  try {
+    const supabase = createBrowserClient();
+    const { data, error } = await (supabase as unknown as {
+      rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    }).rpc('confirm_operator_terminal_payment', {
+      p_unit_id: input.unit_id,
+      p_identifier: input.identifier.trim(),
+      p_meal_type_id: input.meal_type_id || '',
+      p_terminal_id: input.terminal_id || 'TERM-01',
+      p_idempotency_key: input.idempotency_key || generateIdempotencyKey(input.unit_id, input.terminal_id),
+      p_payment_method: input.payment_method,
+      p_amount_received: input.amount_received ?? null,
+    });
+    if (error) return { success: false, error_code: 'CLIENT_ERROR', message: error.message };
+    return data as unknown as ConsumeMealResult;
+  } catch (err) {
+    return { success: false, error_code: 'CLIENT_ERROR', message: (err as Error).message };
   }
 }
 
@@ -173,5 +216,53 @@ export async function getStudentMealHistory(
     return { consumptions: (data || []) as unknown as MealConsumption[] };
   } catch (err) {
     return { consumptions: [], error: (err as Error).message };
+  }
+}
+
+/**
+ * Executa a liberação rápida de 1 refeição avulsa de visitante paga na entrada (sem necessidade de saldo/carteira)
+ */
+export async function executeRegisterVisitorEntry(params: {
+  unitId: string;
+  mealTypeId?: string;
+  terminalId?: string;
+  paymentMethod?: 'cash' | 'pix' | 'card';
+}): Promise<ConsumeMealResult> {
+  try {
+    const supabase = createBrowserClient();
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: string,
+          args: {
+            p_unit_id: string;
+            p_meal_type_id: string | null;
+            p_terminal_id: string | null;
+            p_payment_method: string;
+          }
+        ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      }
+    ).rpc('register_operator_visitor_entry', {
+      p_unit_id: params.unitId,
+      p_meal_type_id: params.mealTypeId || null,
+      p_terminal_id: params.terminalId || null,
+      p_payment_method: params.paymentMethod || 'cash',
+    });
+
+    if (error) {
+      return {
+        success: false,
+        error_code: 'CLIENT_ERROR',
+        message: error.message,
+      };
+    }
+
+    return data as unknown as ConsumeMealResult;
+  } catch (err) {
+    return {
+      success: false,
+      error_code: 'CLIENT_ERROR',
+      message: (err as Error).message,
+    };
   }
 }

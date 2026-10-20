@@ -1250,3 +1250,16 @@ a regra aqui registrada deve prevalecer até revisão formal.
 ---
 
 **Fim do documento.**
+
+---
+
+# Adendo — Caixa e estornos Pós-Sprint 10
+
+| Ação | Perfis autorizados | Escopo obrigatório |
+| --- | --- | --- |
+| Abrir/movimentar/fechar o próprio caixa | `operator`, `unit_manager`, `operations_director`, `admin_general` | unidade atribuída e terminal vinculado |
+| Visualizar caixa | `operator`, `unit_manager`, `supervisor`, `finance`, `operations_director`, `admin_general` | operador vê unidade/turno; demais respeitam escopo |
+| Estornar pagamento avulso ou débito | `finance`, `operations_director`, `admin_general` | mesmo tenant e unidade autorizada |
+| Cancelar consumo sem cobrança | `unit_manager`, `supervisor`, `operations_director`, `admin_general` | unidade autorizada |
+
+Operador não estorna recebimentos. A abertura obrigatória do caixa não é uma permissão configurável.

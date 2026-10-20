@@ -2,12 +2,13 @@ import './scripts/patch-fs.cjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Permite validar builds em diretório isolado quando o servidor local mantém .next bloqueado no Windows.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: true,
   poweredByHeader: false,
   webpack: (config) => {
     // Desabilita cache de arquivos para compatibilidade total com FAT32
     config.cache = false;
-    config.resolve.symlinks = false;
     return config;
   },
   async headers() {

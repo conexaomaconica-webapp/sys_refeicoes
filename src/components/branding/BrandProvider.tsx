@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState, useMemo } from 'react';
 import type { PublicTenantBranding } from '@/types/tenant';
 import {
   FALLBACK_BRANDING,
@@ -33,18 +33,16 @@ export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
   const [branding, setBranding] = useState<PublicTenantBranding>(FALLBACK_BRANDING);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const loadBranding = useMemo(() => {
-    return async () => {
-      setIsLoading(true);
-      try {
-        const data = await getPublicTenantBranding(tenantSlug);
-        setBranding(data);
-      } catch (err) {
-        console.warn('[BrandProvider] Falha ao carregar branding:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadBranding = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await getPublicTenantBranding(tenantSlug);
+      setBranding(data);
+    } catch (err) {
+      console.warn('[BrandProvider] Falha ao carregar branding:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [tenantSlug]);
 
   useEffect(() => {
@@ -64,6 +62,9 @@ export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
       if (branding.splash_background) {
         root.style.setProperty('--tenant-splash-bg', branding.splash_background);
       }
+      root.style.setProperty('--terminal-primary', branding.terminal_primary_color);
+      root.style.setProperty('--terminal-accent', branding.terminal_accent_color);
+      root.style.setProperty('--terminal-surface', branding.terminal_surface_color);
     }
   }, [branding]);
 

@@ -14,6 +14,13 @@ export interface StudentCategory {
   name: string;
   description: string | null;
   requires_wallet: boolean;
+  pricing_type: 'percentage' | 'fixed';
+  charge_percentage: number;
+  fixed_price: number | null;
+  allow_multi_meal: boolean;
+  payment_mode: 'wallet' | 'on_entry';
+  allowed_meal_types?: string[] | null;
+  total_students?: number;
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;

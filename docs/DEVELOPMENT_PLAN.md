@@ -474,3 +474,20 @@ Nenhuma sprint é considerada concluída sem atender integralmente aos seguintes
 
 ---
 **Fim do documento revisado.**
+
+---
+
+# Estabilização Pós-Sprint 10 — 19/10/2026
+
+Sprint 11 e `/admin/configuracoes` permanecem bloqueadas até o aceite de `POST_SPRINT_10_STABILIZATION_REPORT.md`.
+
+Escopo autorizado: infraestrutura/build, integridade financeira e operacional, caixa/auditoria, homologação e documentação.
+
+- Node.js 22 e dependências fixadas por versão, com pnpm 12.6.0 documentado;
+- pagamento avulso separado de recarga/débito da carteira pela migration `20261019000044`;
+- dinheiro, Pix e cartão conciliados separadamente; somente numerário integra o saldo físico esperado;
+- estorno avulso compensatório, sem crédito indevido em carteira;
+- terminal alinhado a online-first/fail-safe, sem nova liberação ou cobrança offline;
+- abertura de caixa obrigatória preservada, sem configuração de desativação.
+
+Gate de saída: lint, typecheck, validação estática, build finalizado, smoke test, migration homologada em staging e roteiro funcional registrado.

@@ -37,3 +37,10 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Database Backups & Temp
+/supabase/backups/
+/supabase/.temp/
+*.dump
+*.backup
+.e2e-sprint11-*

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { SplashScreen } from '@/components/branding/SplashScreen';
 import LoginPage from './(auth)/login/page';
 import { useBrand } from '@/components/branding/BrandProvider';
@@ -17,16 +17,15 @@ export default function AppEntry() {
   const [splashFinished, setSplashFinished] = useState<boolean>(false);
   const [showStatusPanel, setShowStatusPanel] = useState<boolean>(false);
   const { branding, tenantSlug, refreshBranding } = useBrand();
+  const handleSplashFinish = useCallback(() => {
+    setSplashFinished(true);
+  }, []);
 
   return (
     <>
       {/* 1. Splash Screen Animado com carregamento paralelo de branding e sessão */}
       {!splashFinished && (
-        <SplashScreen
-          onFinish={() => {
-            setSplashFinished(true);
-          }}
-        />
+        <SplashScreen onFinish={handleSplashFinish} />
       )}
 
       {/* 2. Interface Principal: Página de Login preparada com Branding do Tenant */}

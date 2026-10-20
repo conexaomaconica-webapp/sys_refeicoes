@@ -77,6 +77,7 @@ export interface ImportPreviewResult {
   file_hash: string;
   file_size_bytes: number;
   is_official_snapshot: boolean;
+  effective_date: string;
   summary: ImportPreviewSummary;
   rows: ImportPreviewRow[];
 }
@@ -100,6 +101,10 @@ export interface ImportRecord {
   ignored_rows: number;
   error_rows: number;
   is_official_snapshot: boolean;
+  effective_date: string;
+  processed_rows: number;
+  failed_rows: number;
+  skipped_rows: number;
   created_at: string;
   confirmed_at?: string;
   completed_at?: string;

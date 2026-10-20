@@ -1528,3 +1528,16 @@ deve ser considerada inválida até revisão formal.
 ---
 
 **Fim do documento.**
+
+---
+
+# Adendo — Estabilização Pós-Sprint 10 (19/10/2026)
+
+- Caixa aberto é obrigatório para recebimento e não possui bypass configurável.
+- Pagamento avulso nunca é recarga nem débito de carteira.
+- Idempotência é única por turno/chave; retry devolve resultado persistido.
+- Estorno pago exige `admin_general`, `operations_director` ou `finance`, justificativa e compensação.
+- Cancelamento valida tenant e `has_unit_access(unit_id)`.
+- Escrita direta em caixa foi revogada de `authenticated`.
+- Snapshot e conciliação offline experimentais foram revogados do cliente; indisponibilidade bloqueia a operação.
+- Rotação da credencial PostgreSQL anteriormente exposta permanece obrigatória antes de produção.

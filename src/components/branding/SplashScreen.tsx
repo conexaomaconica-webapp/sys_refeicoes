@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useBrand } from './BrandProvider';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { Utensils, ShieldCheck } from 'lucide-react';
@@ -10,44 +10,44 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onFinish }: SplashScreenProps) {
-  const { branding, refreshBranding } = useBrand();
+  const { branding } = useBrand();
   const [isFadingOut, setIsFadingOut] = useState<boolean>(false);
   const [isVisible, setIsVisible] = useState<boolean>(true);
+  const onFinishRef = useRef(onFinish);
+  const splashDurationRef = useRef(branding.splash_duration_ms || 1200);
+
+  onFinishRef.current = onFinish;
+  splashDurationRef.current = branding.splash_duration_ms || 1200;
 
   useEffect(() => {
     let isMounted = true;
+    let fadeTimeout: ReturnType<typeof setTimeout> | undefined;
+    let finishTimeout: ReturnType<typeof setTimeout> | undefined;
     const startTime = Date.now();
     const minDisplayTimeMs = 800; // Mínimo estético para evitar flicker
-    const configuredDurationMs = branding.splash_duration_ms || 1200;
 
     async function initializeApp() {
       const supabase = createBrowserClient();
 
       // Execução paralela: Branding e Checagem de Sessão
-      const [, sessionResult] = await Promise.allSettled([
-        refreshBranding(),
-        supabase.auth.getSession(),
-      ]);
+      const sessionResult = await supabase.auth.getSession();
 
       const hasSession =
-        sessionResult.status === 'fulfilled' &&
-        !!sessionResult.value.data?.session?.user;
+        !sessionResult.error && !!sessionResult.data?.session?.user;
 
       const elapsed = Date.now() - startTime;
       const remainingTime = Math.max(minDisplayTimeMs - elapsed, 0);
-      const totalWait = Math.min(remainingTime + 200, configuredDurationMs);
+      const totalWait = Math.min(remainingTime + 200, splashDurationRef.current);
 
-      setTimeout(() => {
+      fadeTimeout = setTimeout(() => {
         if (!isMounted) return;
         setIsFadingOut(true);
 
         // Aguarda animação de fade-out (300ms)
-        setTimeout(() => {
+        finishTimeout = setTimeout(() => {
           if (!isMounted) return;
           setIsVisible(false);
-          if (onFinish) {
-            onFinish(hasSession);
-          }
+          onFinishRef.current?.(hasSession);
         }, 350);
       }, totalWait);
     }
@@ -56,8 +56,10 @@ export function SplashScreen({ onFinish }: SplashScreenProps) {
 
     return () => {
       isMounted = false;
+      if (fadeTimeout) clearTimeout(fadeTimeout);
+      if (finishTimeout) clearTimeout(finishTimeout);
     };
-  }, [branding.splash_duration_ms, refreshBranding, onFinish]);
+  }, []);
 
   if (!isVisible) return null;
 

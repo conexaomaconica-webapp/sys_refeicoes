@@ -25,6 +25,11 @@ export interface TenantBranding {
   splash_duration_ms?: number;
   primary_color?: string | null;
   secondary_color?: string | null;
+  terminal_theme?: 'light' | 'dark';
+  terminal_primary_color?: string | null;
+  terminal_accent_color?: string | null;
+  terminal_surface_color?: string | null;
+  terminal_show_kpi_values?: boolean;
   report_logo_url?: string | null;
   report_header_text?: string | null;
   report_footer_text?: string | null;
@@ -46,6 +51,23 @@ export interface PublicTenantBranding {
   splash_duration_ms: number | null;
   primary_color: string | null;
   secondary_color: string | null;
+  terminal_theme: 'light' | 'dark';
+  terminal_primary_color: string;
+  terminal_accent_color: string;
+  terminal_surface_color: string;
+  terminal_show_kpi_values: boolean;
+}
+
+export interface UpdateTenantBrandingInput {
+  app_name: string;
+  logo_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  terminal_theme: 'light' | 'dark';
+  terminal_primary_color: string;
+  terminal_accent_color: string;
+  terminal_surface_color: string;
+  terminal_show_kpi_values: boolean;
 }
 
 export interface Institution {

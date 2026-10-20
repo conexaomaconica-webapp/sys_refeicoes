@@ -1558,3 +1558,26 @@ Alterações estruturais relevantes devem ser registradas antes de implementaç�
 ---
 
 **Fim do documento.**
+
+---
+
+# Adendo Pós-Sprint 10 — 19/10/2026
+
+## Pagamento no balcão
+
+```text
+identificação/visitante -> pré-validação -> caixa aberto -> recebimento
+                         -> consumo confirmado -> cash_movements
+```
+
+`cash_movements` é a fonte financeira do recebimento avulso. Esse fluxo não cria recarga, não credita carteira e não cria `meal_debit`. O ledger `wallet_transactions` permanece exclusivo da carteira.
+
+O movimento registra unidade (via turno), operador, terminal, aluno/visitante, consumo, forma, valores, troco, origem, status e idempotência. Estorno cria movimento compensatório e preserva o original.
+
+## Contingência
+
+O terminal é **online-first + fail-safe**. Perda de conectividade nunca produz tela verde, débito, cobrança ou consumo local confirmado. Módulos experimentais de snapshot/fila permanecem apenas para auditoria histórica; suas RPCs não são expostas ao cliente.
+
+## Build
+
+Runtime: Node.js 22+. Dependências e pnpm são fixados em `package.json`/`pnpm-lock.yaml`. Não persistir builds `.next-*` dentro do projeto, pois ampliam o tracing em volumes Windows lentos.

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --bg-primary: #0a0e17;
   --bg-secondary: #111827;
@@ -30,6 +34,9 @@
   --tenant-primary: #0284c7;
   --tenant-secondary: #0f172a;
   --tenant-splash-bg: #0f172a;
+  --terminal-primary: #c5161d;
+  --terminal-accent: #f4c430;
+  --terminal-surface: #f3f4f6;
   --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -73,6 +80,17 @@ a {
   text-decoration: none;
 }
 
+/* O terminal pode rolar em monitores baixos, mas sem exibir uma barra lateral
+   que reduza a largura útil do PDV. Mantém mouse, toque e teclado funcionais. */
+.terminal-scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.terminal-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 /* Glassmorphism utility */
 .glass-panel {
   background: var(--bg-card);
@@ -111,4 +129,192 @@ a {
   background: rgba(156, 163, 175, 0.12);
   color: #d1d5db;
   border: 1px solid rgba(156, 163, 175, 0.2);
+}
+
+/* Superfícies claras oficiais do Terminal/PDV.
+   Alguns módulos operacionais antigos usam utilitários escuros diretamente;
+   estas regras mantêm contraste consistente sem afetar o tema escuro. */
+.terminal-light-surface,
+.theme-light-page {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+.terminal-light-surface [class*='bg-slate-950'],
+.terminal-light-surface [class*='bg-slate-900'],
+.theme-light-page [class*='bg-slate-950'],
+.theme-light-page [class*='bg-slate-900'] {
+  background-color: #ffffff !important;
+}
+
+.terminal-light-surface [class*='bg-slate-800'],
+.theme-light-page [class*='bg-slate-800'],
+.terminal-light-surface [class*='bg-white/5'],
+.theme-light-page [class*='bg-white/5'] {
+  background-color: #f1f5f9 !important;
+}
+
+.terminal-light-surface [class*='border-slate-8'],
+.terminal-light-surface [class*='border-slate-7'],
+.theme-light-page [class*='border-slate-8'],
+.theme-light-page [class*='border-slate-7'],
+.terminal-light-surface [class*='border-white/10'],
+.theme-light-page [class*='border-white/10'] {
+  border-color: #cbd5e1 !important;
+}
+
+.terminal-light-surface .text-slate-100,
+.terminal-light-surface .text-slate-200,
+.terminal-light-surface .text-slate-300,
+.theme-light-page .text-slate-100,
+.theme-light-page .text-slate-200,
+.theme-light-page .text-slate-300 {
+  color: #1e293b !important;
+}
+
+.terminal-light-surface .text-slate-400,
+.theme-light-page .text-slate-400 {
+  color: #475569 !important;
+}
+
+.terminal-light-surface h1.text-white,
+.terminal-light-surface h2.text-white,
+.terminal-light-surface h3.text-white,
+.terminal-light-surface h4.text-white,
+.terminal-light-surface input.text-white,
+.terminal-light-surface textarea.text-white,
+.theme-light-page h1.text-white,
+.theme-light-page h2.text-white,
+.theme-light-page h3.text-white,
+.theme-light-page h4.text-white,
+.theme-light-page input.text-white,
+.theme-light-page textarea.text-white {
+  color: #0f172a !important;
+}
+
+.terminal-light-surface input,
+.terminal-light-surface textarea,
+.terminal-light-surface select,
+.theme-light-page input,
+.theme-light-page textarea,
+.theme-light-page select {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+.terminal-light-surface input::placeholder,
+.terminal-light-surface textarea::placeholder,
+.theme-light-page input::placeholder,
+.theme-light-page textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.terminal-light-surface button[class*='bg-slate'],
+.theme-light-page button[class*='bg-slate'],
+.theme-light-page a[class*='bg-slate'] {
+  color: #0f172a !important;
+}
+
+.theme-light-page td .text-white,
+.theme-light-page p.text-white,
+.terminal-light-surface td .text-white,
+.terminal-light-surface p.text-white {
+  color: #0f172a !important;
+}
+
+.terminal-theme-light header [class*='bg-slate-8'],
+.terminal-theme-light footer [class*='bg-slate-8'],
+.terminal-theme-light header [class*='bg-white/5'],
+.terminal-theme-light footer [class*='bg-white/5'] {
+  background-color: #ffffff !important;
+}
+
+.terminal-theme-light header [class*='text-slate-3'],
+.terminal-theme-light footer [class*='text-slate-3'],
+.terminal-theme-light header [class*='text-slate-4'],
+.terminal-theme-light footer [class*='text-slate-4'] {
+  color: #334155 !important;
+}
+
+.terminal-theme-light header [class*='text-emerald'],
+.terminal-theme-light footer [class*='text-emerald'] {
+  color: #047857 !important;
+}
+
+.terminal-theme-light header [class*='text-sky'],
+.terminal-theme-light footer [class*='text-sky'] {
+  color: #0369a1 !important;
+}
+
+.terminal-theme-light header [class*='text-amber'],
+.terminal-theme-light footer [class*='text-amber'] {
+  color: #92400e !important;
+}
+
+.terminal-theme-light header [class*='text-red'],
+.terminal-theme-light footer [class*='text-red'],
+.terminal-theme-light header [class*='text-orange'],
+.terminal-theme-light footer [class*='text-orange'] {
+  color: #b91c1c !important;
+}
+
+/* Estados operacionais em superfÃ­cie clara: preservam a semÃ¢ntica das cores
+   sem reutilizar os painÃ©is quase pretos do tema escuro. */
+.terminal-theme-light .terminal-status-card {
+  color: #0f172a;
+}
+
+.terminal-theme-light .terminal-status-success {
+  background: #ecfdf5 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 18px 55px rgba(16, 185, 129, 0.16) !important;
+}
+
+.terminal-theme-light .terminal-status-warning {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 18px 55px rgba(245, 158, 11, 0.16) !important;
+}
+
+.terminal-theme-light .terminal-status-timeout {
+  background: #fff7ed !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 18px 55px rgba(249, 115, 22, 0.16) !important;
+}
+
+.terminal-theme-light .terminal-status-error {
+  background: #fff1f2 !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 18px 55px rgba(239, 68, 68, 0.16) !important;
+}
+
+.terminal-theme-light .terminal-status-card .text-white,
+.terminal-theme-light .terminal-status-card .text-slate-300 {
+  color: #0f172a !important;
+}
+
+.terminal-theme-light .terminal-status-card [class*='bg-black'] {
+  background-color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.terminal-theme-light .terminal-status-card [class*='text-emerald-2'],
+.terminal-theme-light .terminal-status-card [class*='text-emerald-3'] {
+  color: #047857 !important;
+}
+
+.terminal-theme-light .terminal-status-card [class*='text-amber-2'],
+.terminal-theme-light .terminal-status-card [class*='text-amber-3'] {
+  color: #92400e !important;
+}
+
+.terminal-theme-light .terminal-status-card [class*='text-orange-2'],
+.terminal-theme-light .terminal-status-card [class*='text-orange-3'] {
+  color: #c2410c !important;
+}
+
+.terminal-theme-light .terminal-status-card [class*='text-red-1'],
+.terminal-theme-light .terminal-status-card [class*='text-red-2'],
+.terminal-theme-light .terminal-status-card [class*='text-red-3'] {
+  color: #b91c1c !important;
 }

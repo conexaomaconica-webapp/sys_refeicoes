@@ -1,9 +1,11 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { ImportMode, ImportPreviewResult, ImportRecord, ImportRowRecord } from '@/types/import';
 import { parseImportBuffer } from './import-parser.service';
 import { validateAndClassifyRows, CategoryLookup, ExistingStudentLookup } from './import-validator.service';
 import { sanitizeCellForExport } from '@/lib/security/formula-sanitizer';
+import * as XLSX from 'xlsx';
 
 export interface StageImportParams {
   institutionId: string;
@@ -12,6 +14,7 @@ export interface StageImportParams {
   forceReimport?: boolean;
   fileBuffer: Buffer;
   originalFilename: string;
+  effectiveDate: string;
 }
 
 /**
@@ -133,7 +136,9 @@ export class AdminImportService {
     const extension = params.originalFilename.endsWith('.csv') ? 'csv' : 'xlsx';
     const storagePath = `${tenantId}/${params.institutionId}/${parsedData.file_hash.substring(0, 16)}_${Date.now()}/original.${extension}`;
 
-    const { error: uploadError } = await supabase.storage
+    // Uso de service role limitado ao servidor e somente após validar usuário, papel e tenant.
+    const storageAdmin = createAdminClient();
+    const { error: uploadError } = await storageAdmin.storage
       .from('import-files')
       .upload(storagePath, params.fileBuffer, {
         contentType: extension === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -146,7 +151,7 @@ export class AdminImportService {
 
     // 8. Chamar RPC Server-Side stage_import_batch para salvar o manifesto
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: importId, error: rpcError } = await (supabase.rpc as any)('stage_import_batch', {
+    const { data: importId, error: rpcError } = await (supabase.rpc as any)('stage_import_batch_v2', {
       p_institution_id: params.institutionId,
       p_import_mode: params.importMode,
       p_original_filename: params.originalFilename,
@@ -155,10 +160,12 @@ export class AdminImportService {
       p_file_size_bytes: parsedData.file_size_bytes,
       p_is_official_snapshot: params.isOfficialSnapshot,
       p_force_reimport: !!params.forceReimport,
-      p_rows: previewRows
+      p_rows: previewRows,
+      p_effective_date: params.effectiveDate
     });
 
     if (rpcError) {
+      await storageAdmin.storage.from('import-files').remove([storagePath]);
       throw new Error(`Erro no staging da importação: ${rpcError.message}`);
     }
 
@@ -182,6 +189,7 @@ export class AdminImportService {
       file_hash: parsedData.file_hash,
       file_size_bytes: parsedData.file_size_bytes,
       is_official_snapshot: params.isOfficialSnapshot,
+      effective_date: params.effectiveDate,
       summary,
       rows: previewRows
     };
@@ -272,23 +280,33 @@ export class AdminImportService {
    */
   static async generateErrorCsvReport(importId: string): Promise<string> {
     const { rows } = await this.getImportById(importId);
-    
     const errorRows = rows.filter(r => r.status === 'failed' || r.action === 'error');
-    
-    if (errorRows.length === 0) {
-      return 'LINHA,MATRICULA,ERROS\n';
-    }
+    const reportRows = this.buildRejectionRows(errorRows);
+    const worksheet = XLSX.utils.json_to_sheet(reportRows.length > 0 ? reportRows : [{ motivo_rejeicao: '', linha_original: '' }]);
+    return XLSX.utils.sheet_to_csv(worksheet, { FS: ',', RS: '\n', forceQuotes: true });
+  }
 
-    const csvLines: string[] = ['LINHA,MATRICULA,ERROS'];
+  /** Gera XLSX de rejeicoes com as colunas originais e metadados de erro. */
+  static async generateErrorXlsxReport(importId: string): Promise<Buffer> {
+    const { rows } = await this.getImportById(importId);
+    const errorRows = rows.filter(r => r.status === 'failed' || r.action === 'error');
+    const reportRows = this.buildRejectionRows(errorRows);
+    const worksheet = XLSX.utils.json_to_sheet(reportRows.length > 0 ? reportRows : [{ motivo_rejeicao: '', linha_original: '' }]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rejeicoes');
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  }
 
-    errorRows.forEach(r => {
-      const lineNum = sanitizeCellForExport(r.row_number);
-      const reg = sanitizeCellForExport(r.registration_number || '');
-      const errList = sanitizeCellForExport((r.errors || []).join(' | '));
-
-      csvLines.push(`"${lineNum}","${reg}","${errList}"`);
+  private static buildRejectionRows(rows: ImportRowRecord[]): Record<string, string>[] {
+    return rows.map((row) => {
+      const original = Object.fromEntries(
+        Object.entries(row.raw_data || {}).map(([key, value]) => [key, sanitizeCellForExport(value)])
+      );
+      return {
+        ...original,
+        motivo_rejeicao: sanitizeCellForExport((row.errors || []).join(' | ')),
+        linha_original: sanitizeCellForExport(row.row_number),
+      };
     });
-
-    return csvLines.join('\n');
   }
 }
