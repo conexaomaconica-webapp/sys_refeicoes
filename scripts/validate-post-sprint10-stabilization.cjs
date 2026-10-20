@@ -7,6 +7,7 @@ const migration = read('supabase/migrations/20261019000044_stabilize_counter_pay
 const terminal = read('src/components/terminal/ReceptionTerminal.tsx');
 const terminalPage = read('src/app/terminal/page.tsx');
 const consumptionService = read('src/services/consumption.service.ts');
+const visitorDailyLimitMigration = read('supabase/migrations/20261020000055_fix_repeated_visitor_sales.sql');
 const packageJson = JSON.parse(read('package.json'));
 
 const checks = [
@@ -25,8 +26,13 @@ const checks = [
   ['terminal does not authorize offline meals', !terminal.includes('processOfflineMealConsumption')],
   ['terminal does not auto-sync offline queue', !terminal.includes('executeOfflineSync')],
   ['terminal does not download offline snapshot', !terminalPage.includes('downloadShiftSnapshot')],
-  ['terminal applies the complete light surface', terminal.includes("'terminal-theme-light terminal-light-surface'")],
+  ['terminal light theme does not recolor modal backdrops and action buttons', terminal.includes("'terminal-theme-light'") && !terminal.includes("'terminal-theme-light terminal-light-surface'")],
   ['visitor payment errors stay visible in the active modal', terminal.includes('visitorPaymentError') && terminal.includes('role="alert"')],
+  ['visitor payment keyboard shortcuts are scoped to the modal', terminal.includes('handleVisitorPaymentShortcut') && terminal.includes("shortcut === '1' || shortcut === 'd'") && terminal.includes("shortcut === '3' || shortcut === 'c'")],
+  ['visitor sales restore the existing multi-meal contract', visitorDailyLimitMigration.includes("category.allow_multi_meal OR category.code = 'visitante'")],
+  ['historical multi-meal flags are reconciled without deleting consumptions', visitorDailyLimitMigration.includes('UPDATE public.meal_consumptions') && !visitorDailyLimitMigration.includes('DELETE FROM public.meal_consumptions')],
+  ['personal daily uniqueness remains active', visitorDailyLimitMigration.includes("indexname = 'idx_meal_consumptions_active_daily'") && visitorDailyLimitMigration.includes("NOT allow_multi_meal")],
+  ['visitor correction keeps RLS enabled', !visitorDailyLimitMigration.includes('DISABLE ROW LEVEL SECURITY')],
   ['terminal resolves units through RLS', terminalPage.includes(".from('units')")],
   ['terminal does not require explicit unit link for global roles', !terminalPage.includes(".from('user_unit_access')")],
   ['visitor payment method reaches RPC', consumptionService.includes("p_payment_method: params.paymentMethod || 'cash'")],

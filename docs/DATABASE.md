@@ -1728,3 +1728,14 @@ Pontes técnicas históricas não são apagadas: movimentos associados são iden
 As três migrations foram aplicadas no banco remoto de testes. A homologação
 transacional posterior aprovou 39/39 validações e reverteu integralmente os
 dados sintéticos.
+
+### Vendas avulsas repetidas de visitantes
+
+A migration `20261020000055` restaura o preenchimento automático de
+`meal_consumptions.allow_multi_meal` a partir da categoria, contrato originalmente
+definido pela migration 33 e perdido em uma redefinição posterior de
+`consume_meal`. Alunos e servidores sem permissão de repetição continuam
+protegidos pela unicidade de `(student_id, consumption_date, meal_type_id)`.
+Visitantes podem gerar vendas avulsas repetidas sem criar novos comensais
+fictícios, mantendo cada venda registrada em `meal_consumptions` e
+`cash_movements`.

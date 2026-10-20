@@ -1043,6 +1043,7 @@ export type Database = {
           idempotency_key: string | null;
           request_hash: string | null;
           qr_token_id: string | null;
+          allow_multi_meal: boolean;
           status: 'approved' | 'financially_refunded' | 'cancelled_unserved';
           reversal_reason: string | null;
           reversed_at: string | null;
@@ -1070,6 +1071,7 @@ export type Database = {
           idempotency_key?: string | null;
           request_hash?: string | null;
           qr_token_id?: string | null;
+          allow_multi_meal?: boolean;
           status?: 'approved' | 'financially_refunded' | 'cancelled_unserved';
           reversal_reason?: string | null;
           reversed_at?: string | null;
@@ -1097,6 +1099,7 @@ export type Database = {
           idempotency_key?: string | null;
           request_hash?: string | null;
           qr_token_id?: string | null;
+          allow_multi_meal?: boolean;
           status?: 'approved' | 'financially_refunded' | 'cancelled_unserved';
           reversal_reason?: string | null;
           reversed_at?: string | null;

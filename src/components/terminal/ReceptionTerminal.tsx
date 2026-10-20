@@ -619,6 +619,41 @@ export function ReceptionTerminal({
     setIsProcessing(false);
   };
 
+  const visitorPaymentHandlerRef = useRef(handleRegisterVisitorDirect);
+  visitorPaymentHandlerRef.current = handleRegisterVisitorDirect;
+
+  // Atalhos locais do modal de visitante. Ficam inativos fora do modal para
+  // nao disputar teclas com o scanner ou com a digitacao de matriculas.
+  useEffect(() => {
+    if (!visitorPaymentPending) return;
+
+    const handleVisitorPaymentShortcut = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.altKey || event.metaKey || event.repeat || isProcessing) return;
+
+      const shortcut = event.key.toLowerCase();
+      const method =
+        shortcut === '1' || shortcut === 'd'
+          ? 'cash'
+          : shortcut === '2' || shortcut === 'p'
+            ? 'pix'
+            : shortcut === '3' || shortcut === 'c'
+              ? 'card'
+              : null;
+
+      if (method) {
+        event.preventDefault();
+        void visitorPaymentHandlerRef.current(method);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        setVisitorPaymentError(null);
+        setVisitorPaymentPending(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleVisitorPaymentShortcut);
+    return () => window.removeEventListener('keydown', handleVisitorPaymentShortcut);
+  }, [isProcessing, visitorPaymentPending]);
+
   const handleConfirmPayment = async () => {
     if (!paymentPending || isProcessing) return;
     const charged = Number(paymentPending.preview.financial?.student_price || 0);
@@ -699,7 +734,7 @@ export function ReceptionTerminal({
         '--terminal-accent-local': branding.terminal_accent_color,
         '--terminal-surface-local': branding.terminal_surface_color,
       } as React.CSSProperties}
-      className={`h-dvh min-h-0 w-full flex flex-col overflow-hidden select-none transition-colors duration-300 ${isDark ? 'terminal-theme-dark' : 'terminal-theme-light terminal-light-surface'} ${
+      className={`h-dvh min-h-0 w-full flex flex-col overflow-hidden select-none transition-colors duration-300 ${isDark ? 'terminal-theme-dark' : 'terminal-theme-light'} ${
         isDark
           ? activeDisplay?.state === 'ONLINE_CONFIRMED'
             ? 'bg-emerald-950/40 text-emerald-100'
@@ -936,7 +971,7 @@ export function ReceptionTerminal({
                 <button
                   type="submit"
                   disabled={isProcessing || !inputValue.trim()}
-                  className="sm:col-span-2 py-3.5 px-6 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="sm:col-span-2 py-3.5 px-6 rounded-2xl disabled:opacity-75 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                   style={{ backgroundColor: branding.terminal_primary_color }}
                 >
                   <span>{isProcessing ? 'Processando...' : 'Liberar Refeição (Enter)'}</span>
@@ -1559,15 +1594,21 @@ export function ReceptionTerminal({
             <h2 className="text-center text-xl font-black">Pagamento do visitante</h2>
             <p className="mt-2 text-center text-sm text-slate-400">Selecione a forma efetivamente recebida antes de liberar.</p>
             <div className="mt-6 grid grid-cols-3 gap-3">
-              {(['cash', 'pix', 'card'] as const).map((method) => (
+              {([
+                ['cash', 'Dinheiro', '1 / D'],
+                ['pix', 'PIX', '2 / P'],
+                ['card', 'Cartão', '3 / C'],
+              ] as const).map(([method, label, shortcut]) => (
                 <button
                   key={method}
                   type="button"
                   disabled={isProcessing}
                   onClick={() => handleRegisterVisitorDirect(method)}
+                  aria-keyshortcuts={shortcut.replace(' / ', ' ')}
                   className="rounded-2xl border border-slate-600 px-3 py-4 font-black uppercase hover:border-emerald-400 disabled:opacity-40"
                 >
-                  {method === 'cash' ? 'Dinheiro' : method === 'pix' ? 'Pix' : 'Cartão'}
+                  <span className="block">{label}</span>
+                  <span className="mt-1 block text-[10px] font-bold opacity-60">{shortcut}</span>
                 </button>
               ))}
             </div>
