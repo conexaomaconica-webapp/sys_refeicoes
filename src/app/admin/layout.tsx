@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { AdminShell } from '@/components/admin/AdminShell';
 import { createClient } from '@/lib/supabase/server';
 import type { UserRole } from '@/types/auth';
 
@@ -18,14 +19,37 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { data: profileData } = await supabase
     .from('profiles')
-    .select('role,status')
+    .select('tenant_id,role,status')
     .eq('id', user.id)
     .maybeSingle();
-  const profile = profileData as { role: UserRole; status: string } | null;
+  const profile = profileData as { tenant_id: string; role: UserRole; status: string } | null;
 
   if (!profile || profile.status !== 'active' || !ADMIN_ROLES.includes(profile.role)) {
     redirect('/terminal');
   }
 
-  return children;
+  const [{ data: tenantData }, { data: brandingData }] = await Promise.all([
+    supabase.from('tenants').select('slug,name').eq('id', profile.tenant_id).maybeSingle(),
+    supabase
+      .from('tenant_branding')
+      .select('app_name,logo_url,primary_color')
+      .eq('tenant_id', profile.tenant_id)
+      .maybeSingle(),
+  ]);
+  const tenant = tenantData as { slug: string; name: string } | null;
+  const branding = brandingData as { app_name: string; logo_url: string | null; primary_color: string | null } | null;
+
+  return (
+    <AdminShell
+      role={profile.role}
+      branding={{
+        appName: branding?.app_name || tenant?.name || 'MA Refeições',
+        logoUrl: branding?.logo_url || null,
+        slug: tenant?.slug || 'tenant',
+        primaryColor: branding?.primary_color || '#C5161D',
+      }}
+    >
+      {children}
+    </AdminShell>
+  );
 }

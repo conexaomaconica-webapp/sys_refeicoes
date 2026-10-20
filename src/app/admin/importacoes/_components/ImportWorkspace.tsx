@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
-import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Loader2, ShieldAlert, Upload, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Download, Loader2, ShieldAlert, Upload, XCircle } from 'lucide-react';
 import type { ImportPreviewResult, ImportRowAction } from '@/types/import';
 import { cancelImportAction, confirmImportAction, createImportPreviewAction } from '../actions';
 
 type Institution = { id: string; name: string; short_name: string | null };
-type RecentImport = { id: string; original_filename: string; status: string; total_rows: number; error_rows: number; created_at: string };
+type Unit = { id: string; institution_id: string; name: string; city: string; state: string };
+type RecentImport = { id: string; original_filename: string; status: string; total_rows: number; error_rows: number; created_at: string; unit_name: string | null };
 type Filter = 'all' | 'valid' | ImportRowAction;
 
 const actionLabels: Record<ImportRowAction, string> = {
@@ -18,14 +19,17 @@ const actionLabels: Record<ImportRowAction, string> = {
   error: 'Inválida',
 };
 
-export function ImportWorkspace({ institutions, recentImports }: { institutions: Institution[]; recentImports: RecentImport[] }) {
+export function ImportWorkspace({ institutions, units, recentImports }: { institutions: Institution[]; units: Unit[]; recentImports: RecentImport[] }) {
   const today = new Date().toISOString().slice(0, 10);
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [institutionId, setInstitutionId] = useState('');
+  const [unitId, setUnitId] = useState('');
   const [isPending, startTransition] = useTransition();
+  const availableUnits = units.filter((unit) => unit.institution_id === institutionId);
 
   const visibleRows = useMemo(() => {
     if (!preview) return [];
@@ -70,7 +74,7 @@ export function ImportWorkspace({ institutions, recentImports }: { institutions:
       const result = await cancelImportAction(preview.import_id);
       if (!result.success) return setMessage({ kind: 'error', text: result.error });
       setPreview(null);
-      setMessage({ kind: 'success', text: 'Preview cancelado sem alterar cadastros de alunos.' });
+      setMessage({ kind: 'success', text: 'Preview cancelado sem alterar cadastros de comensais.' });
     });
   }
 
@@ -93,19 +97,40 @@ export function ImportWorkspace({ institutions, recentImports }: { institutions:
             <Link href="/admin" className="mb-3 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900">
               <ArrowLeft className="h-4 w-4" /> Voltar ao painel
             </Link>
-            <h1 className="text-3xl font-black">Importação parcial</h1>
-            <p className="mt-2 text-sm text-slate-500">Valide a planilha, isole rejeições e confirme somente as linhas válidas.</p>
+            <h1 className="text-3xl font-black">Importação de comensais</h1>
+            <p className="mt-2 text-sm text-slate-500">Importe ou atualize alunos, servidores e outros públicos, isolando somente as linhas inválidas.</p>
           </div>
-          <div className="hidden rounded-2xl bg-emerald-50 p-3 text-emerald-700 sm:block"><FileSpreadsheet className="h-7 w-7" /></div>
+          <a
+            href="/admin/importacoes/modelo"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-black text-emerald-800 transition hover:bg-emerald-100"
+          >
+            <Download className="h-4 w-4" /> Baixar modelo XLSX
+          </a>
         </div>
 
         {!preview && (
           <form action={submitPreview} className="grid gap-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
             <label className="space-y-2 text-sm font-bold">
               Instituição
-              <select name="institutionId" required className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-medium">
+              <select
+                name="institutionId"
+                required
+                value={institutionId}
+                onChange={(event) => {
+                  setInstitutionId(event.target.value);
+                  setUnitId('');
+                }}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-medium"
+              >
                 <option value="">Selecione</option>
                 {institutions.map((item) => <option key={item.id} value={item.id}>{item.short_name || item.name}</option>)}
+              </select>
+            </label>
+            <label className="space-y-2 text-sm font-bold">
+              Unidade de origem da listagem
+              <select name="unitId" required disabled={!institutionId} value={unitId} onChange={(event) => setUnitId(event.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-medium disabled:bg-slate-100">
+                <option value="">{institutionId ? 'Selecione a unidade' : 'Selecione primeiro a instituição'}</option>
+                {availableUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name} — {unit.city}/{unit.state}</option>)}
               </select>
             </label>
             <label className="space-y-2 text-sm font-bold">
@@ -116,13 +141,20 @@ export function ImportWorkspace({ institutions, recentImports }: { institutions:
               Tipo da relação
               <select name="importMode" defaultValue="general" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-medium">
                 <option value="general">Atualização geral</option>
-                <option value="integral_snapshot">Relação oficial de integrais</option>
+                <option value="integral_snapshot">Relação oficial completa de integrais</option>
               </select>
             </label>
             <label className="space-y-2 text-sm font-bold">
               Arquivo XLSX ou CSV
               <input name="file" type="file" accept=".xlsx,.csv" required className="block w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
             </label>
+            <div className="space-y-2 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 md:col-span-2">
+              <p className="font-black">Como a atualização e as ausências funcionam</p>
+              <p><strong>Atualização geral:</strong> inclui ou atualiza somente quem aparece no arquivo. Quem estiver ausente permanece sem alteração.</p>
+              <p><strong>Relação oficial completa de integrais:</strong> alunos integrais ausentes são reclassificados conforme a regra vigente; o cadastro e o histórico não são apagados.</p>
+              <p>A matrícula já existente na mesma instituição será atualizada, registros sem alteração serão ignorados e a unidade identificará a origem operacional do lote.</p>
+              <p className="text-xs text-sky-800"><strong>Regra para múltiplos vínculos:</strong> quando essa funcionalidade for habilitada, a ausência em uma lista oficial encerrará apenas o vínculo abrangido. A pessoa ficará inativa somente se não possuir outro vínculo ativo.</p>
+            </div>
             <label className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm md:col-span-2">
               <input name="isOfficialSnapshot" value="true" type="checkbox" className="mt-1 h-4 w-4" />
               <span><strong>Lista oficial de integrais.</strong> Marque somente no modo correspondente; alunos integrais ausentes poderão ser reclassificados como parciais na data de vigência.</span>
@@ -154,7 +186,7 @@ export function ImportWorkspace({ institutions, recentImports }: { institutions:
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
                 <div>
                   <h2 className="font-black">Preview — {preview.original_filename}</h2>
-                  <p className="text-xs text-slate-500">Exibindo até 250 linhas · vigência {new Date(`${preview.effective_date}T12:00:00`).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-xs text-slate-500">Exibindo até 250 linhas · unidade {units.find((unit) => unit.id === preview.unit_id)?.name || 'não identificada'} · vigência {new Date(`${preview.effective_date}T12:00:00`).toLocaleDateString('pt-BR')}</p>
                 </div>
                 {summary.error_rows > 0 && <div className="flex gap-2">
                   <a href={`/admin/importacoes/${preview.import_id}/rejeicoes?format=xlsx`} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-black"><Download className="h-4 w-4" /> XLSX</a>
@@ -182,7 +214,7 @@ export function ImportWorkspace({ institutions, recentImports }: { institutions:
                 <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                 <label className="text-sm leading-6">
                   <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} className="mr-2 h-4 w-4" />
-                  Confirmo o processamento de <strong>{summary.valid_rows} linhas válidas</strong>. As {summary.error_rows} inválidas serão rejeitadas, e saldos/extratos de carteira não serão alterados.
+                  Confirmo o processamento de <strong>{summary.valid_rows} linhas válidas</strong> de comensais. As {summary.error_rows} inválidas serão rejeitadas, e saldos/extratos de carteira não serão alterados.
                 </label>
               </div>
               <div className="mt-5 flex flex-wrap justify-end gap-3">
@@ -201,7 +233,7 @@ export function ImportWorkspace({ institutions, recentImports }: { institutions:
             <div className="mt-4 divide-y divide-slate-100">
               {recentImports.map((item) => (
                 <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-                  <div><p className="font-bold">{item.original_filename}</p><p className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString('pt-BR')} · {item.total_rows} linhas</p></div>
+                  <div><p className="font-bold">{item.original_filename}</p><p className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString('pt-BR')} · {item.total_rows} linhas{item.unit_name ? ` · ${item.unit_name}` : ''}</p></div>
                   <div className="flex items-center gap-3">
                     {item.error_rows > 0 && <a href={`/admin/importacoes/${item.id}/rejeicoes?format=xlsx`} className="font-bold text-red-700 hover:underline">Baixar {item.error_rows} rejeições</a>}
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black">{item.status}</span>

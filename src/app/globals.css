@@ -223,6 +223,106 @@ a {
   color: #0f172a !important;
 }
 
+/* Contraste global das telas legadas convertidas para o modo claro.
+   `text-white` era usado em muitos filhos de cards escuros. Como esses cards
+   agora recebem fundo claro, o texto tambem precisa acompanhar a superficie. */
+:is(.terminal-light-surface, .theme-light-page) .text-white {
+  color: #0f172a !important;
+}
+
+/* Cores semanticas claras precisam de tons mais escuros sobre superficies
+   brancas/pasteis para manter leitura e significado operacional. */
+:is(.terminal-light-surface, .theme-light-page) [class*='text-sky-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-sky-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-sky-4'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-cyan-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-cyan-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-cyan-4'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-blue-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-blue-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-blue-4'] {
+  color: #0369a1 !important;
+}
+
+:is(.terminal-light-surface, .theme-light-page) [class*='text-emerald-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-emerald-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-emerald-4'] {
+  color: #047857 !important;
+}
+
+:is(.terminal-light-surface, .theme-light-page) [class*='text-amber-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-amber-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-amber-4'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-orange-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-orange-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-orange-4'] {
+  color: #92400e !important;
+}
+
+:is(.terminal-light-surface, .theme-light-page) [class*='text-rose-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-rose-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-rose-4'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-red-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-red-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-red-4'] {
+  color: #be123c !important;
+}
+
+:is(.terminal-light-surface, .theme-light-page) [class*='text-purple-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-purple-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-purple-4'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-indigo-2'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-indigo-3'],
+:is(.terminal-light-surface, .theme-light-page) [class*='text-indigo-4'] {
+  color: #6d28d9 !important;
+}
+
+/* Banners que eram escuros passam a usar a respectiva superficie pastel. */
+:is(.terminal-light-surface, .theme-light-page) [class*='bg-emerald-950'] {
+  background: #ecfdf5 !important;
+}
+
+:is(.terminal-light-surface, .theme-light-page) [class*='bg-red-950'],
+:is(.terminal-light-surface, .theme-light-page) [class*='bg-rose-950'] {
+  background: #fff1f2 !important;
+}
+
+:is(.terminal-light-surface, .theme-light-page) [class*='from-emerald-950'] {
+  background: #ecfdf5 !important;
+}
+
+/* Acoes com preenchimento forte continuam usando texto branco. */
+:is(.terminal-light-surface, .theme-light-page)
+  :is(
+    [class*='bg-gradient'],
+    [class*='bg-sky-600'],
+    [class*='bg-blue-600'],
+    [class*='bg-emerald-600'],
+    [class*='bg-rose-600'],
+    [class*='bg-red-600'],
+    [class*='bg-amber-600'],
+    [class*='bg-purple-600'],
+    [class*='bg-indigo-600'],
+    [class*='bg-slate-600'],
+    [class*='bg-slate-700']
+  ).text-white,
+:is(.terminal-light-surface, .theme-light-page)
+  :is(
+    [class*='bg-gradient'],
+    [class*='bg-sky-600'],
+    [class*='bg-blue-600'],
+    [class*='bg-emerald-600'],
+    [class*='bg-rose-600'],
+    [class*='bg-red-600'],
+    [class*='bg-amber-600'],
+    [class*='bg-purple-600'],
+    [class*='bg-indigo-600'],
+    [class*='bg-slate-600'],
+    [class*='bg-slate-700']
+  ) .text-white {
+  color: #ffffff !important;
+}
+
 .terminal-theme-light header [class*='bg-slate-8'],
 .terminal-theme-light footer [class*='bg-slate-8'],
 .terminal-theme-light header [class*='bg-white/5'],

@@ -162,10 +162,16 @@ export function validateAndClassifyRows(
 
         const targetCatId = norm.category_id || existingStudent.category_id;
         const targetStatus = norm.academic_status || existingStudent.status;
+        const categoryChanged = targetCatId !== existingStudent.category_id;
+
+        if (categoryChanged) {
+          const targetCategoryLabel = resolvedCategory?.name || norm.category_code || targetCatId;
+          warnings.push(`Categoria será atualizada: ${existingStudent.category_code} → ${targetCategoryLabel}.`);
+        }
 
         const hasDiff = 
           norm.full_name !== existingStudent.full_name ||
-          targetCatId !== existingStudent.category_id ||
+          categoryChanged ||
           (norm.course !== undefined && norm.course !== (existingStudent.course || '')) ||
           (norm.email !== undefined && norm.email !== (existingStudent.email || '')) ||
           (norm.phone !== undefined && norm.phone !== (existingStudent.phone || '')) ||

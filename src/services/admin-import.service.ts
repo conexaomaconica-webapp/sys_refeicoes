@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 
 export interface StageImportParams {
   institutionId: string;
+  unitId: string;
   importMode: ImportMode;
   isOfficialSnapshot: boolean;
   forceReimport?: boolean;
@@ -52,6 +53,18 @@ export class AdminImportService {
 
     const tenantId = profile.tenant_id;
 
+    const { data: unitData, error: unitError } = await supabase
+      .from('units')
+      .select('id,institution_id,status')
+      .eq('id', params.unitId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    const unit = unitData as { id: string; institution_id: string; status: string } | null;
+
+    if (unitError || !unit || unit.status !== 'active' || unit.institution_id !== params.institutionId) {
+      throw new Error('A unidade selecionada não pertence à instituição informada ou está inativa.');
+    }
+
     // 2. Parsing Seguro da Planilha em Memória
     const parsedData = await parseImportBuffer(params.fileBuffer);
 
@@ -59,7 +72,8 @@ export class AdminImportService {
     const { data: categoriesData, error: catError } = await supabase
       .from('student_categories')
       .select('id, code, name')
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active');
 
     if (catError || !categoriesData) {
       throw new Error(`Erro ao carregar categorias do tenant: ${catError?.message || 'Dados ausentes'}`);
@@ -132,9 +146,9 @@ export class AdminImportService {
     });
 
     // 7. Salvar arquivo original no Bucket Privado 'import-files' com Path Canônico
-    // Path Canônico: {tenant_id}/{institution_id}/{temp_hash}/original.{xlsx|csv}
+    // Path Canônico: {tenant_id}/{institution_id}/{unit_id}/{temp_hash}/original.{xlsx|csv}
     const extension = params.originalFilename.endsWith('.csv') ? 'csv' : 'xlsx';
-    const storagePath = `${tenantId}/${params.institutionId}/${parsedData.file_hash.substring(0, 16)}_${Date.now()}/original.${extension}`;
+    const storagePath = `${tenantId}/${params.institutionId}/${params.unitId}/${parsedData.file_hash.substring(0, 16)}_${Date.now()}/original.${extension}`;
 
     // Uso de service role limitado ao servidor e somente após validar usuário, papel e tenant.
     const storageAdmin = createAdminClient();
@@ -151,8 +165,9 @@ export class AdminImportService {
 
     // 8. Chamar RPC Server-Side stage_import_batch para salvar o manifesto
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: importId, error: rpcError } = await (supabase.rpc as any)('stage_import_batch_v2', {
+    const { data: importId, error: rpcError } = await (supabase.rpc as any)('stage_import_batch_v3', {
       p_institution_id: params.institutionId,
+      p_unit_id: params.unitId,
       p_import_mode: params.importMode,
       p_original_filename: params.originalFilename,
       p_storage_path: storagePath,
@@ -184,6 +199,7 @@ export class AdminImportService {
       import_id: importId as string,
       tenant_id: tenantId,
       institution_id: params.institutionId,
+      unit_id: params.unitId,
       import_mode: params.importMode,
       original_filename: params.originalFilename,
       file_hash: parsedData.file_hash,

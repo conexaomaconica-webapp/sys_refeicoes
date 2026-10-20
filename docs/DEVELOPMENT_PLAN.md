@@ -253,6 +253,8 @@ Construir a interface do operador nos pontos de atendimento e desenhar a arquite
 Aprimorar o módulo da Sprint 4 para permitir a importação tolerante a falhas parciais em planilhas acadêmicas com inconsistências.
 
 ### Funcionalidades
+> **Escopo operacional:** apesar do nome legado da tabela `students`, a importação atende comensais identificados — alunos, servidores, funcionários e outros públicos definidos por categoria. Cada lote deve informar instituição e unidade de origem. O cadastro permanece institucional e `imports.unit_id` preserva a rastreabilidade operacional da listagem.
+
 1. **Pré-visualização Inteligente de Lote:**
    - Painel mostrando: Total de Linhas, Válidas para Inclusão, Válidas para Atualização, e Linhas Inválidas/Com Erro.
 2. **Importação Parcial Segura:**

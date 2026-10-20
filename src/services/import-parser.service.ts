@@ -14,7 +14,7 @@ const HEADER_ALIASES: Partial<Record<keyof NormalizedImportData, string[]>> = {
   registration_number: ['matricula', 'matrícula', 'registration_number', 'cod_aluno', 'codigo_aluno', 'ra', 'registro'],
   full_name: ['nome', 'nome_completo', 'full_name', 'aluno', 'estudante'],
   category_code: ['categoria', 'category', 'tipo_bolsa', 'tipo_aluno', 'modalidade'],
-  course: ['curso', 'course', 'graduacao', 'programa'],
+  course: ['curso', 'course', 'graduacao', 'programa', 'setor', 'curso_ou_setor'],
   email: ['email', 'e-mail', 'mail'],
   phone: ['telefone', 'celular', 'phone', 'contato', 'whatsapp'],
   academic_status: ['status', 'situacao', 'situaçao', 'situacao_academica', 'academic_status']

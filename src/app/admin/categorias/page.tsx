@@ -26,6 +26,14 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+const formatDecimalBR = (value: number | null | undefined) =>
+  Number(value ?? 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const normalizeDecimalInput = (value: string) => value.replace('.', ',').replace(/[^\d,]/g, '');
+
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<StudentCategory[]>([]);
   const [mealTypes, setMealTypes] = useState<MealTypeOption[]>([]);
@@ -37,20 +45,27 @@ export default function AdminCategoriesPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<Partial<StudentCategory> | null>(null);
+  const [percentageInput, setPercentageInput] = useState<string>('100');
+  const [fixedPriceInput, setFixedPriceInput] = useState<string>('3,50');
 
   const loadData = useCallback(async () => {
     setLoading(true);
     const [catRes, mtRes] = await Promise.all([adminListCategories(), listMealTypes()]);
+    const errors: string[] = [];
 
     if (catRes.success) {
       setCategories(catRes.categories);
     } else {
-      setFeedback({ type: 'error', message: catRes.error || 'Erro ao carregar categorias.' });
+      errors.push(catRes.error || 'Erro ao carregar categorias.');
     }
 
     if (mtRes.success) {
       setMealTypes(mtRes.mealTypes);
+    } else {
+      setMealTypes([]);
+      errors.push(`Erro ao carregar tipos de refeição: ${mtRes.error || 'falha desconhecida.'}`);
     }
+    if (errors.length > 0) setFeedback({ type: 'error', message: errors.join(' ') });
     setLoading(false);
   }, []);
 
@@ -59,6 +74,8 @@ export default function AdminCategoriesPage() {
   }, [loadData]);
 
   const handleOpenCreateModal = () => {
+    setPercentageInput('100');
+    setFixedPriceInput('3,50');
     setEditingCategory({
       code: '',
       name: '',
@@ -76,6 +93,8 @@ export default function AdminCategoriesPage() {
   };
 
   const handleOpenEditModal = (cat: StudentCategory) => {
+    setPercentageInput(String(cat.charge_percentage ?? 100));
+    setFixedPriceInput(formatDecimalBR(cat.fixed_price ?? 3.5));
     setEditingCategory({
       ...cat,
       allowed_meal_types: cat.allowed_meal_types || null,
@@ -118,9 +137,9 @@ export default function AdminCategoriesPage() {
       <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <Link
-            href="/terminal"
+            href="/admin"
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
-            title="Voltar ao Terminal"
+            title="Voltar ao painel administrativo"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
@@ -292,7 +311,7 @@ export default function AdminCategoriesPage() {
                           </div>
                         ) : (
                           <span className="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 font-mono font-bold text-xs border border-sky-500/30">
-                            R$ {(cat.fixed_price || 0).toFixed(2)} Fixo
+                            R$ {formatDecimalBR(cat.fixed_price)} Fixo
                           </span>
                         )}
                       </td>
@@ -450,7 +469,13 @@ export default function AdminCategoriesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setEditingCategory({ ...editingCategory, pricing_type: 'percentage' })}
+                    onClick={() =>
+                      setEditingCategory({
+                        ...editingCategory,
+                        pricing_type: 'percentage',
+                        charge_percentage: editingCategory.charge_percentage ?? 100,
+                      })
+                    }
                     className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
                       editingCategory.pricing_type === 'percentage'
                         ? 'bg-sky-500/20 border-sky-500 text-white shadow-lg'
@@ -468,7 +493,11 @@ export default function AdminCategoriesPage() {
 
                   <button
                     type="button"
-                    onClick={() => setEditingCategory({ ...editingCategory, pricing_type: 'fixed' })}
+                    onClick={() => {
+                      const fixedPrice = editingCategory.fixed_price ?? 3.5;
+                      setFixedPriceInput(formatDecimalBR(fixedPrice));
+                      setEditingCategory({ ...editingCategory, pricing_type: 'fixed', fixed_price: fixedPrice });
+                    }}
                     className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
                       editingCategory.pricing_type === 'fixed'
                         ? 'bg-sky-500/20 border-sky-500 text-white shadow-lg'
@@ -491,17 +520,33 @@ export default function AdminCategoriesPage() {
                       Porcentagem de Cobrança (% paga pelo comensal)
                     </label>
                     <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={editingCategory.charge_percentage ?? 100}
-                        onChange={(e) =>
-                          setEditingCategory({ ...editingCategory, charge_percentage: Number(e.target.value) })
-                        }
-                        className="w-32 px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 font-mono text-center font-bold"
-                      />
+                      <div className="relative w-32">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={percentageInput}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '');
+                            if (digits === '') {
+                              setPercentageInput('');
+                              setEditingCategory({ ...editingCategory, charge_percentage: 0 });
+                              return;
+                            }
+
+                            const percentage = Math.min(100, Number(digits));
+                            setPercentageInput(String(percentage));
+                            setEditingCategory({ ...editingCategory, charge_percentage: percentage });
+                          }}
+                          onBlur={() => {
+                            if (percentageInput === '') setPercentageInput('0');
+                          }}
+                          aria-label="Porcentagem de cobrança"
+                          className="w-full px-3.5 py-2 pr-8 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 font-mono text-center font-bold"
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center font-mono font-bold text-slate-400">
+                          %
+                        </span>
+                      </div>
                       <span className="text-slate-400 font-mono text-xs">
                         {editingCategory.charge_percentage === 0
                           ? '👉 100% Subsidiado (Bolsista Isento - R$ 0,00)'
@@ -516,14 +561,33 @@ export default function AdminCategoriesPage() {
                 ) : (
                   <div className="space-y-1.5 pt-1">
                     <label className="font-semibold text-slate-300">Valor Fixo da Refeição (R$)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.10"
-                      value={editingCategory.fixed_price ?? 3.5}
-                      onChange={(e) => setEditingCategory({ ...editingCategory, fixed_price: Number(e.target.value) })}
-                      className="w-32 px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 font-mono text-center font-bold"
-                    />
+                    <div className="relative w-40">
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono font-bold text-slate-400">
+                        R$
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={fixedPriceInput}
+                        onChange={(e) => {
+                          const normalized = normalizeDecimalInput(e.target.value);
+                          if (!/^\d*(,\d{0,2})?$/.test(normalized)) return;
+
+                          setFixedPriceInput(normalized);
+                          const parsed = Number(normalized.replace(',', '.'));
+                          setEditingCategory({
+                            ...editingCategory,
+                            fixed_price: Number.isFinite(parsed) ? parsed : 0,
+                          });
+                        }}
+                        onBlur={() => {
+                          const value = Number(editingCategory.fixed_price ?? 0);
+                          setFixedPriceInput(formatDecimalBR(value));
+                        }}
+                        aria-label="Valor fixo da refeição em reais"
+                        className="w-full px-3.5 py-2 pl-10 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 font-mono text-right font-bold"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -628,6 +692,11 @@ export default function AdminCategoriesPage() {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                  {mealTypes.length === 0 && (
+                    <p className="col-span-full rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+                      Nenhum tipo de refeição ativo foi carregado. Atualize a página ou verifique a configuração do tenant.
+                    </p>
+                  )}
                   {mealTypes.map((mt) => {
                     const isChecked = editingCategory.allowed_meal_types?.includes(mt.id);
                     return (

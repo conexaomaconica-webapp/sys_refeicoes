@@ -5,7 +5,6 @@ export interface MealTypeOption {
   id: string;
   code: string;
   name: string;
-  description?: string | null;
 }
 
 /**
@@ -85,15 +84,25 @@ export async function listMealTypes(): Promise<{
     const supabase = createBrowserClient();
     const { data, error } = await supabase
       .from('meal_types')
-      .select('id, code, name, description')
-      .eq('status', 'active')
-      .order('display_order', { ascending: true });
+      .select('id, code, name')
+      .eq('status', 'active');
 
     if (error) {
       return { success: false, mealTypes: [], error: error.message };
     }
 
-    return { success: true, mealTypes: (data || []) as MealTypeOption[] };
+    const displayOrder = new Map([
+      ['breakfast', 0],
+      ['lunch', 1],
+      ['dinner', 2],
+    ]);
+    const mealTypes = ((data || []) as MealTypeOption[]).sort((left, right) => {
+      const leftOrder = displayOrder.get(left.code) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = displayOrder.get(right.code) ?? Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder || left.name.localeCompare(right.name, 'pt-BR');
+    });
+
+    return { success: true, mealTypes };
   } catch (err) {
     return { success: false, mealTypes: [], error: (err as Error).message };
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBrand } from '@/components/branding/BrandProvider';
 import { Utensils, Lock, Mail, ArrowRight, Shield, AlertCircle } from 'lucide-react';
@@ -8,11 +8,16 @@ import { createBrowserClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { branding, tenantSlug } = useBrand();
+  const { branding, isLoading, tenantSlug } = useBrand();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [branding.logo_url]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,21 +85,24 @@ export default function LoginPage() {
         <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-2xl">
           {/* Cabeçalho da Marca */}
           <div className="flex flex-col items-center text-center mb-8">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg"
-              style={{
-                backgroundColor: branding.primary_color || '#0284c7',
-              }}
-            >
-              {branding.logo_url ? (
+            <div className="mb-4 flex h-24 w-full items-center justify-center">
+              {isLoading ? (
+                <div className="h-16 w-40 animate-pulse rounded-2xl bg-slate-100" />
+              ) : branding.logo_url && !logoFailed ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={branding.logo_url}
                   alt={branding.app_name}
-                  className="w-10 h-10 object-contain"
+                  className="max-h-24 max-w-[260px] object-contain"
+                  onError={() => setLogoFailed(true)}
                 />
               ) : (
-                <Utensils className="w-8 h-8 text-white" />
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+                  style={{ backgroundColor: branding.primary_color || '#0284c7' }}
+                >
+                  <Utensils className="h-8 w-8 text-white" />
+                </div>
               )}
             </div>
 

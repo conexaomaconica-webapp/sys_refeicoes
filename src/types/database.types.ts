@@ -363,6 +363,7 @@ export type Database = {
           id: string;
           tenant_id: string;
           institution_id: string;
+          unit_id: string | null;
           import_mode: 'general' | 'integral_snapshot';
           created_by: string;
           original_filename: string;
@@ -391,6 +392,7 @@ export type Database = {
           id?: string;
           tenant_id: string;
           institution_id: string;
+          unit_id?: string | null;
           import_mode?: 'general' | 'integral_snapshot';
           created_by: string;
           original_filename: string;
@@ -419,6 +421,7 @@ export type Database = {
           id?: string;
           tenant_id?: string;
           institution_id?: string;
+          unit_id?: string | null;
           import_mode?: 'general' | 'integral_snapshot';
           created_by?: string;
           original_filename?: string;

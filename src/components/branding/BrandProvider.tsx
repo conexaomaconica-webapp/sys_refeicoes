@@ -29,9 +29,18 @@ export interface BrandProviderProps {
 }
 
 export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
-  const [tenantSlug] = useState<string>(() => normalizeTenantSlug(initialSlug));
+  const [tenantSlug, setTenantSlug] = useState<string>(() => normalizeTenantSlug(initialSlug));
   const [branding, setBranding] = useState<PublicTenantBranding>(FALLBACK_BRANDING);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const querySlug = new URLSearchParams(window.location.search).get('tenant');
+    const storedSlug = window.localStorage.getItem('ma-refeicoes-tenant-slug');
+    const resolvedSlug = normalizeTenantSlug(querySlug || storedSlug || initialSlug);
+
+    if (querySlug) window.localStorage.setItem('ma-refeicoes-tenant-slug', resolvedSlug);
+    if (resolvedSlug !== tenantSlug) setTenantSlug(resolvedSlug);
+  }, [initialSlug, tenantSlug]);
 
   const loadBranding = useCallback(async () => {
     setIsLoading(true);

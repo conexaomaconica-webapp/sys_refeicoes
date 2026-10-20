@@ -39,17 +39,31 @@ check(bucketRepair.includes('public = FALSE'), 'bucket reconciliado permanece pr
 check(bucketRepair.includes('10485760'), 'bucket mantém limite de 10 MB');
 check(bucketRepair.includes('ON CONFLICT (id) DO UPDATE'), 'reconciliação do bucket é idempotente');
 
+const sourceUnit = read('supabase', 'migrations', '20261020000054_add_import_source_unit.sql');
+check(!/\bDROP\s+(TABLE|COLUMN|SCHEMA)\b/i.test(sourceUnit), 'migration 54 é aditiva');
+check(sourceUnit.includes('ADD COLUMN IF NOT EXISTS unit_id UUID'), 'lote registra unidade de origem');
+check(sourceUnit.includes('fk_imports_unit_institution_tenant'), 'unidade pertence à instituição e ao tenant');
+check(sourceUnit.includes('stage_import_batch_v3'), 'staging versionado recebe a unidade');
+check(sourceUnit.includes('FROM PUBLIC, anon, authenticated'), 'RPC v3 bloqueia execução pública e anônima');
+
 const service = read('src', 'services', 'admin-import.service.ts');
-check(service.includes("'stage_import_batch_v2'"), 'serviço usa contrato com data de vigência');
+check(service.includes("'stage_import_batch_v3'") && service.includes('p_unit_id'), 'serviço usa contrato com unidade e data de vigência');
+check(service.includes(".eq('status', 'active')"), 'importação aceita somente categorias ativas');
 check(service.includes('generateErrorXlsxReport'), 'relatório XLSX de rejeições implementado');
 check(service.includes('row.raw_data'), 'relatório preserva colunas originais');
 check(service.includes('motivo_rejeicao') && service.includes('linha_original'), 'relatório contém motivo e linha original');
 check(service.includes('sanitizeCellForExport'), 'exportação neutraliza formula injection');
 
+const validator = read('src', 'services', 'import-validator.service.ts');
+check(validator.includes('categoryChanged') && validator.includes('Categoria será atualizada'), 'preview evidencia mudança de categoria');
+check(correction.includes('category_id = v_category_id') && correction.includes('student_category_history'), 'confirmação atualiza categoria e preserva histórico');
+
 const ui = read('src', 'app', 'admin', 'importacoes', '_components', 'ImportWorkspace.tsx');
 check(ui.includes('Confirmar linhas válidas'), 'confirmação parcial explícita na interface');
 check(ui.includes('format=xlsx') && ui.includes('format=csv'), 'downloads XLSX e CSV disponíveis');
 check(ui.includes('saldos/extratos de carteira não serão alterados'), 'preservação da carteira informada ao operador');
+
+check(ui.includes('name="unitId"') && ui.includes('Unidade de origem da listagem'), 'interface exige unidade de origem');
 
 const sample = Array.from({ length: 1000 }, (_, index) => ({ action: index < 980 ? 'insert' : 'error' }));
 check(sample.filter((row) => row.action === 'insert').length === 980, 'cenário de aceite: 980 de 1000 linhas válidas');

@@ -107,9 +107,9 @@ export default function AdminCaixaPage() {
         <div>
           <div className="flex items-center gap-3">
             <Link
-              href="/terminal"
+              href="/admin"
               className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition"
-              title="Voltar ao Terminal"
+              title="Voltar ao painel administrativo"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>

@@ -13,12 +13,14 @@ export async function createImportPreviewAction(formData: FormData): Promise<Act
   try {
     const file = formData.get('file');
     const institutionId = String(formData.get('institutionId') || '');
+    const unitId = String(formData.get('unitId') || '');
     const importMode = String(formData.get('importMode') || 'general') as ImportMode;
     const effectiveDate = String(formData.get('effectiveDate') || '');
     const officialListConfirmed = formData.get('isOfficialSnapshot') === 'true';
 
     if (!(file instanceof File) || file.size === 0) throw new Error('Selecione um arquivo XLSX ou CSV.');
     if (!institutionId) throw new Error('Selecione a instituição.');
+    if (!unitId) throw new Error('Selecione a unidade de origem da listagem.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) throw new Error('Informe uma data de vigência válida.');
     if (!['general', 'integral_snapshot'].includes(importMode)) throw new Error('Modo de importação inválido.');
     if (importMode === 'integral_snapshot' && !officialListConfirmed) {
@@ -27,6 +29,7 @@ export async function createImportPreviewAction(formData: FormData): Promise<Act
 
     const data = await AdminImportService.createImportPreview({
       institutionId,
+      unitId,
       importMode,
       effectiveDate,
       isOfficialSnapshot: importMode === 'integral_snapshot',

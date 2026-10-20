@@ -345,6 +345,8 @@ integral.requires_wallet = false
 
 Cadastro principal do aluno.
 
+> Nota de compatibilidade: o nome físico `students` é legado. Operacionalmente, a entidade também representa servidores, funcionários e outros comensais identificados, diferenciados por `student_categories`. O vínculo cadastral é com a instituição; a unidade do lote de origem é registrada em `imports.unit_id`.
+
 ```text
 id uuid PK
 tenant_id uuid FK tenants

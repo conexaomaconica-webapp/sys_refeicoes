@@ -9,12 +9,10 @@ import {
   LayoutDashboard,
   Palette,
   Settings2,
-  ShieldCheck,
   Tags,
   Users,
   WalletCards,
 } from 'lucide-react';
-import { AdminSignOutButton } from '@/components/admin/AdminSignOutButton';
 import { createClient } from '@/lib/supabase/server';
 import type { UserRole } from '@/types/auth';
 
@@ -74,8 +72,8 @@ export default async function AdminHomePage() {
       accent: 'emerald',
     },
     {
-      title: 'Importação de alunos',
-      description: 'Preview, validação parcial, rejeições e histórico de alterações por planilha.',
+      title: 'Importação de comensais',
+      description: 'Alunos, servidores e outros públicos, com atualização segura e rastreabilidade por unidade.',
       href: '/admin/importacoes',
       icon: FileSpreadsheet,
       enabled: canImportStudents,
@@ -91,27 +89,7 @@ export default async function AdminHomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 md:px-8">
-          <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-red-700 text-white shadow-lg shadow-red-900/15">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-red-700">MA Refeições</p>
-              <h1 className="text-lg font-black">Painel administrativo</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/terminal" className="hidden rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-slate-300 md:inline-flex">
-              Abrir terminal
-            </Link>
-            <AdminSignOutButton />
-          </div>
-        </div>
-      </header>
-
+    <div className="bg-slate-50 text-slate-900">
       <main className="mx-auto max-w-7xl space-y-8 px-5 py-8 md:px-8 md:py-10">
         <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 p-7 text-white shadow-xl md:p-10">
           <div className="flex flex-col justify-between gap-7 md:flex-row md:items-end">

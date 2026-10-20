@@ -72,6 +72,7 @@ export interface ImportPreviewResult {
   import_id: string;
   tenant_id: string;
   institution_id: string;
+  unit_id: string;
   import_mode: ImportMode;
   original_filename: string;
   file_hash: string;
@@ -86,6 +87,7 @@ export interface ImportRecord {
   id: string;
   tenant_id: string;
   institution_id: string;
+  unit_id: string | null;
   import_mode: ImportMode;
   created_by: string;
   original_filename: string;
