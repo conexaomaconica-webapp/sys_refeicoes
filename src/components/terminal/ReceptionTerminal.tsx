@@ -127,6 +127,7 @@ export function ReceptionTerminal({
   const [amountReceived, setAmountReceived] = useState<string>('');
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [visitorPaymentPending, setVisitorPaymentPending] = useState<boolean>(false);
+  const [visitorPaymentError, setVisitorPaymentError] = useState<string | null>(null);
   const isDark = terminalTheme === 'dark';
 
   useEffect(() => {
@@ -292,6 +293,7 @@ export function ReceptionTerminal({
         toggleFullscreen();
       } else if (e.key === 'F4') {
         e.preventDefault();
+        setVisitorPaymentError(null);
         setVisitorPaymentPending(true);
       } else if (e.key === 'F7') {
         e.preventDefault();
@@ -565,10 +567,13 @@ export function ReceptionTerminal({
   const handleRegisterVisitorDirect = async (visitorPaymentMethod: 'cash' | 'pix' | 'card') => {
     if (isProcessing) return;
     if (!activeCashShift) {
+      setVisitorPaymentPending(false);
+      setVisitorPaymentError(null);
       setShowCashModal(true);
       return;
     }
     setIsProcessing(true);
+    setVisitorPaymentError(null);
     setInputValue('');
 
     try {
@@ -586,6 +591,7 @@ export function ReceptionTerminal({
         setVisitantesTotalValor((prev) => prev + charged);
         setLiberadasCount((prev) => prev + 1);
         setVisitorPaymentPending(false);
+        setVisitorPaymentError(null);
         loadActiveCashShift();
         setActiveDisplay({
           state: 'ONLINE_CONFIRMED',
@@ -598,27 +604,19 @@ export function ReceptionTerminal({
           },
           timestamp: new Date().toLocaleTimeString(),
         });
+        setIsProcessing(false);
+        scheduleAutoReset();
+        return;
       } else {
         terminalAudio.playBlockedSound();
-        setActiveDisplay({
-          state: 'BLOCKED',
-          reason_code: res.error_code || 'VISITOR_ERROR',
-          reason_message: res.message || 'Falha ao registrar entrada de visitante.',
-          timestamp: new Date().toLocaleTimeString(),
-        });
+        setVisitorPaymentError(res.message || 'Falha ao registrar entrada de visitante.');
       }
     } catch (err) {
       terminalAudio.playBlockedSound();
-      setActiveDisplay({
-        state: 'BLOCKED',
-        reason_code: 'CLIENT_ERROR',
-        reason_message: (err as Error).message,
-        timestamp: new Date().toLocaleTimeString(),
-      });
+      setVisitorPaymentError((err as Error).message || 'Falha inesperada ao registrar o pagamento do visitante.');
     }
 
     setIsProcessing(false);
-    scheduleAutoReset();
   };
 
   const handleConfirmPayment = async () => {
@@ -701,7 +699,7 @@ export function ReceptionTerminal({
         '--terminal-accent-local': branding.terminal_accent_color,
         '--terminal-surface-local': branding.terminal_surface_color,
       } as React.CSSProperties}
-      className={`h-dvh min-h-0 w-full flex flex-col overflow-hidden select-none transition-colors duration-300 ${isDark ? 'terminal-theme-dark' : 'terminal-theme-light'} ${
+      className={`h-dvh min-h-0 w-full flex flex-col overflow-hidden select-none transition-colors duration-300 ${isDark ? 'terminal-theme-dark' : 'terminal-theme-light terminal-light-surface'} ${
         isDark
           ? activeDisplay?.state === 'ONLINE_CONFIRMED'
             ? 'bg-emerald-950/40 text-emerald-100'
@@ -947,7 +945,10 @@ export function ReceptionTerminal({
 
                 <button
                   type="button"
-                  onClick={() => setVisitorPaymentPending(true)}
+                  onClick={() => {
+                    setVisitorPaymentError(null);
+                    setVisitorPaymentPending(true);
+                  }}
                   disabled={isProcessing}
                   className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-purple-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer border border-purple-400/30"
                   title="Liberar refeição avulsa de visitante paga na hora na entrada (Atalho F4)"
@@ -1570,10 +1571,22 @@ export function ReceptionTerminal({
                 </button>
               ))}
             </div>
+            {visitorPaymentError && (
+              <div
+                role="alert"
+                className="mt-4 flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-700"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{visitorPaymentError}</span>
+              </div>
+            )}
             <button
               type="button"
               disabled={isProcessing}
-              onClick={() => setVisitorPaymentPending(false)}
+              onClick={() => {
+                setVisitorPaymentError(null);
+                setVisitorPaymentPending(false);
+              }}
               className="mt-4 w-full rounded-xl px-4 py-3 text-sm font-bold text-slate-400 hover:text-slate-200"
             >
               Cancelar

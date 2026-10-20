@@ -25,6 +25,8 @@ const checks = [
   ['terminal does not authorize offline meals', !terminal.includes('processOfflineMealConsumption')],
   ['terminal does not auto-sync offline queue', !terminal.includes('executeOfflineSync')],
   ['terminal does not download offline snapshot', !terminalPage.includes('downloadShiftSnapshot')],
+  ['terminal applies the complete light surface', terminal.includes("'terminal-theme-light terminal-light-surface'")],
+  ['visitor payment errors stay visible in the active modal', terminal.includes('visitorPaymentError') && terminal.includes('role="alert"')],
   ['terminal resolves units through RLS', terminalPage.includes(".from('units')")],
   ['terminal does not require explicit unit link for global roles', !terminalPage.includes(".from('user_unit_access')")],
   ['visitor payment method reaches RPC', consumptionService.includes("p_payment_method: params.paymentMethod || 'cash'")],
