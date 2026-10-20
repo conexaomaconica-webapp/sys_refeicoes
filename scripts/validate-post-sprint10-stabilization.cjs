@@ -25,6 +25,8 @@ const checks = [
   ['terminal does not authorize offline meals', !terminal.includes('processOfflineMealConsumption')],
   ['terminal does not auto-sync offline queue', !terminal.includes('executeOfflineSync')],
   ['terminal does not download offline snapshot', !terminalPage.includes('downloadShiftSnapshot')],
+  ['terminal resolves units through RLS', terminalPage.includes(".from('units')")],
+  ['terminal does not require explicit unit link for global roles', !terminalPage.includes(".from('user_unit_access')")],
   ['visitor payment method reaches RPC', consumptionService.includes("p_payment_method: params.paymentMethod || 'cash'")],
   ['runtime is Node 22+', packageJson.engines?.node === '>=22.0.0'],
   ['package manager is pinned', packageJson.packageManager === 'pnpm@12.6.0'],

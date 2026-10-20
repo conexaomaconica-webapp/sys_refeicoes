@@ -18,10 +18,6 @@ interface UnitRecord {
   name: string;
 }
 
-interface UnitAccessRecord {
-  unit_id: string;
-}
-
 interface MealTypeRecord {
   id: string;
   name: string;
@@ -87,28 +83,25 @@ export default function TerminalPage() {
       throw new Error(`Perfil '${profile.role}' não possui permissão operacional neste terminal.`);
     }
 
-    // 2. Localizar Unidade de Operação e Validar Acesso
-    const { data: accessData, error: accessError } = await supabase
-      .from('user_unit_access')
-      .select('unit_id')
-      .eq('user_id', profile.id);
-
-    const unitAccesses = (accessData || []) as unknown as UnitAccessRecord[];
-    if (accessError || unitAccesses.length === 0) {
-      throw new Error('Operador sem acesso a uma unidade. Solicite o vinculo ao administrador.');
-    }
-
+    // 2. Localizar uma unidade ativa permitida pela RLS.
+    // Perfis globais acessam todas as unidades do tenant; perfis operacionais
+    // continuam limitados aos vínculos existentes em user_unit_access.
     const { data: unitData, error: unitError } = await supabase
       .from('units')
       .select('id, name')
       .eq('tenant_id', profile.tenant_id)
-      .in('id', unitAccesses.map((access) => access.unit_id))
+      .eq('status', 'active')
+      .order('name', { ascending: true })
       .limit(1)
       .maybeSingle();
 
     const unit = unitData as unknown as UnitRecord | null;
     if (unitError || !unit) {
-      throw new Error('Nenhuma unidade autorizada encontrada para este operador.');
+      throw new Error(
+        ['admin_general', 'operations_director'].includes(profile.role)
+          ? 'Nenhuma unidade ativa foi encontrada para este tenant.'
+          : 'Operador sem acesso a uma unidade. Solicite o vínculo ao administrador.'
+      );
     }
 
     // 3. Obter Tipo de Refeição Ativa
