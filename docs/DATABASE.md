@@ -202,6 +202,14 @@ splash_animation_type text nullable
 splash_duration_ms integer nullable
 primary_color text nullable
 secondary_color text nullable
+terminal_theme text
+terminal_primary_color text
+terminal_accent_color text
+terminal_surface_color text
+terminal_show_kpi_values boolean
+terminal_background_mode text
+terminal_background_preset text
+terminal_background_url text nullable
 report_logo_url text nullable
 report_header_text text nullable
 report_footer_text text nullable
@@ -214,6 +222,11 @@ Constraint:
 ```text
 unique(tenant_id)
 ```
+
+O fundo do terminal é opcional. `terminal_background_mode` aceita `none`,
+`preset` ou `image`; temas predefinidos são identificados por
+`terminal_background_preset`. Imagens personalizadas ficam no bucket público
+`tenant-branding`, com escrita restrita ao administrador geral do próprio tenant.
 
 ---
 
@@ -1739,3 +1752,68 @@ protegidos pela unicidade de `(student_id, consumption_date, meal_type_id)`.
 Visitantes podem gerar vendas avulsas repetidas sem criar novos comensais
 fictícios, mantendo cada venda registrada em `meal_consumptions` e
 `cash_movements`.
+
+### Variante visual do terminal
+
+A migration `20261020000057` adiciona de forma não destrutiva o campo
+`tenant_branding.terminal_layout_variant`, com valor padrão `classic` e valores
+permitidos `classic` e `operational_dashboard`. A leitura pública utiliza
+`get_public_tenant_branding_v4(text)` e a alteração utiliza
+`update_tenant_terminal_layout(text)`, restrita a `admin_general`. A migration
+não altera nem desabilita RLS.
+
+### Troco em venda avulsa de visitante
+
+A migration `20261020000058` adiciona as RPCs
+`get_operator_visitor_price(UUID, UUID)` e
+`register_operator_visitor_entry_v2(UUID, UUID, TEXT, TEXT, NUMERIC)`. A primeira
+consulta a regra vigente da categoria `visitante` sem efeito colateral. A
+segunda preserva o fluxo transacional existente e registra em
+`cash_movements.amount_received` e `change_amount` o numerário efetivamente
+informado. O valor líquido da venda continua sendo o preço da refeição; o
+troco devolvido não aumenta o saldo esperado da gaveta. Nenhuma RLS é alterada.
+
+### Caixa aberto de data anterior
+
+A migration `20261021000059` preserva caixas antigos para auditoria e fechamento,
+mas bloqueia novas refeições, pagamentos, visitantes, suprimentos e sangrias. A
+data operacional é comparada em `America/Sao_Paulo`. As wrappers do operador
+também exigem que o tipo de refeição do caixa corresponda ao turno selecionado.
+Nenhum caixa é fechado ou alterado automaticamente.
+
+### Modos de caixa por unidade
+
+A migration `20261021000060` adiciona `units.cash_shift_mode` e o snapshot
+`cash_shifts.cash_shift_mode`, limitados a `per_meal` e `daily`. Registros
+históricos recebem `per_meal`, preservando o comportamento anterior.
+
+No modo `per_meal`, `cash_shifts.meal_type_id` identifica a refeição do caixa.
+No modo `daily`, esse campo permanece nulo no caixa, enquanto
+`meal_consumptions.meal_type_id` continua obrigatório para identificar e
+validar cada café, almoço ou jantar. As movimentações financeiras permanecem
+vinculadas ao caixa e, quando originadas por uma refeição, ao respectivo
+`meal_consumption_id`.
+
+As RPCs `get_unit_cash_shift_settings()` e
+`set_unit_cash_shift_mode(UUID, TEXT)` expõem a configuração com validação de
+tenant, unidade, perfil e ausência de caixa aberto. As wrappers operacionais
+aceitam qualquer refeição habilitada no caixa diário, mas continuam bloqueando
+caixas de datas anteriores.
+
+### Baixas parciais do caixa diário
+
+A migration `20261021000061` cria
+`cash_shift_partial_settlements`, mantendo uma trilha imutável de conferências
+intermediárias. Cada baixa armazena caixa, unidade, refeição, operador, início e
+fim do período, quantidade de consumos, vendas em dinheiro/Pix/cartão, saldo
+esperado, valor contado, diferença, recolhimento e observação.
+
+`record_operator_cash_partial_settlement(...)` exige caixa diário aberto pelo
+operador atual, na data operacional corrente. Um recolhimento opcional cria uma
+movimentação `bleed` vinculada, reduzindo o saldo esperado da gaveta sem encerrar
+o caixa. `get_operator_terminal_shift(...)` devolve também o histórico de baixas
+do caixa ativo.
+
+Caixas simultâneos são isolados por `(unit_id, terminal_id)`. Não existe trava
+global de caixa aberto por unidade; cada equipamento deve possuir identificador
+distinto e estável.

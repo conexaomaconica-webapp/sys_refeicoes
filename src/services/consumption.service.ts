@@ -227,6 +227,7 @@ export async function executeRegisterVisitorEntry(params: {
   mealTypeId?: string;
   terminalId?: string;
   paymentMethod?: 'cash' | 'pix' | 'card';
+  amountReceived?: number;
 }): Promise<ConsumeMealResult> {
   try {
     const supabase = createBrowserClient();
@@ -239,14 +240,16 @@ export async function executeRegisterVisitorEntry(params: {
             p_meal_type_id: string | null;
             p_terminal_id: string | null;
             p_payment_method: string;
+            p_amount_received: number | null;
           }
         ) => Promise<{ data: unknown; error: { message: string } | null }>;
       }
-    ).rpc('register_operator_visitor_entry', {
+    ).rpc('register_operator_visitor_entry_v2', {
       p_unit_id: params.unitId,
       p_meal_type_id: params.mealTypeId || null,
       p_terminal_id: params.terminalId || null,
       p_payment_method: params.paymentMethod || 'cash',
+      p_amount_received: params.amountReceived ?? null,
     });
 
     if (error) {
@@ -264,5 +267,35 @@ export async function executeRegisterVisitorEntry(params: {
       error_code: 'CLIENT_ERROR',
       message: (err as Error).message,
     };
+  }
+}
+
+export async function getOperatorVisitorPrice(params: {
+  unitId: string;
+  mealTypeId?: string;
+}): Promise<{ success: boolean; price: number; message?: string }> {
+  try {
+    const supabase = createBrowserClient();
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: string,
+          args: { p_unit_id: string; p_meal_type_id: string | null }
+        ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      }
+    ).rpc('get_operator_visitor_price', {
+      p_unit_id: params.unitId,
+      p_meal_type_id: params.mealTypeId || null,
+    });
+
+    if (error) return { success: false, price: 0, message: error.message };
+    const result = data as { success?: boolean; price?: number; message?: string } | null;
+    return {
+      success: Boolean(result?.success),
+      price: Number(result?.price || 0),
+      message: result?.message,
+    };
+  } catch (error) {
+    return { success: false, price: 0, message: (error as Error).message };
   }
 }

@@ -26,6 +26,10 @@ export const FALLBACK_BRANDING: PublicTenantBranding = {
   terminal_accent_color: '#F4C430',
   terminal_surface_color: '#F3F4F6',
   terminal_show_kpi_values: true,
+  terminal_background_mode: 'none',
+  terminal_background_preset: 'institutional',
+  terminal_background_url: null,
+  terminal_layout_variant: 'classic',
 };
 
 /**
@@ -50,7 +54,7 @@ export async function getPublicTenantBranding(
     const supabase = createBrowserClient();
 
     // Chamada à RPC pública get_public_tenant_branding
-    const { data, error } = await (
+    let { data, error } = await (
       supabase as unknown as {
         rpc: (
           fn: string,
@@ -71,20 +75,48 @@ export async function getPublicTenantBranding(
             terminal_accent_color: string;
             terminal_surface_color: string;
             terminal_show_kpi_values: boolean;
+            terminal_background_mode: 'none' | 'preset' | 'image';
+            terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+            terminal_background_url: string | null;
+            terminal_layout_variant: 'classic' | 'operational_dashboard';
           }> | null;
           error: { message: string } | null;
         }>;
       }
-    ).rpc('get_public_tenant_branding_v2', {
+    ).rpc('get_public_tenant_branding_v4', {
       p_slug: slug,
     });
 
+    // Compatibilidade durante a janela entre o frontend e as migrations 56/57.
+    if (error) {
+      const legacy = await (
+        supabase as unknown as {
+          rpc: (
+            fn: string,
+            args: { p_slug: string }
+          ) => Promise<{ data: typeof data; error: { message: string } | null }>;
+        }
+      ).rpc('get_public_tenant_branding_v3', { p_slug: slug });
+      data = legacy.data;
+      error = legacy.error;
+    }
 
-
+    if (error) {
+      const legacy = await (
+        supabase as unknown as {
+          rpc: (
+            fn: string,
+            args: { p_slug: string }
+          ) => Promise<{ data: typeof data; error: { message: string } | null }>;
+        }
+      ).rpc('get_public_tenant_branding_v2', { p_slug: slug });
+      data = legacy.data;
+      error = legacy.error;
+    }
 
     if (error || !data || data.length === 0) {
       if (error) {
-        console.warn(`[TenantService] Aviso na RPC get_public_tenant_branding_v2 para slug "${slug}":`, error.message);
+        console.warn(`[TenantService] Aviso ao carregar branding público para slug "${slug}":`, error.message);
       }
       return {
         ...FALLBACK_BRANDING,
@@ -108,6 +140,10 @@ export async function getPublicTenantBranding(
       terminal_accent_color: item.terminal_accent_color || FALLBACK_BRANDING.terminal_accent_color,
       terminal_surface_color: item.terminal_surface_color || FALLBACK_BRANDING.terminal_surface_color,
       terminal_show_kpi_values: item.terminal_show_kpi_values ?? FALLBACK_BRANDING.terminal_show_kpi_values,
+      terminal_background_mode: item.terminal_background_mode || FALLBACK_BRANDING.terminal_background_mode,
+      terminal_background_preset: item.terminal_background_preset || FALLBACK_BRANDING.terminal_background_preset,
+      terminal_background_url: item.terminal_background_url || null,
+      terminal_layout_variant: item.terminal_layout_variant || FALLBACK_BRANDING.terminal_layout_variant,
     };
   } catch (err) {
     console.warn('[TenantService] Erro ao carregar branding, aplicando contingência segura:', err);
@@ -138,6 +174,36 @@ export async function updateTenantBrandingSettings(
 
   if (error) throw new Error(error.message || 'Não foi possível salvar a identidade visual.');
   return data as unknown as PublicTenantBranding;
+}
+
+export async function updateTenantTerminalBackground(input: {
+  mode: 'none' | 'preset' | 'image';
+  preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+  url: string | null;
+}): Promise<void> {
+  const supabase = createBrowserClient();
+  const { error } = await (supabase as unknown as {
+    rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc('update_tenant_terminal_background', {
+    p_background_mode: input.mode,
+    p_background_preset: input.preset,
+    p_background_url: input.url || '',
+  });
+
+  if (error) throw new Error(error.message || 'Não foi possível salvar o fundo do terminal.');
+}
+
+export async function updateTenantTerminalLayout(
+  layout: 'classic' | 'operational_dashboard'
+): Promise<void> {
+  const supabase = createBrowserClient();
+  const { error } = await (supabase as unknown as {
+    rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc('update_tenant_terminal_layout', {
+    p_layout_variant: layout,
+  });
+
+  if (error) throw new Error(error.message || 'Não foi possível salvar o layout do terminal.');
 }
 
 export async function uploadTenantLogo(file: File): Promise<string> {
@@ -171,6 +237,41 @@ export async function uploadTenantLogo(file: File): Promise<string> {
     .upload(objectPath, file, { cacheControl: '3600', upsert: false, contentType: file.type });
 
   if (uploadError) throw new Error(uploadError.message || 'Não foi possível enviar a logomarca.');
+  const { data } = supabase.storage.from('tenant-branding').getPublicUrl(objectPath);
+  return data.publicUrl;
+}
+
+export async function uploadTenantTerminalBackground(file: File): Promise<string> {
+  const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
+  if (!allowedTypes.has(file.type)) {
+    throw new Error('Formato não permitido. Use PNG, JPG ou WebP.');
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('A imagem de fundo deve ter no máximo 5 MB.');
+  }
+
+  const supabase = createBrowserClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error('Sessão administrativa expirada. Entre novamente.');
+
+  const { data: profileData, error: profileError } = await supabase
+    .from('profiles')
+    .select('tenant_id,role,status')
+    .eq('id', user.id)
+    .single();
+  const profile = profileData as { tenant_id: string; role: string; status: string } | null;
+
+  if (profileError || !profile || profile.status !== 'active' || profile.role !== 'admin_general') {
+    throw new Error('Somente o administrador geral pode alterar o fundo do terminal.');
+  }
+
+  const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const objectPath = `${profile.tenant_id}/terminal-background-${Date.now()}.${extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from('tenant-branding')
+    .upload(objectPath, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+
+  if (uploadError) throw new Error(uploadError.message || 'Não foi possível enviar a imagem de fundo.');
   const { data } = supabase.storage.from('tenant-branding').getPublicUrl(objectPath);
   return data.publicUrl;
 }

@@ -65,6 +65,10 @@ export type Database = {
           terminal_accent_color: string;
           terminal_surface_color: string;
           terminal_show_kpi_values: boolean;
+          terminal_background_mode: 'none' | 'preset' | 'image';
+          terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url: string | null;
+          terminal_layout_variant: 'classic' | 'operational_dashboard';
           report_logo_url: string | null;
           report_header_text: string | null;
           report_footer_text: string | null;
@@ -86,6 +90,10 @@ export type Database = {
           terminal_accent_color?: string;
           terminal_surface_color?: string;
           terminal_show_kpi_values?: boolean;
+          terminal_background_mode?: 'none' | 'preset' | 'image';
+          terminal_background_preset?: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url?: string | null;
+          terminal_layout_variant?: 'classic' | 'operational_dashboard';
           report_logo_url?: string | null;
           report_header_text?: string | null;
           report_footer_text?: string | null;
@@ -107,6 +115,10 @@ export type Database = {
           terminal_accent_color?: string;
           terminal_surface_color?: string;
           terminal_show_kpi_values?: boolean;
+          terminal_background_mode?: 'none' | 'preset' | 'image';
+          terminal_background_preset?: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url?: string | null;
+          terminal_layout_variant?: 'classic' | 'operational_dashboard';
           report_logo_url?: string | null;
           report_header_text?: string | null;
           report_footer_text?: string | null;
@@ -158,6 +170,7 @@ export type Database = {
           state: string;
           timezone: string;
           status: 'active' | 'inactive';
+          cash_shift_mode: 'per_meal' | 'daily';
           created_at: string;
           updated_at: string;
         };
@@ -170,6 +183,7 @@ export type Database = {
           state: string;
           timezone?: string;
           status?: 'active' | 'inactive';
+          cash_shift_mode?: 'per_meal' | 'daily';
           created_at?: string;
           updated_at?: string;
         };
@@ -182,6 +196,7 @@ export type Database = {
           state?: string;
           timezone?: string;
           status?: 'active' | 'inactive';
+          cash_shift_mode?: 'per_meal' | 'daily';
           created_at?: string;
           updated_at?: string;
         };
@@ -1338,6 +1353,55 @@ export type Database = {
           terminal_show_kpi_values: boolean;
         }[];
       };
+      get_public_tenant_branding_v3: {
+        Args: {
+          p_slug: string;
+        };
+        Returns: {
+          tenant_id: string;
+          slug: string;
+          app_name: string;
+          logo_url: string | null;
+          splash_background: string | null;
+          splash_animation_type: 'fade_pulse' | 'slide_up' | 'zoom_in' | 'none';
+          splash_duration_ms: number;
+          primary_color: string | null;
+          secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
+          terminal_background_mode: 'none' | 'preset' | 'image';
+          terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url: string | null;
+        }[];
+      };
+      get_public_tenant_branding_v4: {
+        Args: {
+          p_slug: string;
+        };
+        Returns: {
+          tenant_id: string;
+          slug: string;
+          app_name: string;
+          logo_url: string | null;
+          splash_background: string | null;
+          splash_animation_type: 'fade_pulse' | 'slide_up' | 'zoom_in' | 'none';
+          splash_duration_ms: number;
+          primary_color: string | null;
+          secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
+          terminal_background_mode: 'none' | 'preset' | 'image';
+          terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url: string | null;
+          terminal_layout_variant: 'classic' | 'operational_dashboard';
+        }[];
+      };
       update_tenant_branding_settings: {
         Args: {
           p_app_name: string;
@@ -1349,6 +1413,20 @@ export type Database = {
           p_terminal_accent_color: string;
           p_terminal_surface_color: string;
           p_terminal_show_kpi_values: boolean;
+        };
+        Returns: Json;
+      };
+      update_tenant_terminal_background: {
+        Args: {
+          p_background_mode: 'none' | 'preset' | 'image';
+          p_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          p_background_url: string;
+        };
+        Returns: Json;
+      };
+      update_tenant_terminal_layout: {
+        Args: {
+          p_layout_variant: 'classic' | 'operational_dashboard';
         };
         Returns: Json;
       };
@@ -1422,6 +1500,32 @@ export type Database = {
       };
       register_operator_visitor_entry: {
         Args: { p_unit_id: string; p_meal_type_id: string | null; p_terminal_id: string | null; p_payment_method: string };
+        Returns: Json;
+      };
+      get_operator_visitor_price: {
+        Args: { p_unit_id: string; p_meal_type_id: string };
+        Returns: Json;
+      };
+      register_operator_visitor_entry_v2: {
+        Args: { p_unit_id: string; p_meal_type_id: string; p_terminal_id: string | null; p_payment_method: string; p_amount_received: number | null };
+        Returns: Json;
+      };
+      get_unit_cash_shift_settings: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      set_unit_cash_shift_mode: {
+        Args: { p_unit_id: string; p_cash_shift_mode: 'per_meal' | 'daily' };
+        Returns: Json;
+      };
+      record_operator_cash_partial_settlement: {
+        Args: {
+          p_cash_shift_id: string;
+          p_meal_type_id: string;
+          p_counted_cash_amount: number;
+          p_withdrawal_amount?: number;
+          p_notes?: string | null;
+        };
         Returns: Json;
       };
       admin_list_cash_shifts: {

@@ -31,6 +31,7 @@ import {
   Palette,
 } from 'lucide-react';
 import { useBrand } from '@/components/branding/BrandProvider';
+import { getTerminalBackgroundStyle } from '@/lib/terminal-background';
 import { CashShiftModal } from '@/components/terminal/CashShiftModal';
 import { ShiftReportsModal } from '@/components/terminal/ShiftReportsModal';
 import { cashShiftService } from '@/services/cash-shift.service';
@@ -39,6 +40,7 @@ import {
   confirmTerminalMealPayment,
   executeConsumeMeal,
   executeRegisterVisitorEntry,
+  getOperatorVisitorPrice,
   generateIdempotencyKey,
   previewTerminalMeal,
 } from '@/services/consumption.service';
@@ -64,7 +66,10 @@ export interface ReceptionTerminalProps {
   operatorRole?: string;
   mealTypeId: string;
   mealTypeName?: string;
+  mealOptions?: Array<{ id: string; name: string; startTime: string | null; endTime: string | null }>;
+  onMealTypeChange?: (mealTypeId: string) => void;
   studentPrice?: number;
+  cashShiftMode?: 'per_meal' | 'daily';
   onSignOut?: () => void;
 }
 
@@ -83,6 +88,43 @@ interface ActiveDisplayState {
   reason_message?: string;
   timestamp: string;
 }
+
+interface RecentTerminalAccess {
+  id: string;
+  name: string;
+  status: 'released' | 'blocked';
+  time: string;
+}
+
+const formatRecentAccessTime = (value: string): string => {
+  const clockValue = value.match(/^(\d{1,2}):(\d{2})/);
+  if (clockValue) {
+    return `${clockValue[1].padStart(2, '0')}:${clockValue[2]}`;
+  }
+
+  const numericTimestamp = /^\d+$/.test(value) ? Number(value) : null;
+  const parsed = new Date(numericTimestamp ?? value);
+  const safeDate = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(safeDate);
+};
+
+const PAYMENT_METHOD_COLORS = {
+  cash: { background: '#C5161D', border: '#C5161D', text: '#FFFFFF' },
+  pix: { background: '#F4C430', border: '#F4C430', text: '#241A00' },
+  card: { background: '#FFFFFF', border: '#C5161D', text: '#C5161D' },
+} as const;
+
+const getSaoPauloDateKey = (value: Date): string =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(value);
 
 // Códigos que indicam identificador/matrícula não encontrada (não devem inflar estatísticas de bloqueio de alunos)
 const NOT_FOUND_REASONS = new Set([
@@ -108,7 +150,10 @@ export function ReceptionTerminal({
   operatorRole = 'operator_reception',
   mealTypeId,
   mealTypeName = 'Almoço',
-  studentPrice = 3.5,
+  mealOptions = [],
+  onMealTypeChange,
+  studentPrice = 0,
+  cashShiftMode = 'per_meal',
   onSignOut,
 }: ReceptionTerminalProps) {
   const { branding } = useBrand();
@@ -128,7 +173,13 @@ export function ReceptionTerminal({
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [visitorPaymentPending, setVisitorPaymentPending] = useState<boolean>(false);
   const [visitorPaymentError, setVisitorPaymentError] = useState<string | null>(null);
+  const [visitorPaymentMethod, setVisitorPaymentMethod] = useState<'cash' | 'pix' | 'card' | null>(null);
+  const [visitorPrice, setVisitorPrice] = useState<number>(studentPrice);
+  const [visitorAmountReceived, setVisitorAmountReceived] = useState<string>('');
   const isDark = terminalTheme === 'dark';
+  const isOperationalDashboard = branding.terminal_layout_variant === 'operational_dashboard';
+  const terminalBackgroundStyle = getTerminalBackgroundStyle(branding, isDark);
+  const [recentAccesses, setRecentAccesses] = useState<RecentTerminalAccess[]>([]);
 
   useEffect(() => {
     setTerminalTheme(branding.terminal_theme);
@@ -152,17 +203,44 @@ export function ReceptionTerminal({
   const canSimulateOffline =
     process.env.NODE_ENV !== 'production' ||
     ['admin_general', 'operations_director'].includes(operatorRole);
+  const effectiveOnline =
+    (connectivityState === 'ONLINE' || connectivityState === 'DEGRADED') && !forceOfflineMode;
+
+  useEffect(() => {
+    if (!visitorPaymentPending) return;
+
+    let active = true;
+    setVisitorPaymentMethod(null);
+    setVisitorAmountReceived('');
+    setVisitorPaymentError(null);
+
+    if (!effectiveOnline) {
+      setVisitorPrice(studentPrice);
+      setVisitorPaymentError('Terminal offline: não há registro local nem pendência para sincronizar.');
+      return;
+    }
+
+    void getOperatorVisitorPrice({ unitId, mealTypeId }).then((result) => {
+      if (!active) return;
+      if (result.success) {
+        setVisitorPrice(result.price);
+      } else {
+        setVisitorPrice(studentPrice);
+        setVisitorPaymentError(result.message || 'Não foi possível consultar o valor da refeição.');
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [effectiveOnline, mealTypeId, studentPrice, unitId, visitorPaymentPending]);
 
   // Métricas do Turno
   const [liberadasCount, setLiberadasCount] = useState<number>(0);
   const [regularesCount, setRegularesCount] = useState<number>(0);
   const [visitantesCount, setVisitantesCount] = useState<number>(0);
-  const [visitantesTotalValor, setVisitantesTotalValor] = useState<number>(0);
   const [bloqueadasCount, setBloqueadasCount] = useState<number>(0);
   const [pendingTimeoutsCount, setPendingTimeoutsCount] = useState<number>(0);
-  const pendentesQueueCount = 0;
-  const isSyncing = false;
-  const syncFeedback: string | null = null;
 
   // Controle de Caixa & PDV
   const [showCashModal, setShowCashModal] = useState<boolean>(false);
@@ -172,6 +250,18 @@ export function ReceptionTerminal({
   const [cashReceived, setCashReceived] = useState<number>(0);
   const [pixReceived, setPixReceived] = useState<number>(0);
   const [cardReceived, setCardReceived] = useState<number>(0);
+  const activeShiftOpenedAt = activeCashShift ? new Date(activeCashShift.opened_at) : null;
+  const isStaleCashShift = Boolean(
+    activeShiftOpenedAt &&
+    !Number.isNaN(activeShiftOpenedAt.getTime()) &&
+    getSaoPauloDateKey(activeShiftOpenedAt) !== getSaoPauloDateKey(new Date())
+  );
+  const displayedMealTypeId = activeCashShift?.meal_type_id || mealTypeId;
+  const displayedMealTypeName =
+    mealOptions.find((option) => option.id === displayedMealTypeId)?.name || mealTypeName;
+  const expectedDrawerBalance = Number(
+    activeCashShift?.expected_cash_balance ?? activeCashShift?.system_expected_balance ?? 0
+  );
 
   // Relatórios de Refeições e Bloqueios do Turno (F7)
   const [showReportsModal, setShowReportsModal] = useState<boolean>(false);
@@ -200,10 +290,14 @@ export function ReceptionTerminal({
   }, [loadActiveCashShift]);
 
   useEffect(() => {
-    if (cashShiftChecked && !activeCashShift && !signOutRequested) {
+    if (cashShiftChecked && !activeCashShift && !signOutRequested && mealTypeId) {
       setShowCashModal(true);
     }
-  }, [activeCashShift, cashShiftChecked, signOutRequested]);
+  }, [activeCashShift, cashShiftChecked, mealTypeId, signOutRequested]);
+
+  useEffect(() => {
+    if (isStaleCashShift) setShowCashModal(true);
+  }, [isStaleCashShift]);
 
   useEffect(() => {
     const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
@@ -228,23 +322,40 @@ export function ReceptionTerminal({
   const inputRef = useRef<HTMLInputElement>(null);
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastBipRef = useRef<{ code: string; timestamp: number } | null>(null);
+  const lastHistoryEventRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!activeDisplay || !['ONLINE_CONFIRMED', 'BLOCKED'].includes(activeDisplay.state)) return;
+
+    const identifier = activeDisplay.student?.registration_number || activeDisplay.attempted_identifier || 'sem-identificador';
+    const eventId = `${activeDisplay.state}:${identifier}:${activeDisplay.timestamp}`;
+    if (lastHistoryEventRef.current === eventId) return;
+
+    lastHistoryEventRef.current = eventId;
+    const historyStatus: RecentTerminalAccess['status'] = activeDisplay.state === 'ONLINE_CONFIRMED' ? 'released' : 'blocked';
+    setRecentAccesses((current) => [
+      {
+        id: eventId,
+        name: activeDisplay.student?.name_display || `Identificação ${identifier}`,
+        status: historyStatus,
+        time: formatRecentAccessTime(activeDisplay.timestamp),
+      },
+      ...current,
+    ].slice(0, 6));
+  }, [activeDisplay]);
 
   // 1. Manter foco absoluto no campo de scanner/digitação
   const keepFocus = useCallback(() => {
-    if (!paymentPending && !visitorPaymentPending && !showCashModal && activeCashShift && inputRef.current) {
+    if (!paymentPending && !visitorPaymentPending && !showCashModal && activeCashShift && !isStaleCashShift && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [activeCashShift, paymentPending, visitorPaymentPending, showCashModal]);
+  }, [activeCashShift, isStaleCashShift, paymentPending, visitorPaymentPending, showCashModal]);
 
   useEffect(() => {
     keepFocus();
     const interval = setInterval(keepFocus, 1000);
     return () => clearInterval(interval);
   }, [keepFocus]);
-
-  // A fonte de verdade do MVP e online-first/fail-safe. Eventos legados de
-  // contingencia permanecem apenas para auditoria e nao sao sincronizados pela UI.
-  const handleTriggerSync = useCallback(() => undefined, []);
 
   useEffect(() => {
     setPendingTimeoutsCount(getAllPendingTimeouts().length);
@@ -339,6 +450,11 @@ export function ReceptionTerminal({
   const handleProcessIdentifier = async (rawIdentifier: string) => {
     const cleanId = rawIdentifier.trim();
     if (!cleanId || isProcessing) return;
+    if (isStaleCashShift) {
+      setShowCashModal(true);
+      return;
+    }
+    if (!mealTypeId) return;
     if (!activeCashShift) {
       setShowCashModal(true);
       return;
@@ -375,9 +491,6 @@ export function ReceptionTerminal({
     }
 
     // Determina se deve tentar online com base na máquina de estados com histerese
-    const effectiveOnline =
-      (connectivityState === 'ONLINE' || connectivityState === 'DEGRADED') && !forceOfflineMode;
-
     if (effectiveOnline) {
       // ==========================================
       // FLUXO A: TENTATIVA ONLINE CENTRALIZADA
@@ -488,7 +601,6 @@ export function ReceptionTerminal({
           terminalAudio.playSuccessSound();
           if (res.student.category_code === 'visitante') {
             setVisitantesCount((prev) => prev + 1);
-            setVisitantesTotalValor((prev) => prev + (res.financial?.charged_amount || studentPrice || 0));
           } else {
             setRegularesCount((prev) => prev + 1);
           }
@@ -564,8 +676,20 @@ export function ReceptionTerminal({
   };
 
   // Liberação direta de 1 refeição avulsa de visitante paga na entrada (sem necessidade de saldo)
-  const handleRegisterVisitorDirect = async (visitorPaymentMethod: 'cash' | 'pix' | 'card') => {
+  const handleRegisterVisitorDirect = async (
+    visitorPaymentMethod: 'cash' | 'pix' | 'card',
+    visitorCashReceived?: number
+  ) => {
     if (isProcessing) return;
+    if (isStaleCashShift) {
+      setVisitorPaymentPending(false);
+      setShowCashModal(true);
+      return;
+    }
+    if (!effectiveOnline) {
+      setVisitorPaymentError('Terminal offline: a refeição não foi registrada. Volte ao modo online para concluir.');
+      return;
+    }
     if (!activeCashShift) {
       setVisitorPaymentPending(false);
       setVisitorPaymentError(null);
@@ -582,13 +706,12 @@ export function ReceptionTerminal({
         mealTypeId,
         terminalId,
         paymentMethod: visitorPaymentMethod,
+        amountReceived: visitorPaymentMethod === 'cash' ? visitorCashReceived : undefined,
       });
 
       if (res.success && res.student) {
         terminalAudio.playSuccessSound();
-        const charged = res.financial?.charged_amount ?? res.financial?.total_price ?? studentPrice ?? 6.0;
         setVisitantesCount((prev) => prev + 1);
-        setVisitantesTotalValor((prev) => prev + charged);
         setLiberadasCount((prev) => prev + 1);
         setVisitorPaymentPending(false);
         setVisitorPaymentError(null);
@@ -642,7 +765,13 @@ export function ReceptionTerminal({
 
       if (method) {
         event.preventDefault();
-        void visitorPaymentHandlerRef.current(method);
+        if (method === 'cash') {
+          setVisitorPaymentMethod('cash');
+          setVisitorAmountReceived(visitorPrice.toFixed(2));
+        } else {
+          setVisitorPaymentMethod(method);
+          void visitorPaymentHandlerRef.current(method);
+        }
       } else if (event.key === 'Escape') {
         event.preventDefault();
         setVisitorPaymentError(null);
@@ -652,7 +781,7 @@ export function ReceptionTerminal({
 
     window.addEventListener('keydown', handleVisitorPaymentShortcut);
     return () => window.removeEventListener('keydown', handleVisitorPaymentShortcut);
-  }, [isProcessing, visitorPaymentPending]);
+  }, [isProcessing, visitorPaymentPending, visitorPrice]);
 
   const handleConfirmPayment = async () => {
     if (!paymentPending || isProcessing) return;
@@ -719,12 +848,7 @@ export function ReceptionTerminal({
 
   const handleShiftStatusChange = useCallback((shift: CashShift | null) => {
     setActiveCashShift(shift);
-    if (!shift && signOutRequested) {
-      setSignOutRequested(false);
-      setShowCashModal(false);
-      onSignOut?.();
-    }
-  }, [onSignOut, signOutRequested]);
+  }, []);
 
   return (
     <div
@@ -759,9 +883,24 @@ export function ReceptionTerminal({
           <div>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-black tracking-wider" style={{ color: branding.terminal_primary_color }}>{branding.app_name}</h1>
-            <span className={`text-xs px-2 py-0.5 rounded-md font-mono ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-              {unitName} · {terminalId} · {mealTypeName}
-            </span>
+            <div className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-mono ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+              <span>{unitName} · {terminalId} ·</span>
+              <select
+                value={displayedMealTypeId}
+                disabled={Boolean(activeCashShift) && cashShiftMode === 'per_meal'}
+                onClick={(event) => event.stopPropagation()}
+                onChange={(event) => onMealTypeChange?.(event.target.value)}
+                className={`max-w-36 rounded border px-1 py-0.5 font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-80 ${isDark ? 'border-slate-600 bg-slate-800 text-white' : 'border-slate-300 bg-white text-slate-800'}`}
+                title={activeCashShift && cashShiftMode === 'per_meal' ? 'Feche o caixa atual antes de trocar o turno.' : 'Selecionar a refeição operacional'}
+              >
+                {!displayedMealTypeId && <option value="">Selecionar turno</option>}
+                {mealOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-xs text-slate-400">Operador: {operatorName}</p>
@@ -799,12 +938,12 @@ export function ReceptionTerminal({
             <DollarSign className="w-3.5 h-3.5" />
             <span>
               {activeCashShift
-                ? `Caixa: R$ ${Number(activeCashShift.expected_cash_balance ?? activeCashShift.system_expected_balance ?? 0).toFixed(2)}`
+                ? `Caixa: ${showKpiValues ? `R$ ${expectedDrawerBalance.toFixed(2)}` : '••••••'}`
                 : 'Abrir Caixa (F9)'}
             </span>
           </button>
 
-          {['admin_general', 'operations_director', 'unit_manager', 'supervisor', 'finance'].includes(operatorRole) && (
+          {!isOperationalDashboard && ['admin_general', 'operations_director', 'unit_manager', 'supervisor', 'finance'].includes(operatorRole) && (
             <Link
               href="/admin/caixa"
               onClick={(e) => e.stopPropagation()}
@@ -816,7 +955,7 @@ export function ReceptionTerminal({
             </Link>
           )}
 
-          {['admin_general', 'operations_director', 'unit_manager', 'supervisor'].includes(operatorRole) && (
+          {!isOperationalDashboard && ['admin_general', 'operations_director', 'unit_manager', 'supervisor'].includes(operatorRole) && (
             <Link
               href="/admin/categorias"
               onClick={(e) => e.stopPropagation()}
@@ -835,7 +974,7 @@ export function ReceptionTerminal({
                 e.stopPropagation();
                 setForceOfflineMode(!forceOfflineMode);
               }}
-              title="Alternar Modo Offline para testes e simulações operacionais"
+              title="Simular indisponibilidade para testar o bloqueio seguro; nenhuma refeição será registrada localmente"
               className={`text-xs px-2.5 py-1 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 ${
                 forceOfflineMode
                   ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold'
@@ -843,7 +982,7 @@ export function ReceptionTerminal({
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>{forceOfflineMode ? 'Modo Offline' : 'Auto Rede'}</span>
+              <span>{forceOfflineMode ? 'Teste Offline' : 'Auto Rede'}</span>
             </button>
           )}
 
@@ -896,7 +1035,7 @@ export function ReceptionTerminal({
             )}
           </div>
 
-          {operatorRole === 'admin_general' && (
+          {!isOperationalDashboard && operatorRole === 'admin_general' && (
             <Link
               href="/admin/identidade"
               onClick={(e) => e.stopPropagation()}
@@ -933,8 +1072,75 @@ export function ReceptionTerminal({
         </div>
       </header>
 
+      {!activeCashShift && !mealTypeId && (
+        <div className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-400 bg-amber-100 px-4 py-2 text-center text-xs font-black text-amber-950">
+          <AlertTriangle className="h-4 w-4" />
+          Selecione o turno no cabeçalho antes de abrir o caixa e iniciar o atendimento.
+        </div>
+      )}
+
+      {mealOptions.length > 0 && mealOptions.every((option) => !option.startTime || !option.endTime) && !isStaleCashShift && (
+        <div className={`shrink-0 border-b px-4 py-1.5 text-center text-[11px] font-semibold ${isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+          Os horários dos turnos não estão configurados; confirme manualmente o turno selecionado no cabeçalho.
+        </div>
+      )}
+
+      {forceOfflineMode && (
+        <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 border-b border-amber-500 bg-amber-300 px-4 py-2 text-center text-xs font-black text-slate-950">
+          <WifiOff className="h-4 w-4" />
+          <span>MODO OFFLINE DE TESTE: nenhuma refeição será liberada, cobrada ou guardada para sincronização.</span>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setForceOfflineMode(false);
+            }}
+            className="rounded-lg bg-[#C5161D] px-3 py-1.5 text-white shadow-sm"
+          >
+            Voltar ao modo online
+          </button>
+        </div>
+      )}
+
       {/* 2. ÁREA CENTRAL DE ATENDIMENTO CONTÍNUO */}
-      <main className="terminal-scrollbar-hidden min-h-0 flex-1 overflow-y-auto flex flex-col items-center justify-center p-4 md:p-6 text-center max-w-4xl mx-auto w-full">
+      <div className={isOperationalDashboard ? 'grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-4 xl:grid-cols-[minmax(220px,0.72fr)_minmax(520px,1.55fr)_minmax(230px,0.75fr)]' : 'contents'}>
+      {isOperationalDashboard && (
+        <aside className={`terminal-scrollbar-hidden hidden min-h-0 flex-col overflow-y-auto rounded-2xl border xl:flex ${isDark ? 'border-slate-700 bg-slate-900/90' : 'border-slate-200 bg-white/95 shadow-md'}`}>
+          <div className="border-b border-current/10 px-4 py-3 text-left text-sm font-black uppercase tracking-wide">
+            Últimos acessos
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col">
+            {recentAccesses.length === 0 ? (
+              <div className="grid flex-1 place-items-center p-5 text-center text-xs opacity-55">
+                Os atendimentos desta sessão aparecerão aqui.
+              </div>
+            ) : recentAccesses.map((access) => (
+              <div key={access.id} className="flex items-center gap-3 border-b border-current/10 px-4 py-3 text-left last:border-b-0">
+                <div
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-black text-white ${access.status === 'released' ? 'bg-emerald-600' : 'bg-red-600'}`}
+                  aria-hidden="true"
+                >
+                  {access.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-black">{access.name}</p>
+                  <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase text-white ${access.status === 'released' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+                    {access.status === 'released' ? 'Liberado' : 'Bloqueado'}
+                  </span>
+                </div>
+                <time className="text-xs opacity-55">{access.time}</time>
+              </div>
+            ))}
+          </div>
+        </aside>
+      )}
+      <main
+        className={`terminal-scrollbar-hidden min-h-0 flex-1 overflow-y-auto flex flex-col items-center justify-center text-center w-full transition-[background-image] duration-300 ${isOperationalDashboard ? `rounded-3xl border-2 p-5 md:p-7 ${isDark ? 'bg-slate-900/90 shadow-2xl' : 'bg-white/95 shadow-lg'}` : 'p-4 md:p-6 max-w-4xl mx-auto'}`}
+        style={{
+          ...terminalBackgroundStyle,
+          ...(isOperationalDashboard ? { borderColor: branding.terminal_primary_color } : {}),
+        }}
+      >
         {/* ESTADO A: AGUARDANDO MATRÍCULA (TELA PADRÃO) */}
         {!activeDisplay && (
           <div className="w-full max-w-xl flex flex-col items-center space-y-6 animate-in fade-in duration-200">
@@ -959,7 +1165,7 @@ export function ReceptionTerminal({
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value.toUpperCase())}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isStaleCashShift || !mealTypeId}
                   placeholder="DIGITE A MATRÍCULA OU CÓDIGO"
                   autoFocus
                   className={`w-full border-2 text-center font-mono text-xl sm:text-2xl font-bold tracking-widest placeholder:text-slate-400 rounded-2xl py-4 px-6 shadow-lg transition-all outline-none ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}
@@ -970,9 +1176,12 @@ export function ReceptionTerminal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <button
                   type="submit"
-                  disabled={isProcessing || !inputValue.trim()}
-                  className="sm:col-span-2 py-3.5 px-6 rounded-2xl disabled:opacity-75 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  style={{ backgroundColor: branding.terminal_primary_color }}
+                  disabled={isProcessing || isStaleCashShift || !mealTypeId || !inputValue.trim()}
+                  className="sm:col-span-2 py-3.5 px-6 rounded-2xl disabled:brightness-75 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  style={{
+                    backgroundColor: '#C5161D',
+                    borderColor: '#C5161D',
+                  }}
                 >
                   <span>{isProcessing ? 'Processando...' : 'Liberar Refeição (Enter)'}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -984,8 +1193,13 @@ export function ReceptionTerminal({
                     setVisitorPaymentError(null);
                     setVisitorPaymentPending(true);
                   }}
-                  disabled={isProcessing}
-                  className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-purple-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer border border-purple-400/30"
+                  disabled={isProcessing || isStaleCashShift || !mealTypeId}
+                  className="py-3.5 px-4 rounded-2xl disabled:brightness-75 disabled:cursor-not-allowed font-black text-xs uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border"
+                  style={{
+                    backgroundColor: '#F4C430',
+                    borderColor: '#F4C430',
+                    color: '#241A00',
+                  }}
                   title="Liberar refeição avulsa de visitante paga na hora na entrada (Atalho F4)"
                 >
                   <DollarSign className="w-4 h-4" />
@@ -1196,12 +1410,55 @@ export function ReceptionTerminal({
         )}
       </main>
 
+      {isOperationalDashboard && (
+        <aside className={`terminal-scrollbar-hidden hidden min-h-0 flex-col overflow-y-auto rounded-2xl border xl:flex ${isDark ? 'border-slate-700 bg-slate-900/90' : 'border-slate-200 bg-white/95 shadow-md'}`}>
+          <div className="border-b border-current/10 px-4 py-3 text-left text-sm font-black uppercase tracking-wide">
+            Informações & atalhos
+          </div>
+          <div className="space-y-4 p-4 text-left">
+            <div className="flex items-center justify-between gap-3 border-b border-current/10 pb-4">
+              <span className="text-sm opacity-65">
+                {cashShiftMode === 'daily' ? 'Caixa diário · Refeição' : 'Turno'}:{' '}
+                <strong className="opacity-100">{displayedMealTypeName}</strong>
+              </span>
+              <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${activeCashShift ? 'bg-emerald-600 text-white' : 'bg-amber-400 text-slate-950'}`}>
+                {activeCashShift ? 'Ativo' : 'Caixa fechado'}
+              </span>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-wider opacity-50">Atalhos do operador</p>
+            <div className="grid grid-cols-2 gap-3">
+              {['admin_general', 'operations_director', 'unit_manager', 'supervisor'].includes(operatorRole) && (
+                <Link href="/admin/categorias" onClick={(event) => event.stopPropagation()} className={`grid min-h-28 place-items-center rounded-2xl border p-3 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                  <span><Layers className="mx-auto mb-2 h-7 w-7" style={{ color: branding.terminal_primary_color }} />Categorias</span>
+                </Link>
+              )}
+              {['admin_general', 'operations_director', 'unit_manager', 'supervisor', 'finance'].includes(operatorRole) && (
+                <Link href="/admin/caixa" onClick={(event) => event.stopPropagation()} className={`grid min-h-28 place-items-center rounded-2xl border p-3 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                  <span><DollarSign className="mx-auto mb-2 h-7 w-7" style={{ color: branding.terminal_primary_color }} />Auditoria<br />Caixas</span>
+                </Link>
+              )}
+              {canSimulateOffline && (
+                <button type="button" onClick={(event) => { event.stopPropagation(); setForceOfflineMode((current) => !current); }} className={`grid min-h-28 place-items-center rounded-2xl border p-3 text-center text-xs font-black transition hover:-translate-y-0.5 ${forceOfflineMode ? 'border-amber-400 bg-amber-400/15 text-amber-500' : isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                  <span><Zap className="mx-auto mb-2 h-7 w-7" style={{ color: branding.terminal_primary_color }} />{forceOfflineMode ? 'Teste Offline' : 'Auto Rede'}</span>
+                </button>
+              )}
+              {operatorRole === 'admin_general' && (
+                <Link href="/admin/identidade" onClick={(event) => event.stopPropagation()} className={`grid min-h-28 place-items-center rounded-2xl border p-3 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                  <span><Palette className="mx-auto mb-2 h-7 w-7" style={{ color: branding.terminal_accent_color }} />Identidade</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        </aside>
+      )}
+      </div>
+
       {/* 3. BARRA INFERIOR (MÉTRICAS DO TURNO E ATALHOS) */}
       <footer className={`grid w-full shrink-0 gap-2 border-t px-4 py-3 backdrop-blur-md md:px-6 ${isDark ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-slate-50/95 shadow-[0_-8px_24px_rgba(15,23,42,0.06)]'}`}>
         <div className="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             { label: 'Refeições liberadas', value: String(liberadasCount), financial: false },
-            { label: 'Dinheiro em caixa', value: `R$ ${cashReceived.toFixed(2)}`, financial: true },
+            { label: 'Dinheiro em caixa', value: `R$ ${expectedDrawerBalance.toFixed(2)}`, financial: true },
             { label: 'PIX recebido', value: `R$ ${pixReceived.toFixed(2)}`, financial: true },
             { label: 'Total recebido', value: `R$ ${(cashReceived + pixReceived + cardReceived).toFixed(2)}`, financial: true },
           ].map((kpi) => (
@@ -1265,7 +1522,7 @@ export function ReceptionTerminal({
 
           <div className="h-8 w-px bg-white/10 hidden sm:block" />
 
-          {/* Visitantes no Turno (Qtd + R$ Arrecadado) */}
+          {/* Visitantes no Turno */}
           <button
             type="button"
             onClick={(e) => {
@@ -1279,9 +1536,6 @@ export function ReceptionTerminal({
             <div className="flex items-baseline gap-1.5 justify-center sm:justify-start">
               <span className="text-2xl md:text-3xl font-black text-amber-400 group-hover:scale-105 transition-transform">
                 {visitantesCount}
-              </span>
-              <span className="text-xs font-bold text-amber-300/90 font-mono">
-                (R$ {visitantesTotalValor.toFixed(2)})
               </span>
             </div>
             <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold group-hover:text-amber-300 transition-colors">
@@ -1315,36 +1569,10 @@ export function ReceptionTerminal({
 
           <div className="h-8 w-px bg-white/10 hidden sm:block" />
 
-          {/* Pendentes Fila Offline */}
-          <div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`text-2xl md:text-3xl font-black ${
-                  pendentesQueueCount > 0 ? 'text-amber-400' : 'text-slate-400'
-                }`}
-              >
-                {pendentesQueueCount}
-              </span>
-              {pendentesQueueCount > 0 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTriggerSync();
-                  }}
-                  disabled={isSyncing || forceOfflineMode || connectivityState !== 'ONLINE'}
-                  className="px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[10px] font-bold text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 transition-all"
-                  title="Sincronizar fila offline agora"
-                >
-                  <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
-                </button>
-              )}
-            </div>
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Fila Offline</p>
-            {syncFeedback && (
-              <p className="text-[10px] text-sky-400 font-mono mt-0.5 animate-pulse">{syncFeedback}</p>
-            )}
+          {/* O MVP e online-first/fail-safe: nao existe fila de consumo offline. */}
+          <div title="Sem registro local de refeições: a indisponibilidade bloqueia a liberação">
+            <span className="text-2xl md:text-3xl font-black text-slate-400">—</span>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Offline bloqueado</p>
           </div>
 
           <div>
@@ -1476,28 +1704,16 @@ export function ReceptionTerminal({
                 )}
               </div>
 
-              {/* Fila Criptografada e Timeouts Retidos */}
+              {/* Contingencia fail-safe e Timeouts Retidos */}
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                <p className="font-semibold text-slate-300">Fila Local e Travas de Timeout</p>
-                <p className="text-slate-400">
-                  Eventos pendentes de sincronização: <span className="font-mono text-amber-400 font-bold">{pendentesQueueCount}</span>
-                </p>
+                <p className="font-semibold text-slate-300">Contingência e Travas de Timeout</p>
+                <p className="text-slate-400">Fila de consumo offline: desativada.</p>
                 <p className="text-slate-400">
                   Operações com timeout retidas preventivamente: <span className="font-mono text-orange-400 font-bold">{pendingTimeoutsCount}</span>
                 </p>
                 <p className="text-slate-500">
-                  Autorização offline desativada: operação online-first e fail-safe.
+                  Sem conexão, a refeição não é liberada, cobrada ou gravada para sincronização posterior.
                 </p>
-                {pendentesQueueCount > 0 && (
-                  <button
-                    onClick={handleTriggerSync}
-                    disabled={isSyncing || forceOfflineMode || connectivityState !== 'ONLINE'}
-                    className="mt-2 px-3 py-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded font-bold cursor-pointer flex items-center gap-1.5"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar Fila Agora'}</span>
-                  </button>
-                )}
               </div>
 
               {/* Contexto Operacional */}
@@ -1548,8 +1764,12 @@ export function ReceptionTerminal({
                       setPaymentError(null);
                       if (method === 'cash') setAmountReceived(Number(paymentPending.preview.financial?.student_price || 0).toFixed(2));
                     }}
-                    className={`rounded-2xl border p-4 text-center font-bold transition disabled:cursor-not-allowed disabled:opacity-35 ${paymentMethod === method ? 'text-white shadow-lg' : isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}
-                    style={paymentMethod === method ? { backgroundColor: branding.terminal_primary_color, borderColor: branding.terminal_primary_color } : undefined}
+                    className={`rounded-2xl border-2 p-4 text-center font-bold transition disabled:cursor-not-allowed disabled:opacity-35 ${paymentMethod === method ? 'scale-[1.02] shadow-lg ring-4 ring-slate-400/30' : 'opacity-70 hover:opacity-100'}`}
+                    style={{
+                      backgroundColor: PAYMENT_METHOD_COLORS[method].background,
+                      borderColor: PAYMENT_METHOD_COLORS[method].border,
+                      color: PAYMENT_METHOD_COLORS[method].text,
+                    }}
                   >
                     <Icon className="mx-auto mb-2 h-6 w-6" />
                     {label}
@@ -1603,15 +1823,64 @@ export function ReceptionTerminal({
                   key={method}
                   type="button"
                   disabled={isProcessing}
-                  onClick={() => handleRegisterVisitorDirect(method)}
+                  onClick={() => {
+                    if (method === 'cash') {
+                      setVisitorPaymentMethod('cash');
+                      setVisitorAmountReceived(visitorPrice.toFixed(2));
+                      return;
+                    }
+                    setVisitorPaymentMethod(method);
+                    void handleRegisterVisitorDirect(method);
+                  }}
                   aria-keyshortcuts={shortcut.replace(' / ', ' ')}
-                  className="rounded-2xl border border-slate-600 px-3 py-4 font-black uppercase hover:border-emerald-400 disabled:opacity-40"
+                  className="rounded-2xl border-2 px-3 py-4 font-black uppercase shadow-md transition hover:-translate-y-0.5 hover:brightness-95 disabled:opacity-40"
+                  style={{
+                    backgroundColor: PAYMENT_METHOD_COLORS[method].background,
+                    borderColor: PAYMENT_METHOD_COLORS[method].border,
+                    color: PAYMENT_METHOD_COLORS[method].text,
+                  }}
                 >
                   <span className="block">{label}</span>
                   <span className="mt-1 block text-[10px] font-bold opacity-60">{shortcut}</span>
                 </button>
               ))}
             </div>
+            {visitorPaymentMethod === 'cash' && (
+              <div className={`mt-4 grid gap-3 rounded-2xl p-4 sm:grid-cols-3 ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>
+                <div>
+                  <p className="text-xs font-bold uppercase opacity-55">Valor da refeição</p>
+                  <p className="mt-1 text-xl font-black">R$ {visitorPrice.toFixed(2)}</p>
+                </div>
+                <label>
+                  <span className="text-xs font-bold uppercase opacity-55">Dinheiro recebido</span>
+                  <input
+                    value={visitorAmountReceived}
+                    onChange={(event) => setVisitorAmountReceived(event.target.value)}
+                    inputMode="decimal"
+                    autoFocus
+                    className={`mt-1 w-full rounded-xl border px-3 py-2 text-lg font-black outline-none ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-300 bg-white'}`}
+                  />
+                </label>
+                <div className="rounded-xl bg-[#F4C430] p-3 text-[#241A00]">
+                  <p className="text-xs font-bold uppercase opacity-70">Troco</p>
+                  <p className="mt-1 text-xl font-black">
+                    R$ {Math.max(0, Number((visitorAmountReceived || '0').replace(',', '.')) - visitorPrice).toFixed(2)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={
+                    isProcessing ||
+                    !Number.isFinite(Number(visitorAmountReceived.replace(',', '.'))) ||
+                    Number(visitorAmountReceived.replace(',', '.')) < visitorPrice
+                  }
+                  onClick={() => void handleRegisterVisitorDirect('cash', Number(visitorAmountReceived.replace(',', '.')))}
+                  className="rounded-xl bg-[#C5161D] px-4 py-3 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40 sm:col-span-3"
+                >
+                  Confirmar dinheiro e liberar
+                </button>
+              </div>
+            )}
             {visitorPaymentError && (
               <div
                 role="alert"
@@ -1640,20 +1909,23 @@ export function ReceptionTerminal({
       <CashShiftModal
         isOpen={showCashModal}
         onClose={() => {
-          if (!activeCashShift) return;
           setSignOutRequested(false);
           setShowCashModal(false);
         }}
         unitId={unitId}
         terminalId={terminalId}
         mealTypeId={mealTypeId}
-        mealTypeName={mealTypeName}
+        mealTypeName={displayedMealTypeName}
+        mealOptions={mealOptions}
+        onMealTypeChange={onMealTypeChange}
         unitName={unitName}
         operatorName={operatorName}
         onShiftStatusChange={handleShiftStatusChange}
         theme={terminalTheme}
         requireOpenShift={!activeCashShift}
         requestCloseShift={signOutRequested}
+        staleShift={isStaleCashShift}
+        cashShiftMode={cashShiftMode}
         onExitWithoutShift={onSignOut}
       />
 

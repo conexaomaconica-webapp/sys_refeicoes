@@ -15,16 +15,21 @@ import {
   Eye,
   ArrowLeft,
   X,
+  CalendarDays,
+  Clock3,
 } from 'lucide-react';
 import { cashShiftService } from '@/services/cash-shift.service';
 import { listMealTypes, type MealTypeOption } from '@/services/categories.service';
-import type { CashShift, CashMovement } from '@/types/cash-shift';
+import type { CashShift, CashMovement, CashShiftMode, UnitCashShiftSetting } from '@/types/cash-shift';
 
 export default function AdminCaixaPage() {
   const [shifts, setShifts] = useState<CashShift[]>([]);
   const [mealTypes, setMealTypes] = useState<MealTypeOption[]>([]);
+  const [unitSettings, setUnitSettings] = useState<UnitCashShiftSetting[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [savingUnitId, setSavingUnitId] = useState<string | null>(null);
 
   // Filtros
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -41,7 +46,7 @@ export default function AdminCaixaPage() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const [shiftsData, mtRes] = await Promise.all([
+      const [shiftsData, mtRes, settingsData] = await Promise.all([
         cashShiftService.listShifts({
           status: (filterStatus as 'opened' | 'closed') || undefined,
           mealTypeId: filterMealType || undefined,
@@ -49,9 +54,11 @@ export default function AdminCaixaPage() {
           endDate: filterEndDate || undefined,
         }),
         listMealTypes(),
+        cashShiftService.listUnitSettings(),
       ]);
 
       setShifts(shiftsData);
+      setUnitSettings(settingsData);
       if (mtRes.success) {
         setMealTypes(mtRes.mealTypes);
       }
@@ -61,6 +68,24 @@ export default function AdminCaixaPage() {
       setLoading(false);
     }
   }, [filterStatus, filterMealType, filterStartDate, filterEndDate]);
+
+  const handleUpdateUnitMode = async (setting: UnitCashShiftSetting, mode: CashShiftMode) => {
+    if (!setting.can_manage || setting.cash_shift_mode === mode) return;
+    setSavingUnitId(setting.unit_id);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      await cashShiftService.updateUnitMode(setting.unit_id, mode);
+      setUnitSettings((current) =>
+        current.map((item) => item.unit_id === setting.unit_id ? { ...item, cash_shift_mode: mode } : item)
+      );
+      setSuccessMsg(`Modo de caixa de ${setting.unit_name} atualizado para ${mode === 'daily' ? 'diário' : 'por turno'}.`);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Não foi possível atualizar o modo de caixa.');
+    } finally {
+      setSavingUnitId(null);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -153,6 +178,59 @@ export default function AdminCaixaPage() {
           <span>{errorMsg}</span>
         </div>
       )}
+
+      {successMsg && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-sm font-semibold">
+          {successMsg}
+        </div>
+      )}
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-black text-slate-900">Funcionamento do caixa por unidade</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            A faixa de horário continua controlando o direito à refeição. Esta opção define somente quando o caixa financeiro é fechado.
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            A unidade pode manter vários caixas simultâneos, desde que cada equipamento use um identificador próprio, como TERM-01 e TERM-02.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {unitSettings.map((setting) => (
+            <div key={setting.unit_id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <strong className="text-sm text-slate-900">{setting.unit_name}</strong>
+                {!setting.can_manage && <span className="text-xs text-slate-500">Somente leitura</span>}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={!setting.can_manage || savingUnitId === setting.unit_id}
+                  onClick={() => handleUpdateUnitMode(setting, 'per_meal')}
+                  className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${setting.cash_shift_mode === 'per_meal' ? 'border-red-600 bg-red-50 text-red-800' : 'border-slate-300 bg-white text-slate-700 hover:border-red-300'}`}
+                >
+                  <Clock3 className="mb-2 h-5 w-5" />
+                  <span className="block text-sm font-black">Por turno</span>
+                  <span className="mt-1 block text-xs">Abre e fecha para cada refeição.</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={!setting.can_manage || savingUnitId === setting.unit_id}
+                  onClick={() => handleUpdateUnitMode(setting, 'daily')}
+                  className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${setting.cash_shift_mode === 'daily' ? 'border-amber-500 bg-amber-50 text-amber-900' : 'border-slate-300 bg-white text-slate-700 hover:border-amber-300'}`}
+                >
+                  <CalendarDays className="mb-2 h-5 w-5" />
+                  <span className="block text-sm font-black">Diário</span>
+                  <span className="mt-1 block text-xs">Abre pela manhã e fecha no fim do dia.</span>
+                </button>
+              </div>
+              <p className="mt-3 text-xs text-slate-500">
+                Feche todos os caixas abertos desta unidade antes de trocar o modo.
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Métricas Consolidadas de Topo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -355,7 +433,7 @@ export default function AdminCaixaPage() {
                         })}
                       </div>
                       <div className="text-[11px] text-emerald-400">
-                        {s.meal_type_name || 'Almoço'}
+                        {s.cash_shift_mode === 'daily' ? 'Caixa diário' : (s.meal_type_name || 'Turno')}
                       </div>
                     </td>
 
@@ -464,7 +542,7 @@ export default function AdminCaixaPage() {
                     Auditoria de Turno #{selectedShift.id.slice(0, 8)}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    {selectedShift.unit_name || 'Unidade'} &bull; {selectedShift.meal_type_name || 'Turno'}
+                    {selectedShift.unit_name || 'Unidade'} &bull; {selectedShift.cash_shift_mode === 'daily' ? 'Caixa diário' : (selectedShift.meal_type_name || 'Turno')}
                   </p>
                 </div>
               </div>

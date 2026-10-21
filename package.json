@@ -7,7 +7,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "node -r ./scripts/patch-fs.cjs ./node_modules/next/dist/bin/next dev",
+    "dev": "node -r ./scripts/patch-fs.cjs ./node_modules/next/dist/bin/next dev --turbopack",
     "build": "node -r ./scripts/patch-fs.cjs ./node_modules/next/dist/bin/next build",
     "start": "node -r ./scripts/patch-fs.cjs ./node_modules/next/dist/bin/next start",
     "lint": "eslint src",

@@ -13,6 +13,7 @@ interface BrandContextType {
   branding: PublicTenantBranding;
   isLoading: boolean;
   tenantSlug: string;
+  selectTenantSlug: (slug: string) => void;
   refreshBranding: () => Promise<void>;
 }
 
@@ -20,6 +21,7 @@ const BrandContext = createContext<BrandContextType>({
   branding: FALLBACK_BRANDING,
   isLoading: true,
   tenantSlug: DEFAULT_TENANT_SLUG,
+  selectTenantSlug: () => {},
   refreshBranding: async () => {},
 });
 
@@ -41,6 +43,12 @@ export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
     if (querySlug) window.localStorage.setItem('ma-refeicoes-tenant-slug', resolvedSlug);
     if (resolvedSlug !== tenantSlug) setTenantSlug(resolvedSlug);
   }, [initialSlug, tenantSlug]);
+
+  const selectTenantSlug = useCallback((rawSlug: string) => {
+    const resolvedSlug = normalizeTenantSlug(rawSlug);
+    window.localStorage.setItem('ma-refeicoes-tenant-slug', resolvedSlug);
+    setTenantSlug((currentSlug) => currentSlug === resolvedSlug ? currentSlug : resolvedSlug);
+  }, []);
 
   const loadBranding = useCallback(async () => {
     setIsLoading(true);
@@ -82,9 +90,10 @@ export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
       branding,
       isLoading,
       tenantSlug,
+      selectTenantSlug,
       refreshBranding: loadBranding,
     }),
-    [branding, isLoading, tenantSlug, loadBranding]
+    [branding, isLoading, tenantSlug, selectTenantSlug, loadBranding]
   );
 
   return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;

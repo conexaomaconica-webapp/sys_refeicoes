@@ -15,6 +15,10 @@ export interface Tenant {
   updated_at: string;
 }
 
+export type TerminalBackgroundMode = 'none' | 'preset' | 'image';
+export type TerminalBackgroundPreset = 'institutional' | 'warm' | 'nature' | 'geometric';
+export type TerminalLayoutVariant = 'classic' | 'operational_dashboard';
+
 export interface TenantBranding {
   id: string;
   tenant_id: string;
@@ -30,6 +34,10 @@ export interface TenantBranding {
   terminal_accent_color?: string | null;
   terminal_surface_color?: string | null;
   terminal_show_kpi_values?: boolean;
+  terminal_background_mode?: TerminalBackgroundMode;
+  terminal_background_preset?: TerminalBackgroundPreset;
+  terminal_background_url?: string | null;
+  terminal_layout_variant?: TerminalLayoutVariant;
   report_logo_url?: string | null;
   report_header_text?: string | null;
   report_footer_text?: string | null;
@@ -56,6 +64,10 @@ export interface PublicTenantBranding {
   terminal_accent_color: string;
   terminal_surface_color: string;
   terminal_show_kpi_values: boolean;
+  terminal_background_mode: TerminalBackgroundMode;
+  terminal_background_preset: TerminalBackgroundPreset;
+  terminal_background_url: string | null;
+  terminal_layout_variant: TerminalLayoutVariant;
 }
 
 export interface UpdateTenantBrandingInput {
@@ -68,6 +80,10 @@ export interface UpdateTenantBrandingInput {
   terminal_accent_color: string;
   terminal_surface_color: string;
   terminal_show_kpi_values: boolean;
+  terminal_background_mode: TerminalBackgroundMode;
+  terminal_background_preset: TerminalBackgroundPreset;
+  terminal_background_url: string | null;
+  terminal_layout_variant: TerminalLayoutVariant;
 }
 
 export interface Institution {

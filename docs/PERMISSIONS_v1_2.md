@@ -1263,3 +1263,25 @@ a regra aqui registrada deve prevalecer até revisão formal.
 | Cancelar consumo sem cobrança | `unit_manager`, `supervisor`, `operations_director`, `admin_general` | unidade autorizada |
 
 Operador não estorna recebimentos. A abertura obrigatória do caixa não é uma permissão configurável.
+
+## Adendo — Configuração do ciclo do caixa
+
+| Ação | Perfis autorizados | Regra |
+| --- | --- | --- |
+| Visualizar modo do caixa | `finance`, `supervisor`, `unit_manager`, `operations_director`, `admin_general` | respeita tenant e escopo de unidade |
+| Alterar entre caixa por turno e diário | `unit_manager`, `operations_director`, `admin_general` | exige escopo da unidade e ausência de caixa aberto |
+
+O operador utiliza o modo configurado e não pode alterá-lo. A configuração muda
+somente o ciclo financeiro; a refeição selecionada e sua faixa de horário
+continuam governando o direito de consumo.
+
+## Adendo — Baixa parcial e caixas simultâneos
+
+| Ação | Perfis autorizados | Regra |
+| --- | --- | --- |
+| Registrar baixa parcial | operador responsável pelo caixa | somente caixa diário, mesma unidade, terminal e data operacional |
+| Recolher dinheiro na baixa parcial | operador responsável pelo caixa | gera sangria vinculada e auditável |
+| Operar caixas simultâneos | perfis autorizados a abrir caixa | cada equipamento deve usar `terminal_id` distinto |
+
+Um caixa aberto em outro terminal da mesma unidade não impede nova abertura. Um
+caixa aberto no mesmo terminal continua bloqueando a tomada por outro operador.

@@ -14,6 +14,9 @@ import type {
   CloseCashShiftParams,
   RecordMovementParams,
   PaymentMethod,
+  CashShiftMode,
+  UnitCashShiftSetting,
+  CashPartialSettlement,
 } from '@/types/cash-shift';
 
 interface RpcClient {
@@ -28,6 +31,12 @@ const getRpcClient = (): RpcClient => createBrowserClient() as unknown as RpcCli
 export interface ActiveShiftResult {
   shift: CashShift | null;
   movements: CashMovement[];
+  partialSettlements: CashPartialSettlement[];
+}
+
+export interface PartialSettlementResult {
+  settlement: CashPartialSettlement;
+  shift: CashShift;
 }
 
 export interface CloseShiftResult {
@@ -49,6 +58,29 @@ export interface VisitorEntryResult {
 }
 
 export const cashShiftService = {
+  async listUnitSettings(): Promise<UnitCashShiftSetting[]> {
+    const supabase = getRpcClient();
+    const { data, error } = await supabase.rpc('get_unit_cash_shift_settings', {});
+
+    if (error) {
+      throw new Error(error.message || 'Erro ao carregar as configurações de caixa.');
+    }
+
+    return (data || []) as UnitCashShiftSetting[];
+  },
+
+  async updateUnitMode(unitId: string, mode: CashShiftMode): Promise<void> {
+    const supabase = getRpcClient();
+    const { error } = await supabase.rpc('set_unit_cash_shift_mode', {
+      p_unit_id: unitId,
+      p_cash_shift_mode: mode,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Erro ao atualizar o modo de caixa.');
+    }
+  },
+
   /**
    * Abre um novo turno de caixa com fundo de troco inicial
    */
@@ -57,7 +89,10 @@ export const cashShiftService = {
     const { data, error } = await supabase.rpc('open_operator_cash_shift', {
       p_unit_id: params.unitId,
       p_terminal_id: params.terminalId,
-      p_meal_type_id: params.mealTypeId,
+      // No modo de caixa diário a refeição pode ser escolhida depois da
+      // abertura. Enviar uma string vazia para um parâmetro UUID faz o
+      // PostgreSQL rejeitar a chamada antes de a função validar o modo.
+      p_meal_type_id: params.mealTypeId || null,
       p_initial_float: params.initialFloat || 0,
     });
 
@@ -82,19 +117,48 @@ export const cashShiftService = {
       throw new Error(error.message || 'Erro ao carregar turno do caixa.');
     }
 
-    const response = data as unknown as { shift?: CashShift | null; cash_shift?: CashShift | null; movements?: CashMovement[]; terminal_locked?: boolean; message?: string } | null;
+    const response = data as unknown as { shift?: CashShift | null; cash_shift?: CashShift | null; movements?: CashMovement[]; partial_settlements?: CashPartialSettlement[]; terminal_locked?: boolean; message?: string } | null;
     if (response?.terminal_locked) {
       throw new Error(response.message || 'Terminal em uso por outro operador.');
     }
     const shift = response?.shift || response?.cash_shift || null;
     if (!shift) {
-      return { shift: null, movements: [] };
+      return { shift: null, movements: [], partialSettlements: [] };
     }
 
     return {
       shift,
       movements: response?.movements || [],
+      partialSettlements: response?.partial_settlements || [],
     };
+  },
+
+  async recordPartialSettlement(params: {
+    cashShiftId: string;
+    mealTypeId: string;
+    countedCashAmount: number;
+    withdrawalAmount: number;
+    notes?: string;
+  }): Promise<PartialSettlementResult> {
+    const supabase = getRpcClient();
+    const { data, error } = await supabase.rpc('record_operator_cash_partial_settlement', {
+      p_cash_shift_id: params.cashShiftId,
+      p_meal_type_id: params.mealTypeId,
+      p_counted_cash_amount: params.countedCashAmount,
+      p_withdrawal_amount: params.withdrawalAmount,
+      p_notes: params.notes || null,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Erro ao registrar a baixa parcial.');
+    }
+
+    const response = data as unknown as { settlement?: CashPartialSettlement; cash_shift?: CashShift };
+    if (!response.settlement || !response.cash_shift) {
+      throw new Error('Resposta inválida ao registrar a baixa parcial.');
+    }
+
+    return { settlement: response.settlement, shift: response.cash_shift };
   },
 
   /**

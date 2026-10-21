@@ -1578,6 +1578,74 @@ O movimento registra unidade (via turno), operador, terminal, aluno/visitante, c
 
 O terminal é **online-first + fail-safe**. Perda de conectividade nunca produz tela verde, débito, cobrança ou consumo local confirmado. Módulos experimentais de snapshot/fila permanecem apenas para auditoria histórica; suas RPCs não são expostas ao cliente.
 
+## Personalização da área central
+
+A identidade visual do tenant pode configurar opcionalmente o fundo da área
+central do terminal. São aceitos fundo limpo, temas predefinidos renderizados em
+CSS e imagem personalizada armazenada no bucket `tenant-branding`. A imagem não
+substitui cabeçalho, rodapé, modais ou estados operacionais e recebe sobreposição
+de contraste para preservar a leitura. Somente `admin_general` pode alterar a
+configuração ou enviar arquivos.
+
+## Variantes de layout do terminal
+
+O administrador geral pode selecionar uma apresentação por tenant sem
+alterar o motor transacional do terminal:
+
+- `classic`: layout central amplo usado originalmente;
+- `operational_dashboard`: painel de operação com acessos recentes da sessão,
+  núcleo de identificação central e atalhos laterais condicionados ao perfil.
+
+As duas variantes compartilham os mesmos estados operacionais, RPCs, controle
+de caixa, permissões, indicadores, temas claro/escuro e comportamento
+online-first/fail-safe. Em telas menores, os painéis laterais são recolhidos
+para preservar a área de atendimento.
+
+Quando a simulação offline está ativa, um aviso persistente informa que não
+há liberação nem fila para sincronização e oferece retorno direto ao modo
+online. No recebimento em dinheiro, o operador pode informar o valor entregue;
+o terminal calcula o troco antes da confirmação e o movimento de caixa preserva
+valor recebido e troco separadamente.
+
+O terminal resolve o turno pela janela configurada em `unit_meal_types`. Quando
+os horários não estiverem preenchidos, o operador deve selecionar explicitamente
+o turno no cabeçalho; a escolha fica bloqueada enquanto houver caixa aberto. Um
+caixa aberto em data operacional anterior bloqueia novos atendimentos e abre
+diretamente a conferência de fechamento, sem encerramento automático.
+
 ## Build
 
 Runtime: Node.js 22+. Dependências e pnpm são fixados em `package.json`/`pnpm-lock.yaml`. Não persistir builds `.next-*` dentro do projeto, pois ampliam o tracing em volumes Windows lentos.
+
+No Next.js 15, o servidor local usa Turbopack e grava artefatos em `.next-dev`,
+enquanto a compilação de produção permanece em `.next`. Essa separação evita
+colisão e remoção de manifests quando uma validação de build ocorre durante o
+desenvolvimento local.
+
+## Modos de funcionamento do caixa
+
+Cada unidade define `cash_shift_mode` com uma das opções:
+
+- `per_meal` (padrão): cada caixa pertence a um tipo de refeição e deve ser
+  fechado antes da troca de turno;
+- `daily`: o mesmo caixa permanece aberto durante as refeições do mesmo dia e
+  deve ser fechado ao final da data operacional.
+
+O modo do caixa não altera a elegibilidade alimentar. O terminal continua
+selecionando um `meal_type_id` para cada consumo, aplicando a janela de horário,
+a categoria, o preço e a unicidade da refeição. No modo diário, apenas a sessão
+financeira é compartilhada entre café, almoço e jantar. A troca de modo exige
+que não existam caixas abertos na unidade, e nenhum caixa pode atravessar a data
+operacional.
+
+### Baixa parcial e caixas simultâneos
+
+Unidades com caixa diário podem realizar uma baixa parcial ao final de cada
+refeição. A operação registra período, refeição, vendas por forma de pagamento,
+valor esperado, valor contado, diferença e eventual recolhimento ao cofre. O
+recolhimento gera uma sangria vinculada à baixa, mas o caixa permanece aberto.
+
+Uma unidade pode operar vários caixas ao mesmo tempo. Cada equipamento deve ter
+um `terminal_id` próprio e persistente, como `TERM-01` e `TERM-02`. A exclusão
+mútua é por `unit_id + terminal_id`: outro caixa da mesma unidade não bloqueia a
+abertura, mas dois operadores não podem assumir simultaneamente o mesmo terminal.

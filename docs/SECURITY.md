@@ -1541,3 +1541,28 @@ deve ser considerada inválida até revisão formal.
 - Escrita direta em caixa foi revogada de `authenticated`.
 - Snapshot e conciliação offline experimentais foram revogados do cliente; indisponibilidade bloqueia a operação.
 - Rotação da credencial PostgreSQL anteriormente exposta permanece obrigatória antes de produção.
+
+## Adendo — Modos de caixa por unidade (21/10/2026)
+
+- A configuração do modo do caixa é restrita a `admin_general`,
+  `operations_director` e `unit_manager`, sempre dentro do escopo da unidade.
+- `finance` e `supervisor` possuem somente leitura dessa configuração.
+- A troca entre `per_meal` e `daily` é rejeitada enquanto houver qualquer caixa
+  aberto na unidade.
+- O modo diário não contorna janela de horário, duplicidade por refeição,
+  cobrança, idempotência ou exigência de caixa aberto.
+- O modo escolhido é copiado para o registro de `cash_shifts`, preservando a
+  interpretação histórica e a auditoria.
+- Caixas diários não podem continuar operando em uma data posterior à abertura.
+
+### Baixa parcial e múltiplos terminais
+
+- Somente o operador que abriu o caixa pode registrar sua baixa parcial.
+- A baixa parcial é permitida apenas em caixa `daily`, aberto na data atual e
+  dentro do escopo autorizado da unidade.
+- A retirada de numerário não pode exceder o valor contado nem o saldo esperado;
+  quando maior que zero, gera uma sangria auditável vinculada.
+- A unidade pode possuir caixas simultâneos, mas um mesmo `terminal_id` permanece
+  exclusivo enquanto seu caixa estiver aberto.
+- Cada equipamento persiste seu próprio identificador; compartilhar o mesmo
+  código entre máquinas causa bloqueio intencional para evitar mistura financeira.

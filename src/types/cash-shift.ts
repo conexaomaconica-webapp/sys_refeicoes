@@ -1,4 +1,34 @@
 export type CashShiftStatus = 'opened' | 'closed';
+export type CashShiftMode = 'per_meal' | 'daily';
+
+export interface UnitCashShiftSetting {
+  unit_id: string;
+  unit_name: string;
+  cash_shift_mode: CashShiftMode;
+  can_manage: boolean;
+}
+
+export interface CashPartialSettlement {
+  id: string;
+  tenant_id: string;
+  unit_id: string;
+  cash_shift_id: string;
+  meal_type_id: string;
+  operator_id: string;
+  period_started_at: string;
+  period_ended_at: string;
+  consumptions_count: number;
+  cash_sales_amount: number;
+  pix_sales_amount: number;
+  card_sales_amount: number;
+  expected_cash_before: number;
+  counted_cash_amount: number;
+  difference_amount: number;
+  withdrawal_amount: number;
+  withdrawal_movement_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
 
 export type CashMovementType =
   | 'initial_float'
@@ -36,7 +66,8 @@ export interface CashShift {
   id: string;
   tenant_id: string;
   unit_id: string;
-  meal_type_id: string;
+  meal_type_id: string | null;
+  cash_shift_mode?: CashShiftMode;
   terminal_id: string;
   operator_id: string;
   status: CashShiftStatus;
