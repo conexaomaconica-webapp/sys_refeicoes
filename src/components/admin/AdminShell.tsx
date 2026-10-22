@@ -10,6 +10,7 @@ import {
   Monitor,
   Palette,
   Tags,
+  Users,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ const navigation: Array<{ href: string; label: string; icon: typeof LayoutDashbo
   { href: '/admin/identidade', label: 'Identidade visual', icon: Palette, roles: ['admin_general'] },
   { href: '/admin/categorias', label: 'Categorias e valores', icon: Tags, roles: ['admin_general', 'operations_director', 'supervisor', 'unit_manager'] },
   { href: '/admin/caixa', label: 'Caixas e turnos', icon: WalletCards, roles: ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'] },
+  { href: '/admin/comensais', label: 'Comensais', icon: Users, roles: ['admin_general', 'operations_director'] },
   { href: '/admin/importacoes', label: 'Importação de comensais', icon: FileSpreadsheet, roles: ['admin_general', 'operations_director'] },
 ];
 

@@ -3,6 +3,18 @@ import 'server-only';
 import { getAdminClient } from '@/lib/supabase/admin';
 import type { CreateStudentParams, Student, StudentAcademicStatus } from '@/types/student';
 
+export interface UpdateStudentAdminParams {
+  tenantId: string;
+  institutionId: string;
+  categoryId: string;
+  registrationNumber: string;
+  fullName: string;
+  course?: string;
+  email?: string;
+  phone?: string;
+  status: StudentAcademicStatus;
+}
+
 /**
  * ==============================================================================
  * Serviço Administrativo de Gestão de Alunos (Server-Side Exclusivo)
@@ -29,6 +41,22 @@ async function validateStaffRequester(requestingUserId: string, tenantId: string
   );
 }
 
+async function validateStudentReferences(
+  tenantId: string,
+  institutionId: string,
+  categoryId: string
+): Promise<string | null> {
+  const adminClient = getAdminClient();
+  const [{ data: institution }, { data: category }] = await Promise.all([
+    adminClient.from('institutions').select('id').eq('id', institutionId).eq('tenant_id', tenantId).maybeSingle(),
+    adminClient.from('student_categories').select('id').eq('id', categoryId).eq('tenant_id', tenantId).maybeSingle(),
+  ]);
+
+  if (!institution) return 'Instituição inválida para este tenant.';
+  if (!category) return 'Categoria inválida para este tenant.';
+  return null;
+}
+
 /**
  * Cadastra um novo aluno no sistema (sem criar obrigatoriamente conta auth).
  */
@@ -44,6 +72,8 @@ export async function createStudentServer(
   }
 
   const adminClient = getAdminClient();
+  const referenceError = await validateStudentReferences(tenantId, institutionId, categoryId);
+  if (referenceError) return { student: null, error: referenceError };
 
   // Verificar se a matrícula já existe na mesma instituição
   const { data: existing } = await adminClient
@@ -76,6 +106,91 @@ export async function createStudentServer(
 
   if (error || !student) {
     return { student: null, error: `Erro ao cadastrar aluno: ${error?.message}` };
+  }
+
+  return { student: student as Student };
+}
+
+/**
+ * Atualiza o cadastro administrativo sem apagar consumos, carteira ou histórico.
+ */
+export async function updateStudentServer(
+  requestingUserId: string,
+  studentId: string,
+  params: UpdateStudentAdminParams
+): Promise<{ student: Student | null; error?: string }> {
+  const isAuthorized = await validateStaffRequester(requestingUserId, params.tenantId);
+  if (!isAuthorized) {
+    return { student: null, error: 'Acesso negado. Apenas administradores ativos do tenant podem editar comensais.' };
+  }
+
+  const referenceError = await validateStudentReferences(
+    params.tenantId,
+    params.institutionId,
+    params.categoryId
+  );
+  if (referenceError) return { student: null, error: referenceError };
+
+  const adminClient = getAdminClient();
+  const { data: current } = await adminClient
+    .from('students')
+    .select('id, category_id')
+    .eq('id', studentId)
+    .eq('tenant_id', params.tenantId)
+    .maybeSingle();
+
+  if (!current) return { student: null, error: 'Comensal não encontrado.' };
+
+  const { data: duplicate } = await adminClient
+    .from('students')
+    .select('id')
+    .eq('institution_id', params.institutionId)
+    .eq('registration_number', params.registrationNumber.trim())
+    .neq('id', studentId)
+    .maybeSingle();
+
+  if (duplicate) {
+    return { student: null, error: `Já existe um comensal com a matrícula "${params.registrationNumber}" nesta instituição.` };
+  }
+
+  const { data: student, error } = await adminClient
+    .from('students')
+    .update({
+      institution_id: params.institutionId,
+      category_id: params.categoryId,
+      registration_number: params.registrationNumber.trim(),
+      full_name: params.fullName.trim(),
+      course: params.course?.trim() || null,
+      email: params.email?.trim() || null,
+      phone: params.phone?.trim() || null,
+      status: params.status,
+    })
+    .eq('id', studentId)
+    .eq('tenant_id', params.tenantId)
+    .select()
+    .single();
+
+  if (error || !student) {
+    return { student: null, error: `Erro ao atualizar comensal: ${error?.message || 'registro não retornado'}` };
+  }
+
+  if (current.category_id !== params.categoryId) {
+    const { error: historyError } = await adminClient.from('student_category_history').insert({
+      tenant_id: params.tenantId,
+      student_id: studentId,
+      previous_category_id: current.category_id,
+      new_category_id: params.categoryId,
+      effective_from: new Date().toISOString().slice(0, 10),
+      reason: 'manual_admin_update',
+      changed_by: requestingUserId,
+    });
+
+    if (historyError) {
+      return {
+        student: student as Student,
+        error: `Cadastro atualizado, mas o histórico da categoria falhou: ${historyError.message}`,
+      };
+    }
   }
 
   return { student: student as Student };

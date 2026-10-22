@@ -42,11 +42,13 @@ export function getTerminalBackgroundStyle(
     PublicTenantBranding,
     'terminal_background_mode' | 'terminal_background_preset' | 'terminal_background_url'
   >,
-  isDark = false
+  isDark = false,
+  imageIsDark: boolean | null = null
 ): CSSProperties {
   if (branding.terminal_background_mode === 'image' && branding.terminal_background_url) {
     const safeUrl = branding.terminal_background_url.replace(/["'\\\r\n]/g, '');
-    const overlay = isDark ? 'rgba(2, 6, 23, 0.68)' : 'rgba(255, 255, 255, 0.68)';
+    const useDarkForeground = imageIsDark ?? isDark;
+    const overlay = useDarkForeground ? 'rgba(2, 6, 23, 0.5)' : 'rgba(255, 255, 255, 0.58)';
     return {
       backgroundImage: `linear-gradient(${overlay}, ${overlay}), url("${safeUrl}")`,
       backgroundPosition: 'center',
@@ -72,4 +74,44 @@ export function getTerminalBackgroundStyle(
   }
 
   return {};
+}
+
+export function detectTerminalImageIsDark(imageUrl: string): Promise<boolean | null> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.decoding = 'async';
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) {
+          resolve(null);
+          return;
+        }
+
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let luminanceTotal = 0;
+        let visiblePixels = 0;
+
+        for (let index = 0; index < pixels.length; index += 4) {
+          if (pixels[index + 3] < 32) continue;
+          luminanceTotal +=
+            pixels[index] * 0.2126 + pixels[index + 1] * 0.7152 + pixels[index + 2] * 0.0722;
+          visiblePixels += 1;
+        }
+
+        resolve(visiblePixels > 0 ? luminanceTotal / visiblePixels < 145 : null);
+      } catch {
+        // Imagens sem CORS continuam utilizáveis; nesse caso o tema é o fallback.
+        resolve(null);
+      }
+    };
+    image.onerror = () => resolve(null);
+    image.src = imageUrl;
+  });
 }

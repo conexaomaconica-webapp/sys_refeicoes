@@ -29,9 +29,10 @@ import {
   CreditCard,
   QrCode,
   Palette,
+  Calculator,
 } from 'lucide-react';
 import { useBrand } from '@/components/branding/BrandProvider';
-import { getTerminalBackgroundStyle } from '@/lib/terminal-background';
+import { detectTerminalImageIsDark, getTerminalBackgroundStyle } from '@/lib/terminal-background';
 import { CashShiftModal } from '@/components/terminal/CashShiftModal';
 import { ShiftReportsModal } from '@/components/terminal/ShiftReportsModal';
 import { cashShiftService } from '@/services/cash-shift.service';
@@ -178,8 +179,90 @@ export function ReceptionTerminal({
   const [visitorAmountReceived, setVisitorAmountReceived] = useState<string>('');
   const isDark = terminalTheme === 'dark';
   const isOperationalDashboard = branding.terminal_layout_variant === 'operational_dashboard';
-  const terminalBackgroundStyle = getTerminalBackgroundStyle(branding, isDark);
+  const [terminalImageIsDark, setTerminalImageIsDark] = useState<boolean | null>(null);
+  const usesTerminalImage = branding.terminal_background_mode === 'image' && Boolean(branding.terminal_background_url);
+  const centralTextIsLight = usesTerminalImage ? terminalImageIsDark ?? isDark : isDark;
+  const terminalBackgroundStyle = getTerminalBackgroundStyle(branding, isDark, terminalImageIsDark);
   const [recentAccesses, setRecentAccesses] = useState<RecentTerminalAccess[]>([]);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calculatorDisplay, setCalculatorDisplay] = useState('0');
+  const [calculatorStoredValue, setCalculatorStoredValue] = useState<number | null>(null);
+  const [calculatorOperation, setCalculatorOperation] = useState<'+' | '-' | '×' | '÷' | null>(null);
+  const [calculatorReplaceDisplay, setCalculatorReplaceDisplay] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const imageUrl = branding.terminal_background_url;
+
+    if (branding.terminal_background_mode !== 'image' || !imageUrl) {
+      setTerminalImageIsDark(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setTerminalImageIsDark(null);
+    void detectTerminalImageIsDark(imageUrl).then((result) => {
+      if (!cancelled) setTerminalImageIsDark(result);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [branding.terminal_background_mode, branding.terminal_background_url]);
+
+  const handleCalculatorKey = useCallback((key: string) => {
+    const calculate = (left: number, right: number, operation: '+' | '-' | '×' | '÷') => {
+      if (operation === '+') return left + right;
+      if (operation === '-') return left - right;
+      if (operation === '×') return left * right;
+      return right === 0 ? null : left / right;
+    };
+
+    if (key === 'C') {
+      setCalculatorDisplay('0');
+      setCalculatorStoredValue(null);
+      setCalculatorOperation(null);
+      setCalculatorReplaceDisplay(false);
+      return;
+    }
+
+    if (/^\d$/.test(key)) {
+      setCalculatorDisplay((current) =>
+        calculatorReplaceDisplay || current === '0' || current === 'Erro' ? key : `${current}${key}`
+      );
+      setCalculatorReplaceDisplay(false);
+      return;
+    }
+
+    if (key === ',') {
+      setCalculatorDisplay((current) => {
+        if (calculatorReplaceDisplay || current === 'Erro') return '0.';
+        return current.includes('.') ? current : `${current}.`;
+      });
+      setCalculatorReplaceDisplay(false);
+      return;
+    }
+
+    const currentValue = Number(calculatorDisplay);
+    if (!Number.isFinite(currentValue)) return;
+
+    if (key === '=') {
+      if (calculatorStoredValue === null || !calculatorOperation) return;
+      const result = calculate(calculatorStoredValue, currentValue, calculatorOperation);
+      setCalculatorDisplay(result === null ? 'Erro' : String(Number(result.toFixed(8))));
+      setCalculatorStoredValue(null);
+      setCalculatorOperation(null);
+      setCalculatorReplaceDisplay(true);
+      return;
+    }
+
+    if (key === '+' || key === '-' || key === '×' || key === '÷') {
+      setCalculatorStoredValue(currentValue);
+      setCalculatorOperation(key);
+      setCalculatorReplaceDisplay(true);
+    }
+  }, [calculatorDisplay, calculatorOperation, calculatorReplaceDisplay, calculatorStoredValue]);
 
   useEffect(() => {
     setTerminalTheme(branding.terminal_theme);
@@ -858,7 +941,7 @@ export function ReceptionTerminal({
         '--terminal-accent-local': branding.terminal_accent_color,
         '--terminal-surface-local': branding.terminal_surface_color,
       } as React.CSSProperties}
-      className={`h-dvh min-h-0 w-full flex flex-col overflow-hidden select-none transition-colors duration-300 ${isDark ? 'terminal-theme-dark' : 'terminal-theme-light'} ${
+      className={`flex min-h-dvh w-full flex-col overflow-x-hidden overflow-y-auto select-none transition-colors duration-300 lg:h-dvh lg:min-h-0 lg:overflow-hidden ${isDark ? 'terminal-theme-dark' : 'terminal-theme-light'} ${
         isDark
           ? activeDisplay?.state === 'ONLINE_CONFIRMED'
             ? 'bg-emerald-950/40 text-emerald-100'
@@ -873,7 +956,7 @@ export function ReceptionTerminal({
       }`}
     >
       {/* 1. BARRA SUPERIOR (HEADER INTEGRADO COM MÁQUINA DE ESTADOS) */}
-      <header className={`grid w-full shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-3 backdrop-blur-md md:px-6 ${isDark ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95 shadow-sm'}`}>
+      <header className={`grid w-full shrink-0 grid-cols-1 items-center gap-2 border-b px-3 py-2 backdrop-blur-md sm:grid-cols-[minmax(0,1fr)_auto] md:px-6 md:py-3 ${isDark ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-white/95 shadow-sm'}`}>
         <div className="flex min-w-0 items-center gap-3">
           {branding.logo_url ? (
             <img /* eslint-disable-line @next/next/no-img-element */ src={branding.logo_url} alt={branding.app_name} className="h-12 w-20 object-contain" />
@@ -921,7 +1004,7 @@ export function ReceptionTerminal({
         </div>
 
         {/* Status de Conexão com Histerese (5 Estados) */}
-        <div className="terminal-scrollbar-hidden flex max-w-[64vw] flex-nowrap items-center gap-2.5 overflow-x-auto">
+        <div className="terminal-scrollbar-hidden flex w-full max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:max-w-[64vw] sm:pb-0">
           {/* Botão de Caixa / PDV (F9) */}
           <button
             onClick={(e) => {
@@ -1103,9 +1186,9 @@ export function ReceptionTerminal({
       )}
 
       {/* 2. ÁREA CENTRAL DE ATENDIMENTO CONTÍNUO */}
-      <div className={isOperationalDashboard ? 'grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-4 xl:grid-cols-[minmax(220px,0.72fr)_minmax(520px,1.55fr)_minmax(230px,0.75fr)]' : 'contents'}>
+      <div className={isOperationalDashboard ? 'grid min-h-[27rem] flex-none grid-cols-1 gap-2 overflow-hidden p-2 sm:gap-3 sm:p-3 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(220px,0.72fr)_minmax(520px,1.55fr)_minmax(230px,0.75fr)] xl:gap-4 xl:p-4' : 'contents'}>
       {isOperationalDashboard && (
-        <aside className={`terminal-scrollbar-hidden hidden min-h-0 flex-col overflow-y-auto rounded-2xl border xl:flex ${isDark ? 'border-slate-700 bg-slate-900/90' : 'border-slate-200 bg-white/95 shadow-md'}`}>
+        <aside className={`hidden min-h-0 flex-col overflow-hidden rounded-2xl border xl:flex ${isDark ? 'border-slate-700 bg-slate-900/90' : 'border-slate-200 bg-white/95 shadow-md'}`}>
           <div className="border-b border-current/10 px-4 py-3 text-left text-sm font-black uppercase tracking-wide">
             Últimos acessos
           </div>
@@ -1135,7 +1218,7 @@ export function ReceptionTerminal({
         </aside>
       )}
       <main
-        className={`terminal-scrollbar-hidden min-h-0 flex-1 overflow-y-auto flex flex-col items-center justify-center text-center w-full transition-[background-image] duration-300 ${isOperationalDashboard ? `rounded-3xl border-2 p-5 md:p-7 ${isDark ? 'bg-slate-900/90 shadow-2xl' : 'bg-white/95 shadow-lg'}` : 'p-4 md:p-6 max-w-4xl mx-auto'}`}
+        className={`flex min-h-[27rem] w-full flex-none flex-col items-center justify-center overflow-hidden text-center transition-[background-image] duration-300 lg:min-h-0 lg:flex-1 ${centralTextIsLight ? 'text-white' : 'text-slate-900'} ${isOperationalDashboard ? `rounded-2xl border-2 p-3 sm:rounded-3xl md:p-4 ${isDark ? 'bg-slate-900/90 shadow-2xl' : 'bg-white/95 shadow-lg'}` : 'mx-auto max-w-4xl p-3 md:p-4'}`}
         style={{
           ...terminalBackgroundStyle,
           ...(isOperationalDashboard ? { borderColor: branding.terminal_primary_color } : {}),
@@ -1143,16 +1226,16 @@ export function ReceptionTerminal({
       >
         {/* ESTADO A: AGUARDANDO MATRÍCULA (TELA PADRÃO) */}
         {!activeDisplay && (
-          <div className="w-full max-w-xl flex flex-col items-center space-y-6 animate-in fade-in duration-200">
-            <div className="w-20 h-20 rounded-full border-2 border-dashed flex items-center justify-center shadow-lg animate-pulse" style={{ borderColor: `${branding.terminal_primary_color}66`, backgroundColor: `${branding.terminal_primary_color}0D` }}>
-              <Zap className="w-8 h-8" style={{ color: branding.terminal_primary_color }} />
+          <div className="flex max-h-full w-full max-w-xl flex-col items-center space-y-3 animate-in fade-in duration-200 2xl:space-y-5">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-dashed shadow-lg animate-pulse 2xl:h-18 2xl:w-18" style={{ borderColor: `${branding.terminal_primary_color}66`, backgroundColor: `${branding.terminal_primary_color}0D` }}>
+              <Zap className="h-6 w-6 2xl:h-8 2xl:w-8" style={{ color: branding.terminal_primary_color }} />
             </div>
 
             <div>
-              <h2 className={`text-3xl md:text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <h2 className={`text-2xl font-black tracking-tight md:text-3xl 2xl:text-4xl ${centralTextIsLight ? 'text-white' : 'text-slate-900'}`}>
                 Aguardando Identificação
               </h2>
-              <p className="text-sm md:text-base text-slate-400 font-light mt-1">
+              <p className={`mt-1 text-sm font-medium md:text-base ${centralTextIsLight ? 'text-slate-200' : 'text-slate-600'}`}>
                 Aproxime o cartão no leitor USB ou digite a matrícula/código:
               </p>
             </div>
@@ -1168,7 +1251,7 @@ export function ReceptionTerminal({
                   disabled={isProcessing || isStaleCashShift || !mealTypeId}
                   placeholder="DIGITE A MATRÍCULA OU CÓDIGO"
                   autoFocus
-                  className={`w-full border-2 text-center font-mono text-xl sm:text-2xl font-bold tracking-widest placeholder:text-slate-400 rounded-2xl py-4 px-6 shadow-lg transition-all outline-none ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}
+                  className={`w-full border-2 text-center font-mono text-lg sm:text-xl 2xl:text-2xl font-bold tracking-widest placeholder:text-slate-400 rounded-2xl py-3 2xl:py-4 px-6 shadow-lg transition-all outline-none ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}
                   style={{ borderColor: `${branding.terminal_primary_color}99` }}
                 />
               </div>
@@ -1177,7 +1260,7 @@ export function ReceptionTerminal({
                 <button
                   type="submit"
                   disabled={isProcessing || isStaleCashShift || !mealTypeId || !inputValue.trim()}
-                  className="sm:col-span-2 py-3.5 px-6 rounded-2xl disabled:brightness-75 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="sm:col-span-2 py-3 px-6 rounded-2xl disabled:brightness-75 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                   style={{
                     backgroundColor: '#C5161D',
                     borderColor: '#C5161D',
@@ -1194,7 +1277,7 @@ export function ReceptionTerminal({
                     setVisitorPaymentPending(true);
                   }}
                   disabled={isProcessing || isStaleCashShift || !mealTypeId}
-                  className="py-3.5 px-4 rounded-2xl disabled:brightness-75 disabled:cursor-not-allowed font-black text-xs uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border"
+                  className="py-3 px-4 rounded-2xl disabled:brightness-75 disabled:cursor-not-allowed font-black text-xs uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border"
                   style={{
                     backgroundColor: '#F4C430',
                     borderColor: '#F4C430',
@@ -1283,7 +1366,7 @@ export function ReceptionTerminal({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+            <div className={`flex items-center gap-2 text-xs font-mono ${centralTextIsLight ? 'text-slate-200' : 'text-slate-600'}`}>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span>Leitor USB / Teclado pronto para recepção contínua</span>
             </div>
@@ -1415,8 +1498,8 @@ export function ReceptionTerminal({
           <div className="border-b border-current/10 px-4 py-3 text-left text-sm font-black uppercase tracking-wide">
             Informações & atalhos
           </div>
-          <div className="space-y-4 p-4 text-left">
-            <div className="flex items-center justify-between gap-3 border-b border-current/10 pb-4">
+          <div className="space-y-3 p-3 text-left">
+            <div className="flex items-center justify-between gap-2 border-b border-current/10 pb-3">
               <span className="text-sm opacity-65">
                 {cashShiftMode === 'daily' ? 'Caixa diário · Refeição' : 'Turno'}:{' '}
                 <strong className="opacity-100">{displayedMealTypeName}</strong>
@@ -1426,25 +1509,31 @@ export function ReceptionTerminal({
               </span>
             </div>
             <p className="text-xs font-bold uppercase tracking-wider opacity-50">Atalhos do operador</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={(event) => { event.stopPropagation(); setShowCashModal(true); }} className={`grid min-h-20 place-items-center rounded-xl border p-2 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                <span><DollarSign className="mx-auto mb-1 h-6 w-6" style={{ color: branding.terminal_primary_color }} />Controle<br />de Caixa</span>
+              </button>
+              <button type="button" onClick={(event) => { event.stopPropagation(); setShowCalculator(true); }} className={`grid min-h-20 place-items-center rounded-xl border p-2 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                <span><Calculator className="mx-auto mb-1 h-6 w-6" style={{ color: branding.terminal_accent_color }} />Calculadora</span>
+              </button>
               {['admin_general', 'operations_director', 'unit_manager', 'supervisor'].includes(operatorRole) && (
-                <Link href="/admin/categorias" onClick={(event) => event.stopPropagation()} className={`grid min-h-28 place-items-center rounded-2xl border p-3 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
-                  <span><Layers className="mx-auto mb-2 h-7 w-7" style={{ color: branding.terminal_primary_color }} />Categorias</span>
+                <Link href="/admin/categorias" onClick={(event) => event.stopPropagation()} className={`grid min-h-20 place-items-center rounded-xl border p-2 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                  <span><Layers className="mx-auto mb-1 h-6 w-6" style={{ color: branding.terminal_primary_color }} />Categorias</span>
                 </Link>
               )}
               {['admin_general', 'operations_director', 'unit_manager', 'supervisor', 'finance'].includes(operatorRole) && (
-                <Link href="/admin/caixa" onClick={(event) => event.stopPropagation()} className={`grid min-h-28 place-items-center rounded-2xl border p-3 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
-                  <span><DollarSign className="mx-auto mb-2 h-7 w-7" style={{ color: branding.terminal_primary_color }} />Auditoria<br />Caixas</span>
+                <Link href="/admin/caixa" onClick={(event) => event.stopPropagation()} className={`grid min-h-20 place-items-center rounded-xl border p-2 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                  <span><DollarSign className="mx-auto mb-1 h-6 w-6" style={{ color: branding.terminal_primary_color }} />Auditoria<br />Caixas</span>
                 </Link>
               )}
               {canSimulateOffline && (
-                <button type="button" onClick={(event) => { event.stopPropagation(); setForceOfflineMode((current) => !current); }} className={`grid min-h-28 place-items-center rounded-2xl border p-3 text-center text-xs font-black transition hover:-translate-y-0.5 ${forceOfflineMode ? 'border-amber-400 bg-amber-400/15 text-amber-500' : isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
-                  <span><Zap className="mx-auto mb-2 h-7 w-7" style={{ color: branding.terminal_primary_color }} />{forceOfflineMode ? 'Teste Offline' : 'Auto Rede'}</span>
+                <button type="button" onClick={(event) => { event.stopPropagation(); setForceOfflineMode((current) => !current); }} className={`grid min-h-20 place-items-center rounded-xl border p-2 text-center text-xs font-black transition hover:-translate-y-0.5 ${forceOfflineMode ? 'border-amber-400 bg-amber-400/15 text-amber-500' : isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                  <span><Zap className="mx-auto mb-1 h-6 w-6" style={{ color: branding.terminal_primary_color }} />{forceOfflineMode ? 'Teste Offline' : 'Auto Rede'}</span>
                 </button>
               )}
               {operatorRole === 'admin_general' && (
-                <Link href="/admin/identidade" onClick={(event) => event.stopPropagation()} className={`grid min-h-28 place-items-center rounded-2xl border p-3 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
-                  <span><Palette className="mx-auto mb-2 h-7 w-7" style={{ color: branding.terminal_accent_color }} />Identidade</span>
+                <Link href="/admin/identidade" onClick={(event) => event.stopPropagation()} className={`grid min-h-20 place-items-center rounded-xl border p-2 text-center text-xs font-black transition hover:-translate-y-0.5 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
+                  <span><Palette className="mx-auto mb-1 h-6 w-6" style={{ color: branding.terminal_accent_color }} />Identidade</span>
                 </Link>
               )}
             </div>
@@ -1454,8 +1543,8 @@ export function ReceptionTerminal({
       </div>
 
       {/* 3. BARRA INFERIOR (MÉTRICAS DO TURNO E ATALHOS) */}
-      <footer className={`grid w-full shrink-0 gap-2 border-t px-4 py-3 backdrop-blur-md md:px-6 ${isDark ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-slate-50/95 shadow-[0_-8px_24px_rgba(15,23,42,0.06)]'}`}>
-        <div className="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
+      <footer className={`grid w-full shrink-0 gap-2 border-t px-3 py-2 backdrop-blur-md sm:px-4 md:px-6 md:py-3 ${isDark ? 'border-white/10 bg-slate-950/95' : 'border-slate-200 bg-slate-50/95 shadow-[0_-8px_24px_rgba(15,23,42,0.06)]'}`}>
+        <div className="grid w-full grid-cols-1 gap-2 min-[390px]:grid-cols-2 sm:gap-3 lg:grid-cols-4">
           {[
             { label: 'Refeições liberadas', value: String(liberadasCount), financial: false },
             { label: 'Dinheiro em caixa', value: `R$ ${expectedDrawerBalance.toFixed(2)}`, financial: true },
@@ -1476,7 +1565,7 @@ export function ReceptionTerminal({
           ))}
         </div>
         {/* Contadores da Operação no Turno (Clicáveis para Relatórios) */}
-        <div className="grid w-full grid-cols-3 items-center gap-2 border-t border-slate-200/70 pt-2 text-center md:grid-cols-6 dark:border-white/10 [&>.h-8]:hidden">
+        <div className="grid w-full grid-cols-2 items-center gap-2 border-t border-slate-200/70 pt-2 text-center min-[390px]:grid-cols-3 md:grid-cols-6 dark:border-white/10 [&>.h-8]:hidden">
           {/* Total Refeições Liberadas */}
           <button
             type="button"
@@ -1617,12 +1706,49 @@ export function ReceptionTerminal({
             <HardDrive className="w-3.5 h-3.5" />
             <span>F8: Diagnóstico</span>
           </button>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowCalculator(true);
+            }}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-400/50 bg-amber-400/15 px-3 py-1.5 font-bold text-amber-300 transition-all hover:bg-amber-400/25"
+          >
+            <Calculator className="h-3.5 w-3.5" />
+            <span>Calculadora</span>
+          </button>
           <span className="hidden sm:inline text-slate-600">|</span>
           <span className="hidden sm:inline">F4: Visitante</span>
           <span className="hidden sm:inline text-slate-600">|</span>
           <span className="hidden sm:inline">ESC: Limpar tela</span>
         </div>
       </footer>
+
+      {showCalculator && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Calculadora">
+          <div onClick={(event) => event.stopPropagation()} className={`w-full max-w-sm rounded-t-3xl border p-4 shadow-2xl sm:rounded-3xl ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 font-black"><Calculator className="h-5 w-5" />Calculadora</div>
+              <button type="button" onClick={() => setShowCalculator(false)} className="rounded-lg border border-current/20 px-3 py-1 text-sm font-bold">Fechar</button>
+            </div>
+            <div className={`mb-3 overflow-hidden rounded-2xl border px-4 py-3 text-right font-mono text-3xl font-black ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-slate-100'}`}>
+              {calculatorDisplay === 'Erro' ? 'Erro' : calculatorDisplay.replace('.', ',')}
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {['C', '÷', '×', '-', '7', '8', '9', '+', '4', '5', '6', '=', '1', '2', '3', '0', ','].map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={(event) => { event.stopPropagation(); handleCalculatorKey(key); }}
+                  className={`min-h-12 rounded-xl border text-lg font-black transition active:scale-95 ${key === '=' ? 'row-span-3 bg-[#C5161D] text-white' : key === '0' ? `col-span-2 ${isDark ? 'border-slate-700 bg-slate-800 hover:bg-slate-700' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}` : key === 'C' ? 'bg-[#F4C430] text-slate-950' : isDark ? 'border-slate-700 bg-slate-800 hover:bg-slate-700' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 4. MODAL DE DIAGNÓSTICO, STORAGE E TELEMETRIA DE REDE (F8) */}
       {showDiagnostics && (

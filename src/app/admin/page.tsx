@@ -45,6 +45,7 @@ export default async function AdminHomePage() {
   const canManageCategories = ['admin_general', 'operations_director', 'supervisor', 'unit_manager'].includes(role);
   const canViewCash = ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'].includes(role);
   const canImportStudents = ['admin_general', 'operations_director'].includes(role);
+  const canManageStudents = ['admin_general', 'operations_director'].includes(role);
 
   const modules = [
     {
@@ -70,6 +71,14 @@ export default async function AdminHomePage() {
       icon: WalletCards,
       enabled: canViewCash,
       accent: 'emerald',
+    },
+    {
+      title: 'Comensais',
+      description: 'Consulta, cadastro manual, correção de categoria e situação cadastral.',
+      href: '/admin/comensais',
+      icon: Users,
+      enabled: canManageStudents,
+      accent: 'amber',
     },
     {
       title: 'Importação de comensais',

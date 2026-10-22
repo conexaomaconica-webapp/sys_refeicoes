@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: 'Sistema de Refeições | Antigravity Platform',
   description: 'Controle de acesso, recarga e consumo de refeições universitárias',
   applicationName: 'SysRefeições',
+  icons: {
+    icon: '/icons/icon-192.png',
+    shortcut: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

@@ -284,8 +284,8 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className={`${theme === 'light' ? 'terminal-light-surface' : ''} bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]`}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm animate-in fade-in duration-150 sm:items-center sm:p-4">
+      <div className={`${theme === 'light' ? 'terminal-light-surface' : ''} flex max-h-dvh w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-slate-700 bg-slate-900 shadow-2xl sm:max-h-[90vh] sm:rounded-2xl`}>
         {/* Modal Header */}
         <div className="bg-slate-800/80 px-6 py-4 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -362,7 +362,7 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
         )}
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+        <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:space-y-5 sm:p-6">
           {!activeShift && !closedResult && (
             /* Formulário de Abertura do Caixa */
             <form onSubmit={handleOpenShift} className="space-y-4">
@@ -531,7 +531,7 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
             /* Visualização do Caixa Ativo com Navegação */
             <div className="space-y-4">
               {/* Barra de Abas */}
-              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <div className="terminal-scrollbar-hidden flex overflow-x-auto bg-slate-950 p-1 rounded-xl border border-slate-800">
                 <button
                   type="button"
                   onClick={() => setTab('summary')}

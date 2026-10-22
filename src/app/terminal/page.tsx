@@ -5,6 +5,7 @@ import { ReceptionTerminal } from '@/components/terminal/ReceptionTerminal';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { Loader2, Lock, User, AlertCircle, ArrowRight, ShieldCheck, Terminal as TerminalIcon } from 'lucide-react';
 import { useBrand } from '@/components/branding/BrandProvider';
+import { cashShiftService } from '@/services/cash-shift.service';
 
 interface ProfileRecord {
   id: string;
@@ -16,7 +17,6 @@ interface ProfileRecord {
 interface UnitRecord {
   id: string;
   name: string;
-  cash_shift_mode: 'per_meal' | 'daily';
 }
 
 interface TenantRecord {
@@ -154,7 +154,7 @@ export default function TerminalPage() {
     // continuam limitados aos vínculos existentes em user_unit_access.
     const { data: unitData, error: unitError } = await supabase
       .from('units')
-      .select('id, name, cash_shift_mode')
+      .select('id, name')
       .eq('tenant_id', profile.tenant_id)
       .eq('status', 'active')
       .order('name', { ascending: true })
@@ -169,6 +169,10 @@ export default function TerminalPage() {
           : 'Operador sem acesso a uma unidade. Solicite o vínculo ao administrador.'
       );
     }
+
+    const unitCashSettings = await cashShiftService.listUnitSettings().catch(() => []);
+    const cashShiftMode =
+      unitCashSettings.find((setting) => setting.unit_id === unit.id)?.cash_shift_mode || 'per_meal';
 
     // 3. Carregar os turnos habilitados da unidade e selecionar pela janela de horário.
     const { data: unitMealData, error: unitMealError } = await supabase
@@ -230,7 +234,7 @@ export default function TerminalPage() {
       mealTypeId: mealType?.id || '',
       mealTypeName: mealType?.name || 'Selecionar turno',
       studentPrice: 3.5,
-      cashShiftMode: unit.cash_shift_mode || 'per_meal',
+      cashShiftMode,
     });
 
     setIsAuthenticated(true);
@@ -244,7 +248,13 @@ export default function TerminalPage() {
     async function checkAuthSession() {
       try {
         const supabase = createBrowserClient();
-        const { data: authData } = await supabase.auth.getUser();
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+
+        if (authError) {
+          await supabase.auth.signOut({ scope: 'local' });
+          setIsAuthenticated(false);
+          return;
+        }
 
         if (authData?.user) {
           await initSessionFromAuthUser(authData.user.id);
