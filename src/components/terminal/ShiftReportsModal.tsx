@@ -18,6 +18,9 @@ import {
   type ShiftApprovedMeal,
   type ShiftBlockedAttempt,
 } from '@/services/shift-reports.service';
+import { useBrand } from '@/components/branding/brand-context';
+import { PrintDocument } from '@/components/printing/PrintDocument';
+import { openPrintDialog } from '@/lib/print-document';
 
 interface ShiftReportsModalProps {
   isOpen: boolean;
@@ -42,9 +45,11 @@ export const ShiftReportsModal: React.FC<ShiftReportsModalProps> = ({
   mealTypeName,
   theme = 'light',
 }) => {
+  const { branding } = useBrand();
   const [tab, setTab] = useState<'approved' | 'blocked'>(initialTab);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [printIssuedAt, setPrintIssuedAt] = useState<Date>(() => new Date());
 
   const [approvedMeals, setApprovedMeals] = useState<ShiftApprovedMeal[]>([]);
   const [blockedAttempts, setBlockedAttempts] = useState<ShiftBlockedAttempt[]>([]);
@@ -133,6 +138,13 @@ export const ShiftReportsModal: React.FC<ShiftReportsModalProps> = ({
     document.body.removeChild(link);
   };
 
+  const handlePrint = () => {
+    setPrintIssuedAt(new Date());
+    openPrintDialog(
+      `${tab === 'approved' ? 'Refeições aprovadas' : 'Tentativas bloqueadas'} - ${unitName || 'Unidade'}`
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -218,7 +230,7 @@ export const ShiftReportsModal: React.FC<ShiftReportsModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition"
               title="Imprimir relatório"
             >
@@ -426,6 +438,90 @@ export const ShiftReportsModal: React.FC<ShiftReportsModalProps> = ({
           </button>
         </div>
       </div>
+
+      <PrintDocument
+        title={tab === 'approved' ? 'Refeições aprovadas no turno' : 'Tentativas bloqueadas no turno'}
+        companyName={branding.app_name}
+        logoUrl={branding.logo_url}
+        primaryColor={branding.primary_color || branding.terminal_primary_color}
+        issuedAt={printIssuedAt}
+        metadata={[
+          { label: 'Unidade', value: unitName || 'Unidade não informada' },
+          { label: 'Turno / refeição', value: mealTypeName || 'Todos' },
+          { label: 'Terminal', value: terminalId || 'Todos' },
+          {
+            label: 'Tipo de relatório',
+            value: tab === 'approved' ? 'Refeições aprovadas' : 'Tentativas bloqueadas',
+          },
+          {
+            label: 'Registros exibidos',
+            value: tab === 'approved' ? filteredApproved.length : filteredBlocked.length,
+          },
+          { label: 'Filtro de busca', value: searchTerm.trim() || 'Sem filtro textual' },
+        ]}
+      >
+        {tab === 'approved' ? (
+          filteredApproved.length > 0 ? (
+            <table>
+              <thead>
+                <tr>
+                  <th>Data e horário</th>
+                  <th>Comensal</th>
+                  <th>Matrícula / código</th>
+                  <th>Categoria</th>
+                  <th>Valor pago</th>
+                  <th>Subsídio</th>
+                  <th>Terminal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredApproved.map((meal) => (
+                  <tr key={meal.id}>
+                    <td>{new Date(meal.consumed_at).toLocaleString('pt-BR')}</td>
+                    <td>{meal.full_name}</td>
+                    <td>{meal.registration_number}</td>
+                    <td>{meal.category_name}</td>
+                    <td>R$ {Number(meal.student_price).toFixed(2)}</td>
+                    <td>R$ {Number(meal.subsidy_amount).toFixed(2)}</td>
+                    <td>{meal.terminal_id || 'Terminal'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="print-empty">Nenhuma refeição aprovada para os filtros aplicados.</div>
+          )
+        ) : filteredBlocked.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Data e horário</th>
+                <th>Comensal</th>
+                <th>Código informado</th>
+                <th>Motivo do bloqueio</th>
+                <th>Método</th>
+                <th>Terminal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBlocked.map((attempt) => (
+                <tr key={attempt.id}>
+                  <td>{new Date(attempt.attempted_at).toLocaleString('pt-BR')}</td>
+                  <td>{attempt.full_name || 'Não identificado'}</td>
+                  <td>{attempt.registration_number}</td>
+                  <td>
+                    {attempt.reason_message} ({attempt.reason_code})
+                  </td>
+                  <td>{attempt.verification_method || 'Leitor'}</td>
+                  <td>{attempt.terminal_id || 'Terminal'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="print-empty">Nenhuma tentativa bloqueada para os filtros aplicados.</div>
+        )}
+      </PrintDocument>
     </div>
   );
 };

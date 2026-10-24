@@ -2,8 +2,8 @@
 
 import React, { useCallback, useState } from 'react';
 import { SplashScreen } from '@/components/branding/SplashScreen';
-import LoginPage from './(auth)/login/page';
-import { useBrand } from '@/components/branding/BrandProvider';
+import { PortalLogin } from '@/components/auth/PortalLogin';
+import { useBrand } from '@/components/branding/brand-context';
 import {
   Layers,
   Database,
@@ -30,7 +30,7 @@ export default function AppEntry() {
 
       {/* 2. Interface Principal: Página de Login preparada com Branding do Tenant */}
       <div className="relative">
-        <LoginPage />
+        <PortalLogin audience="staff" />
 
         {/* Botão flutuante para auditoria técnica da Sprint 1 */}
         <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2">

@@ -77,7 +77,7 @@ SPRINT 8  ──▶ Carteirinha Digital e Identificação Rápida
 SPRINT 9  ──▶ Motor de Consumo Atômico (consume_meal)          [CRÍTICA - P0]
 SPRINT 10 ──▶ Terminal de Recepção e Contingência Offline      [CRÍTICA - P0]
 SPRINT 11 ──▶ Importação Parcial Tolerante e Relatório de Erros [ALTA]
-SPRINT 12 ──▶ PWA do Consumidor (Aluno Parcial e Integral)
+SPRINT 12 ──▶ PWA do Consumidor (Aluno Parcial e Integral)     [IMPLEMENTADA LOCALMENTE]
 SPRINT 13 ──▶ Regularização Retroativa Auditável               [ALTA]
 SPRINT 14 ──▶ Dashboards Operacionais e Monitoramento de Picos
 SPRINT 15 ──▶ Relatórios Fiscais, Subsídios e Faturamento      [ALTA]
@@ -292,9 +292,13 @@ Interface web responsiva e instalável (PWA) para autoatendimento do comensal.
 - Registro do consumo realizado no terminal em tempo real.
 
 ### Critérios de Aceite
-- [ ] PWA instalável no Android e iOS.
-- [ ] Bolsista integral não visualiza nenhuma interface financeira.
-- [ ] Extrato financeiro do aluno parcial reflete exatamente as transações do livro-razão (`wallet_transactions`).
+- [x] PWA instalável no Android e iOS.
+- [x] Bolsista integral não visualiza nenhuma interface financeira.
+- [x] Extrato financeiro do aluno parcial reflete exatamente as transações do livro-razão (`wallet_transactions`).
+
+> Implementação local concluída em 22/10/2026. A publicação depende da aplicação
+> das migrations `20261022000062` e `20261022000063` no ambiente de destino e da
+> homologação com contas reais de consumidores integrais e parciais.
 
 ---
 
@@ -493,3 +497,38 @@ Escopo autorizado: infraestrutura/build, integridade financeira e operacional, c
 - abertura de caixa obrigatória preservada, sem configuração de desativação.
 
 Gate de saída: lint, typecheck, validação estática, build finalizado, smoke test, migration homologada em staging e roteiro funcional registrado.
+
+## Extensão autorizada de branding e acesso — 22/10/2026
+
+- usuário `admin_general` apresentado como Master, sem criação de papel paralelo;
+- fundos configuráveis e separados para login interno e do consumidor;
+- variantes desktop e mobile com fallback responsivo;
+- `/conta/login` dedicado e validação de papel nos dois portais;
+- migration aditiva `20261022000064`, sem desabilitar RLS.
+- carteirinha virtual com dados dinâmicos e fundo configurável por cor ou imagem;
+- fundo da página completa do terminal separado do fundo da área operacional e exclusivo do Master;
+- migrations aditivas `20261022000064` e `20261022000065` aplicadas no ambiente
+  remoto de testes/homologação em 22/10/2026; produção permanece NO-GO.
+
+## Correção autorizada — gestão de acesso dos comensais (22/10/2026)
+
+- fechar a lacuna entre o cadastro do comensal e sua conta no Portal do
+  Consumidor;
+- reutilizar a capacidade `manage_students` para Master, Diretor Operacional,
+  Supervisor e Gerente de Unidade;
+- limitar Supervisor e Gerente às instituições vinculadas;
+- manter identidades administrativas e de consumidor separadas;
+- migration aditiva `20261022000066`, sem desabilitar RLS.
+
+## Entrega complementar autorizada — primeiro acesso do consumidor
+
+- [x] Importação aceita CPF e e-mail, sem criar senha padrão.
+- [x] CPF do manifesto é substituído por HMAC-SHA256 e `last4`.
+- [x] Autoatendimento valida instituição, matrícula, CPF e nome.
+- [x] E-mail importado recebe convite para escolha da senha.
+- [x] Ausência de e-mail ou falha de entrega gera revisão administrativa.
+- [x] Telefone e foto opcional são coletados após confirmar o convite.
+- [x] Recuperação de senha é conduzida pelo consumidor.
+
+A liberação operacional depende da migration `000067`, do segredo
+`CONSUMER_IDENTITY_HMAC_KEY` e da allowlist/template de e-mail do Supabase Auth.

@@ -47,14 +47,14 @@ export async function updateSession(request: NextRequest) {
         from: (table: string) => {
           select: (cols: string) => {
             eq: (col: string, val: string) => {
-              maybeSingle: () => Promise<{ data: { status: string } | null }>;
+              maybeSingle: () => Promise<{ data: { status: string; role: string; must_change_password: boolean } | null }>;
             };
           };
         };
       }
     )
       .from('profiles')
-      .select('status')
+      .select('status,role,must_change_password')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -62,7 +62,12 @@ export async function updateSession(request: NextRequest) {
 
       // Forçar logout e redirecionar para login com mensagem de erro
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = '/login';
+      const isConsumerSurface = ['/consumer', '/conta'].some((prefix) =>
+        request.nextUrl.pathname.startsWith(prefix)
+      );
+      redirectUrl.pathname = isConsumerSurface
+        ? '/conta/login'
+        : '/login';
       redirectUrl.searchParams.set('error', 'account_inactive');
       const response = NextResponse.redirect(redirectUrl);
 
@@ -70,6 +75,18 @@ export async function updateSession(request: NextRequest) {
       response.cookies.delete('sb-access-token');
       response.cookies.delete('sb-refresh-token');
       return response;
+    }
+
+    if (
+      profile &&
+      profile.must_change_password &&
+      !request.nextUrl.pathname.startsWith('/conta/ativar') &&
+      !request.nextUrl.pathname.startsWith('/auth/')
+    ) {
+      const activationUrl = request.nextUrl.clone();
+      activationUrl.pathname = '/conta/ativar';
+      activationUrl.search = '';
+      return NextResponse.redirect(activationUrl);
     }
   }
 

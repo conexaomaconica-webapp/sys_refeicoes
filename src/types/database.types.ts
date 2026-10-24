@@ -69,6 +69,22 @@ export type Database = {
           terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
           terminal_background_url: string | null;
           terminal_layout_variant: 'classic' | 'operational_dashboard';
+          staff_login_background_url: string | null;
+          staff_login_mobile_background_url: string | null;
+          consumer_login_background_url: string | null;
+          consumer_login_mobile_background_url: string | null;
+          consumer_card_background_mode: 'color' | 'image';
+          consumer_card_background_color: string;
+          consumer_card_accent_color: string;
+          consumer_card_background_url: string | null;
+          consumer_card_layout: Json;
+          consumer_card_elements: Json;
+          consumer_card_background_transform: Json;
+          login_element_visibility: Json;
+          login_panel_positions: Json;
+          terminal_page_background_mode: 'color' | 'image';
+          terminal_page_background_color: string;
+          terminal_page_background_url: string | null;
           report_logo_url: string | null;
           report_header_text: string | null;
           report_footer_text: string | null;
@@ -94,6 +110,22 @@ export type Database = {
           terminal_background_preset?: 'institutional' | 'warm' | 'nature' | 'geometric';
           terminal_background_url?: string | null;
           terminal_layout_variant?: 'classic' | 'operational_dashboard';
+          staff_login_background_url?: string | null;
+          staff_login_mobile_background_url?: string | null;
+          consumer_login_background_url?: string | null;
+          consumer_login_mobile_background_url?: string | null;
+          consumer_card_background_mode?: 'color' | 'image';
+          consumer_card_background_color?: string;
+          consumer_card_accent_color?: string;
+          consumer_card_background_url?: string | null;
+          consumer_card_layout?: Json;
+          consumer_card_elements?: Json;
+          consumer_card_background_transform?: Json;
+          login_element_visibility?: Json;
+          login_panel_positions?: Json;
+          terminal_page_background_mode?: 'color' | 'image';
+          terminal_page_background_color?: string;
+          terminal_page_background_url?: string | null;
           report_logo_url?: string | null;
           report_header_text?: string | null;
           report_footer_text?: string | null;
@@ -119,6 +151,22 @@ export type Database = {
           terminal_background_preset?: 'institutional' | 'warm' | 'nature' | 'geometric';
           terminal_background_url?: string | null;
           terminal_layout_variant?: 'classic' | 'operational_dashboard';
+          staff_login_background_url?: string | null;
+          staff_login_mobile_background_url?: string | null;
+          consumer_login_background_url?: string | null;
+          consumer_login_mobile_background_url?: string | null;
+          consumer_card_background_mode?: 'color' | 'image';
+          consumer_card_background_color?: string;
+          consumer_card_accent_color?: string;
+          consumer_card_background_url?: string | null;
+          consumer_card_layout?: Json;
+          consumer_card_elements?: Json;
+          consumer_card_background_transform?: Json;
+          login_element_visibility?: Json;
+          login_panel_positions?: Json;
+          terminal_page_background_mode?: 'color' | 'image';
+          terminal_page_background_color?: string;
+          terminal_page_background_url?: string | null;
           report_logo_url?: string | null;
           report_header_text?: string | null;
           report_footer_text?: string | null;
@@ -211,6 +259,7 @@ export type Database = {
           phone: string | null;
           role: UserRole;
           status: ProfileStatus;
+          must_change_password: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -222,6 +271,7 @@ export type Database = {
           phone?: string | null;
           role: UserRole;
           status?: ProfileStatus;
+          must_change_password?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -233,6 +283,7 @@ export type Database = {
           phone?: string | null;
           role?: UserRole;
           status?: ProfileStatus;
+          must_change_password?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -286,6 +337,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      consumer_first_access_attempts: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          institution_id: string | null;
+          student_id: string | null;
+          request_fingerprint: string;
+          outcome: 'rejected' | 'rate_limited' | 'pending_review' | 'invited' | 'already_linked' | 'delivery_failed';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          institution_id?: string | null;
+          student_id?: string | null;
+          request_fingerprint: string;
+          outcome: 'rejected' | 'rate_limited' | 'pending_review' | 'invited' | 'already_linked' | 'delivery_failed';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          institution_id?: string | null;
+          student_id?: string | null;
+          request_fingerprint?: string;
+          outcome?: 'rejected' | 'rate_limited' | 'pending_review' | 'invited' | 'already_linked' | 'delivery_failed';
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       student_categories: {
         Row: {
           id: string;
@@ -335,6 +416,11 @@ export type Database = {
           email: string | null;
           phone: string | null;
           photo_path: string | null;
+          cpf_lookup_hash: string | null;
+          cpf_last4: string | null;
+          first_access_status: 'unavailable' | 'eligible' | 'pending_review' | 'invited' | 'active' | 'disabled';
+          first_access_requested_at: string | null;
+          consumer_activated_at: string | null;
           status: StudentAcademicStatus;
           created_at: string;
           updated_at: string;
@@ -351,6 +437,11 @@ export type Database = {
           email?: string | null;
           phone?: string | null;
           photo_path?: string | null;
+          cpf_lookup_hash?: string | null;
+          cpf_last4?: string | null;
+          first_access_status?: 'unavailable' | 'eligible' | 'pending_review' | 'invited' | 'active' | 'disabled';
+          first_access_requested_at?: string | null;
+          consumer_activated_at?: string | null;
           status?: StudentAcademicStatus;
           created_at?: string;
           updated_at?: string;
@@ -367,7 +458,45 @@ export type Database = {
           email?: string | null;
           phone?: string | null;
           photo_path?: string | null;
+          cpf_lookup_hash?: string | null;
+          cpf_last4?: string | null;
+          first_access_status?: 'unavailable' | 'eligible' | 'pending_review' | 'invited' | 'active' | 'disabled';
+          first_access_requested_at?: string | null;
+          consumer_activated_at?: string | null;
           status?: StudentAcademicStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      consumer_preferences: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          student_id: string;
+          low_balance_enabled: boolean;
+          low_balance_threshold: number;
+          push_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          student_id: string;
+          low_balance_enabled?: boolean;
+          low_balance_threshold?: number;
+          push_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          student_id?: string;
+          low_balance_enabled?: boolean;
+          low_balance_threshold?: number;
+          push_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -1402,6 +1531,198 @@ export type Database = {
           terminal_layout_variant: 'classic' | 'operational_dashboard';
         }[];
       };
+      get_public_tenant_branding_v6: {
+        Args: {
+          p_slug: string;
+        };
+        Returns: {
+          tenant_id: string;
+          slug: string;
+          app_name: string;
+          logo_url: string | null;
+          splash_background: string | null;
+          splash_animation_type: 'fade_pulse' | 'slide_up' | 'zoom_in' | 'none';
+          splash_duration_ms: number;
+          primary_color: string | null;
+          secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
+          terminal_background_mode: 'none' | 'preset' | 'image';
+          terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url: string | null;
+          terminal_layout_variant: 'classic' | 'operational_dashboard';
+          staff_login_background_url: string | null;
+          staff_login_mobile_background_url: string | null;
+          consumer_login_background_url: string | null;
+          consumer_login_mobile_background_url: string | null;
+          consumer_card_background_mode: 'color' | 'image';
+          consumer_card_background_color: string;
+          consumer_card_accent_color: string;
+          consumer_card_background_url: string | null;
+          terminal_page_background_mode: 'color' | 'image';
+          terminal_page_background_color: string;
+          terminal_page_background_url: string | null;
+        }[];
+      };
+      get_public_tenant_branding_v7: {
+        Args: {
+          p_slug: string;
+        };
+        Returns: {
+          tenant_id: string;
+          slug: string;
+          app_name: string;
+          logo_url: string | null;
+          splash_background: string | null;
+          splash_animation_type: 'fade_pulse' | 'slide_up' | 'zoom_in' | 'none';
+          splash_duration_ms: number;
+          primary_color: string | null;
+          secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
+          terminal_background_mode: 'none' | 'preset' | 'image';
+          terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url: string | null;
+          terminal_layout_variant: 'classic' | 'operational_dashboard';
+          staff_login_background_url: string | null;
+          staff_login_mobile_background_url: string | null;
+          consumer_login_background_url: string | null;
+          consumer_login_mobile_background_url: string | null;
+          consumer_card_background_mode: 'color' | 'image';
+          consumer_card_background_color: string;
+          consumer_card_accent_color: string;
+          consumer_card_background_url: string | null;
+          consumer_card_layout: Json;
+          terminal_page_background_mode: 'color' | 'image';
+          terminal_page_background_color: string;
+          terminal_page_background_url: string | null;
+        }[];
+      };
+      get_public_tenant_branding_v8: {
+        Args: {
+          p_slug: string;
+        };
+        Returns: {
+          tenant_id: string;
+          slug: string;
+          app_name: string;
+          logo_url: string | null;
+          splash_background: string | null;
+          splash_animation_type: 'fade_pulse' | 'slide_up' | 'zoom_in' | 'none';
+          splash_duration_ms: number;
+          primary_color: string | null;
+          secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
+          terminal_background_mode: 'none' | 'preset' | 'image';
+          terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url: string | null;
+          terminal_layout_variant: 'classic' | 'operational_dashboard';
+          staff_login_background_url: string | null;
+          staff_login_mobile_background_url: string | null;
+          consumer_login_background_url: string | null;
+          consumer_login_mobile_background_url: string | null;
+          consumer_card_background_mode: 'color' | 'image';
+          consumer_card_background_color: string;
+          consumer_card_accent_color: string;
+          consumer_card_background_url: string | null;
+          consumer_card_layout: Json;
+          consumer_card_background_transform: Json;
+          terminal_page_background_mode: 'color' | 'image';
+          terminal_page_background_color: string;
+          terminal_page_background_url: string | null;
+        }[];
+      };
+      get_public_tenant_branding_v9: {
+        Args: {
+          p_slug: string;
+        };
+        Returns: {
+          tenant_id: string;
+          slug: string;
+          app_name: string;
+          logo_url: string | null;
+          splash_background: string | null;
+          splash_animation_type: 'fade_pulse' | 'slide_up' | 'zoom_in' | 'none';
+          splash_duration_ms: number;
+          primary_color: string | null;
+          secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
+          terminal_background_mode: 'none' | 'preset' | 'image';
+          terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url: string | null;
+          terminal_layout_variant: 'classic' | 'operational_dashboard';
+          staff_login_background_url: string | null;
+          staff_login_mobile_background_url: string | null;
+          consumer_login_background_url: string | null;
+          consumer_login_mobile_background_url: string | null;
+          consumer_card_background_mode: 'color' | 'image';
+          consumer_card_background_color: string;
+          consumer_card_accent_color: string;
+          consumer_card_background_url: string | null;
+          consumer_card_layout: Json;
+          consumer_card_elements: Json;
+          consumer_card_background_transform: Json;
+          login_element_visibility: Json;
+          terminal_page_background_mode: 'color' | 'image';
+          terminal_page_background_color: string;
+          terminal_page_background_url: string | null;
+        }[];
+      };
+      get_public_tenant_branding_v10: {
+        Args: {
+          p_slug: string;
+        };
+        Returns: {
+          tenant_id: string;
+          slug: string;
+          app_name: string;
+          logo_url: string | null;
+          splash_background: string | null;
+          splash_animation_type: 'fade_pulse' | 'slide_up' | 'zoom_in' | 'none';
+          splash_duration_ms: number;
+          primary_color: string | null;
+          secondary_color: string | null;
+          terminal_theme: 'light' | 'dark';
+          terminal_primary_color: string;
+          terminal_accent_color: string;
+          terminal_surface_color: string;
+          terminal_show_kpi_values: boolean;
+          terminal_background_mode: 'none' | 'preset' | 'image';
+          terminal_background_preset: 'institutional' | 'warm' | 'nature' | 'geometric';
+          terminal_background_url: string | null;
+          terminal_layout_variant: 'classic' | 'operational_dashboard';
+          staff_login_background_url: string | null;
+          staff_login_mobile_background_url: string | null;
+          consumer_login_background_url: string | null;
+          consumer_login_mobile_background_url: string | null;
+          consumer_card_background_mode: 'color' | 'image';
+          consumer_card_background_color: string;
+          consumer_card_accent_color: string;
+          consumer_card_background_url: string | null;
+          consumer_card_layout: Json;
+          consumer_card_elements: Json;
+          consumer_card_background_transform: Json;
+          login_element_visibility: Json;
+          login_panel_positions: Json;
+          terminal_page_background_mode: 'color' | 'image';
+          terminal_page_background_color: string;
+          terminal_page_background_url: string | null;
+        }[];
+      };
       update_tenant_branding_settings: {
         Args: {
           p_app_name: string;
@@ -1427,6 +1748,65 @@ export type Database = {
       update_tenant_terminal_layout: {
         Args: {
           p_layout_variant: 'classic' | 'operational_dashboard';
+        };
+        Returns: Json;
+      };
+      update_tenant_consumer_card_branding: {
+        Args: {
+          p_background_mode: 'color' | 'image';
+          p_background_color: string;
+          p_accent_color: string;
+          p_background_url: string;
+        };
+        Returns: Json;
+      };
+      update_tenant_consumer_card_layout: {
+        Args: {
+          p_layout: Json;
+        };
+        Returns: Json;
+      };
+      update_tenant_consumer_card_background_transform: {
+        Args: {
+          p_transform: Json;
+        };
+        Returns: Json;
+      };
+      update_tenant_consumer_card_elements: {
+        Args: {
+          p_elements: Json;
+        };
+        Returns: Json;
+      };
+      update_tenant_login_element_visibility: {
+        Args: {
+          p_visibility: Json;
+        };
+        Returns: Json;
+      };
+      update_tenant_login_panel_positions: {
+        Args: {
+          p_positions: Json;
+        };
+        Returns: Json;
+      };
+      update_tenant_terminal_page_background: {
+        Args: {
+          p_background_mode: 'color' | 'image';
+          p_background_color: string;
+          p_background_url: string;
+        };
+        Returns: Json;
+      };
+      ensure_my_digital_card: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      upsert_my_consumer_preferences: {
+        Args: {
+          p_low_balance_enabled: boolean;
+          p_low_balance_threshold: number;
+          p_push_enabled: boolean;
         };
         Returns: Json;
       };

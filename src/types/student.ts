@@ -38,6 +38,11 @@ export interface Student {
   email: string | null;
   phone: string | null;
   photo_path: string | null;
+  cpf_lookup_hash?: string | null;
+  cpf_last4?: string | null;
+  first_access_status?: 'unavailable' | 'eligible' | 'pending_review' | 'invited' | 'active' | 'disabled';
+  first_access_requested_at?: string | null;
+  consumer_activated_at?: string | null;
   status: StudentAcademicStatus;
   created_at: string;
   updated_at: string;

@@ -1,5 +1,6 @@
 import 'server-only';
 import { ImportMode, ImportPreviewRow, ImportRowAction, NormalizedImportData } from '@/types/import';
+import { isValidCpf } from '@/lib/security/consumer-identity';
 
 export interface CategoryLookup {
   id: string;
@@ -16,6 +17,7 @@ export interface ExistingStudentLookup {
   course?: string;
   email?: string;
   phone?: string;
+  cpf_lookup_hash?: string;
   status: string;
   updated_at: string;
 }
@@ -91,6 +93,12 @@ export function validateAndClassifyRows(
     }
 
     // C. Validação de Categoria
+    if (!norm.cpf) {
+      warnings.push('CPF ausente: primeiro acesso autônomo ficará indisponível.');
+    } else if (!isValidCpf(norm.cpf)) {
+      errors.push('CPF inválido. Informe os 11 dígitos completos.');
+    }
+
     let resolvedCategory: CategoryLookup | undefined;
     if (norm.category_code) {
       resolvedCategory = categoryMapByCode.get(norm.category_code) || categoryMapByName.get(norm.category_code);
@@ -156,6 +164,7 @@ export function validateAndClassifyRows(
           course: existingStudent.course || '',
           email: existingStudent.email || '',
           phone: existingStudent.phone || '',
+          cpf_lookup_hash: existingStudent.cpf_lookup_hash || null,
           status: existingStudent.status,
           updated_at: existingStudent.updated_at
         };
@@ -175,6 +184,7 @@ export function validateAndClassifyRows(
           (norm.course !== undefined && norm.course !== (existingStudent.course || '')) ||
           (norm.email !== undefined && norm.email !== (existingStudent.email || '')) ||
           (norm.phone !== undefined && norm.phone !== (existingStudent.phone || '')) ||
+          (norm.cpf_lookup_hash !== undefined && norm.cpf_lookup_hash !== (existingStudent.cpf_lookup_hash || '')) ||
           targetStatus !== existingStudent.status;
 
         if (hasDiff) {

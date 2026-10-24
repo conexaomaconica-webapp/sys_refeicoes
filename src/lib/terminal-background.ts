@@ -76,6 +76,32 @@ export function getTerminalBackgroundStyle(
   return {};
 }
 
+export function getTerminalPageBackgroundStyle(
+  branding: Pick<
+    PublicTenantBranding,
+    | 'terminal_page_background_mode'
+    | 'terminal_page_background_color'
+    | 'terminal_page_background_url'
+  >
+): CSSProperties {
+  if (
+    branding.terminal_page_background_mode === 'image' &&
+    branding.terminal_page_background_url
+  ) {
+    const safeUrl = branding.terminal_page_background_url.replace(/["'\\\r\n]/g, '');
+    return {
+      backgroundColor: branding.terminal_page_background_color,
+      backgroundImage: `url("${safeUrl}")`,
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      backgroundSize: 'cover',
+      backgroundAttachment: 'fixed',
+    };
+  }
+
+  return { backgroundColor: branding.terminal_page_background_color };
+}
+
 export function detectTerminalImageIsDark(imageUrl: string): Promise<boolean | null> {
   return new Promise((resolve) => {
     const image = new Image();

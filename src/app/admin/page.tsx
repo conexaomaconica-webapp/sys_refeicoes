@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Palette,
   Settings2,
+  ShieldCheck,
   Tags,
   Users,
   WalletCards,
@@ -45,7 +46,10 @@ export default async function AdminHomePage() {
   const canManageCategories = ['admin_general', 'operations_director', 'supervisor', 'unit_manager'].includes(role);
   const canViewCash = ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'].includes(role);
   const canImportStudents = ['admin_general', 'operations_director'].includes(role);
-  const canManageStudents = ['admin_general', 'operations_director'].includes(role);
+  const canManageStudents = ['admin_general', 'operations_director', 'supervisor', 'unit_manager'].includes(role);
+  const canViewUsers = ['admin_general', 'operations_director', 'unit_manager'].includes(role);
+  const canViewUnits = ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'].includes(role);
+  const canViewFinance = ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'].includes(role);
 
   const modules = [
     {
@@ -54,7 +58,27 @@ export default async function AdminHomePage() {
       href: '/admin/identidade',
       icon: Palette,
       enabled: isGeneralAdmin,
-      accent: 'red',
+    },
+    {
+      title: 'Usuários e acessos',
+      description: 'Convites, perfis internos, status e escopos por unidade ou instituição.',
+      href: '/admin/usuarios',
+      icon: ShieldCheck,
+      enabled: canViewUsers,
+    },
+    {
+      title: 'Unidades',
+      description: 'Restaurantes, localização, instituição responsável e situação operacional.',
+      href: '/admin/unidades',
+      icon: Building2,
+      enabled: canViewUnits,
+    },
+    {
+      title: 'Financeiro',
+      description: 'Carteiras, movimentações, recargas, pagamentos e conciliação financeira.',
+      href: '/admin/financeiro',
+      icon: CreditCard,
+      enabled: canViewFinance,
     },
     {
       title: 'Categorias e valores',
@@ -62,7 +86,6 @@ export default async function AdminHomePage() {
       href: '/admin/categorias',
       icon: Tags,
       enabled: canManageCategories,
-      accent: 'amber',
     },
     {
       title: 'Caixas e turnos',
@@ -70,7 +93,6 @@ export default async function AdminHomePage() {
       href: '/admin/caixa',
       icon: WalletCards,
       enabled: canViewCash,
-      accent: 'emerald',
     },
     {
       title: 'Comensais',
@@ -78,7 +100,6 @@ export default async function AdminHomePage() {
       href: '/admin/comensais',
       icon: Users,
       enabled: canManageStudents,
-      accent: 'amber',
     },
     {
       title: 'Importação de comensais',
@@ -86,36 +107,36 @@ export default async function AdminHomePage() {
       href: '/admin/importacoes',
       icon: FileSpreadsheet,
       enabled: canImportStudents,
-      accent: 'red',
     },
   ];
 
   const upcoming = [
-    { title: 'Usuários e acessos', icon: Users },
-    { title: 'Unidades', icon: Building2 },
-    { title: 'Financeiro', icon: CreditCard },
     { title: 'Relatórios', icon: BarChart3 },
   ];
 
   return (
-    <div className="bg-slate-50 text-slate-900">
+    <div className="text-slate-900">
       <main className="mx-auto max-w-7xl space-y-8 px-5 py-8 md:px-8 md:py-10">
-        <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 p-7 text-white shadow-xl md:p-10">
+        <section
+          className="relative overflow-hidden rounded-3xl p-7 text-white shadow-xl md:p-10"
+          style={{ background: 'linear-gradient(135deg, var(--admin-secondary) 0%, var(--admin-primary) 100%)' }}
+        >
+          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
           <div className="flex flex-col justify-between gap-7 md:flex-row md:items-end">
             <div className="max-w-2xl">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-300">
-                <LayoutDashboard className="h-4 w-4 text-amber-400" />
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white/85">
+                <LayoutDashboard className="h-4 w-4 text-white" />
                 Central de gestão
               </div>
               <h2 className="text-3xl font-black tracking-tight md:text-4xl">Olá, {profile.full_name.split(' ')[0]}.</h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+              <p className="mt-3 max-w-xl text-sm leading-6 text-white/80 md:text-base">
                 Configure a operação e a experiência visual da MA Refeições em um único lugar.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Perfil conectado</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-white/65">Perfil conectado</p>
               <p className="mt-1 font-black">{roleLabels[role]}</p>
-              <p className="mt-0.5 text-xs text-slate-400">{profile.email || user.email}</p>
+              <p className="mt-0.5 text-xs text-white/65">{profile.email || user.email}</p>
             </div>
           </div>
         </section>
@@ -126,19 +147,23 @@ export default async function AdminHomePage() {
               <h2 className="text-xl font-black">Configurações disponíveis</h2>
               <p className="mt-1 text-sm text-slate-500">Os módulos são apresentados conforme as permissões do seu perfil.</p>
             </div>
-            <Settings2 className="h-6 w-6 text-slate-400" />
+            <Settings2 className="h-6 w-6" style={{ color: 'var(--admin-primary)' }} />
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {modules.map((module) => {
               const Icon = module.icon;
-              const colors = module.accent === 'red'
-                ? 'bg-red-50 text-red-700 border-red-100'
-                : module.accent === 'amber'
-                  ? 'bg-amber-50 text-amber-700 border-amber-100'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-100';
               const content = (
                 <>
-                  <div className={`mb-5 grid h-12 w-12 place-items-center rounded-2xl border ${colors}`}><Icon className="h-5 w-5" /></div>
+                  <div
+                    className="mb-5 grid h-12 w-12 place-items-center rounded-2xl border"
+                    style={{
+                      color: 'var(--admin-primary)',
+                      borderColor: 'color-mix(in srgb, var(--admin-primary) 20%, white)',
+                      backgroundColor: 'color-mix(in srgb, var(--admin-primary) 9%, white)',
+                    }}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
                   <h3 className="text-lg font-black">{module.title}</h3>
                   <p className="mt-2 min-h-12 text-sm leading-6 text-slate-500">{module.description}</p>
                   <div className="mt-5 flex items-center justify-between text-sm font-black">
@@ -148,7 +173,7 @@ export default async function AdminHomePage() {
                 </>
               );
               return module.enabled ? (
-                <Link key={module.title} href={module.href} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg">
+                <Link key={module.title} href={module.href} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
                   {content}
                 </Link>
               ) : (
@@ -163,7 +188,7 @@ export default async function AdminHomePage() {
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             {upcoming.map(({ title, icon: Icon }) => (
               <div key={title} className="flex items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 p-4 text-slate-500">
-                <Icon className="h-5 w-5" />
+                <Icon className="h-5 w-5" style={{ color: 'var(--admin-primary)' }} />
                 <div><p className="text-sm font-bold">{title}</p><p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Em breve</p></div>
               </div>
             ))}

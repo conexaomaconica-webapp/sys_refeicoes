@@ -1264,3 +1264,25 @@ Nenhuma implementação deve permitir consumo offline irrestrito sem revisão fo
 ---
 
 **Fim do documento.**
+
+---
+
+## Adendo — PWA do consumidor (Sprint 12)
+
+O PWA registra e armazena somente manifest, ícones, página pública inicial e um
+fallback estático. Páginas autenticadas do consumidor não entram no cache.
+
+Sem conexão, saldo, recarga, QR dinâmico, ledger e histórico não são tratados
+como atuais. O fallback orienta a reconexão e não oferece mutações ou liberações
+offline, preservando a estratégia `ONLINE-FIRST + FAIL-SAFE`.
+
+As imagens públicas de identidade dos portais de login podem ser atendidas pelo
+cache HTTP do Storage, mas o formulário e a autenticação continuam online. A
+presença do fundo visual em cache nunca representa sessão válida nem libera
+acesso ao portal interno ou ao consumidor.
+
+## Primeiro acesso
+
+Solicitação, confirmação por e-mail, ativação e recuperação de senha são
+fluxos estritamente online. O service worker não deve cachear formulários,
+respostas, tokens ou dados de identidade dessas rotas.

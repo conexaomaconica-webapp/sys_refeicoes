@@ -2,6 +2,7 @@ import 'server-only';
 import * as XLSX from 'xlsx';
 import crypto from 'crypto';
 import { NormalizedImportData } from '@/types/import';
+import { normalizeCpf } from '@/lib/security/consumer-identity';
 
 // Limites de Segurança (Decompression Bomb & Limits)
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -12,6 +13,7 @@ export const MAX_CELLS_LIMIT = 100000;
 // Mapa estático de Aliases de Cabeçalho (Sem heurísticas cegas)
 const HEADER_ALIASES: Partial<Record<keyof NormalizedImportData, string[]>> = {
   registration_number: ['matricula', 'matrícula', 'registration_number', 'cod_aluno', 'codigo_aluno', 'ra', 'registro'],
+  cpf: ['cpf', 'cpf_completo', 'documento_cpf'],
   full_name: ['nome', 'nome_completo', 'full_name', 'aluno', 'estudante'],
   category_code: ['categoria', 'category', 'tipo_bolsa', 'tipo_aluno', 'modalidade'],
   course: ['curso', 'course', 'graduacao', 'programa', 'setor', 'curso_ou_setor'],
@@ -163,7 +165,9 @@ export async function parseImportBuffer(
 
     headerRow.forEach((hName, cIdx) => {
       if (hName) {
-        rawData[hName] = row[cIdx] !== undefined ? row[cIdx] : '';
+        rawData[hName] = colMap.get(cIdx) === 'cpf'
+          ? '[DADO PESSOAL PROTEGIDO]'
+          : row[cIdx] !== undefined ? row[cIdx] : '';
       }
     });
 
@@ -171,6 +175,8 @@ export async function parseImportBuffer(
       const rawVal = row[colIdx];
       if (canonicalKey === 'registration_number') {
         normalized.registration_number = normalizeRegistrationNumber(rawVal);
+      } else if (canonicalKey === 'cpf') {
+        normalized.cpf = normalizeCpf(rawVal);
       } else if (canonicalKey === 'full_name') {
         normalized.full_name = String(rawVal || '').trim();
       } else if (canonicalKey === 'category_code') {

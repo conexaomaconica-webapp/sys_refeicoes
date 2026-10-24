@@ -3,7 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Eye, Image as ImageIcon, Loader2, Moon, Palette, Save, Sun, UploadCloud } from 'lucide-react';
-import { useBrand } from '@/components/branding/BrandProvider';
+import { useBrand } from '@/components/branding/brand-context';
+import { LoginBrandingSettings } from '@/components/admin/LoginBrandingSettings';
+import { ConsumerCardBrandingSettings } from '@/components/admin/ConsumerCardBrandingSettings';
+import { TerminalPageBrandingSettings } from '@/components/admin/TerminalPageBrandingSettings';
 import {
   updateTenantBrandingSettings,
   updateTenantTerminalBackground,
@@ -131,12 +134,16 @@ export default function AdminIdentidadePage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-black">Identidade do Terminal</h1>
-              <p className="text-sm text-slate-500">Logomarca oficial, cores, tema e privacidade dos KPIs.</p>
+              <h1 className="text-2xl font-black">Configurações Master</h1>
+              <p className="text-sm text-slate-500">Portais de login, logomarca, cores, terminal e identidade institucional.</p>
             </div>
           </div>
           <Palette className="h-8 w-8" style={{ color: form.terminal_primary_color }} />
         </header>
+
+        <LoginBrandingSettings />
+        <ConsumerCardBrandingSettings />
+        <TerminalPageBrandingSettings />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,.85fr)]">
           <form onSubmit={handleSave} className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

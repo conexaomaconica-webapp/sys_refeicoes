@@ -18,6 +18,29 @@ export interface Tenant {
 export type TerminalBackgroundMode = 'none' | 'preset' | 'image';
 export type TerminalBackgroundPreset = 'institutional' | 'warm' | 'nature' | 'geometric';
 export type TerminalLayoutVariant = 'classic' | 'operational_dashboard';
+export type ConsumerCardBackgroundMode = 'color' | 'image';
+export type TerminalPageBackgroundMode = 'color' | 'image';
+export type ConsumerCardLayoutElement = 'logo' | 'title' | 'qr' | 'photo' | 'name' | 'status' | 'balance';
+export type ConsumerCardElement = ConsumerCardLayoutElement;
+export interface ConsumerCardPosition {
+  x: number;
+  y: number;
+}
+export type ConsumerCardLayout = Record<ConsumerCardLayoutElement, ConsumerCardPosition>;
+export interface ConsumerCardElementPreference {
+  visible: boolean;
+  zoom: number;
+}
+export type ConsumerCardElementPreferences = Record<ConsumerCardElement, ConsumerCardElementPreference>;
+export interface ConsumerCardBackgroundTransform {
+  x: number;
+  y: number;
+  zoom: number;
+}
+export type LoginBrandingElement = 'logo' | 'title' | 'description' | 'marketing' | 'access_links' | 'portal_switch' | 'security_badge';
+export type LoginElementVisibility = Record<LoginBrandingElement, boolean>;
+export type LoginPanelPositionTarget = 'staff_desktop' | 'staff_mobile' | 'consumer_desktop' | 'consumer_mobile';
+export type LoginPanelPositions = Record<LoginPanelPositionTarget, ConsumerCardPosition>;
 
 export interface TenantBranding {
   id: string;
@@ -38,6 +61,22 @@ export interface TenantBranding {
   terminal_background_preset?: TerminalBackgroundPreset;
   terminal_background_url?: string | null;
   terminal_layout_variant?: TerminalLayoutVariant;
+  staff_login_background_url?: string | null;
+  staff_login_mobile_background_url?: string | null;
+  consumer_login_background_url?: string | null;
+  consumer_login_mobile_background_url?: string | null;
+  consumer_card_background_mode?: ConsumerCardBackgroundMode;
+  consumer_card_background_color?: string;
+  consumer_card_accent_color?: string;
+  consumer_card_background_url?: string | null;
+  consumer_card_layout?: ConsumerCardLayout;
+  consumer_card_elements?: ConsumerCardElementPreferences;
+  consumer_card_background_transform?: ConsumerCardBackgroundTransform;
+  login_element_visibility?: LoginElementVisibility;
+  login_panel_positions?: LoginPanelPositions;
+  terminal_page_background_mode?: TerminalPageBackgroundMode;
+  terminal_page_background_color?: string;
+  terminal_page_background_url?: string | null;
   report_logo_url?: string | null;
   report_header_text?: string | null;
   report_footer_text?: string | null;
@@ -68,6 +107,22 @@ export interface PublicTenantBranding {
   terminal_background_preset: TerminalBackgroundPreset;
   terminal_background_url: string | null;
   terminal_layout_variant: TerminalLayoutVariant;
+  staff_login_background_url: string | null;
+  staff_login_mobile_background_url: string | null;
+  consumer_login_background_url: string | null;
+  consumer_login_mobile_background_url: string | null;
+  consumer_card_background_mode: ConsumerCardBackgroundMode;
+  consumer_card_background_color: string;
+  consumer_card_accent_color: string;
+  consumer_card_background_url: string | null;
+  consumer_card_layout: ConsumerCardLayout;
+  consumer_card_elements: ConsumerCardElementPreferences;
+  consumer_card_background_transform: ConsumerCardBackgroundTransform;
+  login_element_visibility: LoginElementVisibility;
+  login_panel_positions: LoginPanelPositions;
+  terminal_page_background_mode: TerminalPageBackgroundMode;
+  terminal_page_background_color: string;
+  terminal_page_background_url: string | null;
 }
 
 export interface UpdateTenantBrandingInput {
@@ -84,6 +139,26 @@ export interface UpdateTenantBrandingInput {
   terminal_background_preset: TerminalBackgroundPreset;
   terminal_background_url: string | null;
   terminal_layout_variant: TerminalLayoutVariant;
+}
+
+export interface UpdateTenantLoginBrandingInput {
+  staff_login_background_url: string | null;
+  staff_login_mobile_background_url: string | null;
+  consumer_login_background_url: string | null;
+  consumer_login_mobile_background_url: string | null;
+}
+
+export interface UpdateTenantConsumerCardBrandingInput {
+  consumer_card_background_mode: ConsumerCardBackgroundMode;
+  consumer_card_background_color: string;
+  consumer_card_accent_color: string;
+  consumer_card_background_url: string | null;
+}
+
+export interface UpdateTenantTerminalPageBrandingInput {
+  terminal_page_background_mode: TerminalPageBackgroundMode;
+  terminal_page_background_color: string;
+  terminal_page_background_url: string | null;
 }
 
 export interface Institution {

@@ -1,29 +1,14 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import type { PublicTenantBranding } from '@/types/tenant';
+import { BrandContext } from '@/components/branding/brand-context';
 import {
   FALLBACK_BRANDING,
   DEFAULT_TENANT_SLUG,
   getPublicTenantBranding,
   normalizeTenantSlug,
 } from '@/services/tenant.service';
-
-interface BrandContextType {
-  branding: PublicTenantBranding;
-  isLoading: boolean;
-  tenantSlug: string;
-  selectTenantSlug: (slug: string) => void;
-  refreshBranding: () => Promise<void>;
-}
-
-const BrandContext = createContext<BrandContextType>({
-  branding: FALLBACK_BRANDING,
-  isLoading: true,
-  tenantSlug: DEFAULT_TENANT_SLUG,
-  selectTenantSlug: () => {},
-  refreshBranding: async () => {},
-});
 
 export interface BrandProviderProps {
   children: React.ReactNode;
@@ -54,6 +39,14 @@ export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
     setIsLoading(true);
     try {
       const data = await getPublicTenantBranding(tenantSlug);
+      if (
+        data.tenant_id === FALLBACK_BRANDING.tenant_id &&
+        tenantSlug !== DEFAULT_TENANT_SLUG
+      ) {
+        window.localStorage.removeItem('ma-refeicoes-tenant-slug');
+        setTenantSlug(DEFAULT_TENANT_SLUG);
+        return;
+      }
       setBranding(data);
     } catch (err) {
       console.warn('[BrandProvider] Falha ao carregar branding:', err);
@@ -97,12 +90,4 @@ export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
   );
 
   return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;
-}
-
-export function useBrand() {
-  const context = useContext(BrandContext);
-  if (!context) {
-    throw new Error('useBrand deve ser utilizado dentro de um BrandProvider');
-  }
-  return context;
 }

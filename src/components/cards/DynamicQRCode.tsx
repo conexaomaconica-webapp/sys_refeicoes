@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ShieldCheck, RefreshCw, AlertCircle, Clock } from 'lucide-react';
+import QRCode from 'qrcode';
 import { generateStudentQRToken } from '@/services/card.service';
 
 interface DynamicQRCodeProps {
@@ -10,83 +11,16 @@ interface DynamicQRCodeProps {
   initialExpiresAt?: string;
   initialTtlSeconds?: number;
   onTokenRefreshed?: (payload: string, expiresAt: string) => void;
-}
-
-/**
- * Gerador determinístico de matriz QR SVG modular para representação visual segura de alta fidelidade
- */
-function renderQRMatrix(text: string, size = 200): React.ReactElement {
-  // Matriz base 25x25 determinística derivada dos bytes do payload
-  const matrixSize = 25;
-  const cells: boolean[][] = Array.from({ length: matrixSize }, () => Array(matrixSize).fill(false));
-
-  // Padrões de posição (cantos superiores esquerdo/direito e canto inferior esquerdo)
-  const drawFinder = (startX: number, startY: number) => {
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 7; c++) {
-        const isBorder = r === 0 || r === 6 || c === 0 || c === 6;
-        const isCenter = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-        cells[startY + r][startX + c] = isBorder || isCenter;
-      }
-    }
-  };
-
-  drawFinder(0, 0);
-  drawFinder(matrixSize - 7, 0);
-  drawFinder(0, matrixSize - 7);
-
-  // Separadores e linhas de sincronização
-  for (let i = 8; i < matrixSize - 8; i++) {
-    cells[6][i] = i % 2 === 0;
-    cells[i][6] = i % 2 === 0;
-  }
-
-  // Preenchimento determinístico com base nos caracteres do payload
-  let charIndex = 0;
-  for (let r = 0; r < matrixSize; r++) {
-    for (let c = 0; c < matrixSize; c++) {
-      // Ignora finders
-      const inTopLeft = r < 8 && c < 8;
-      const inTopRight = r < 8 && c >= matrixSize - 8;
-      const inBottomLeft = r >= matrixSize - 8 && c < 8;
-      if (inTopLeft || inTopRight || inBottomLeft) continue;
-
-      const code = text.charCodeAt(charIndex % text.length);
-      cells[r][c] = ((code + r * 3 + c * 7) % 3 === 0);
-      charIndex++;
-    }
-  }
-
-  const cellSize = size / matrixSize;
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-lg shadow-sm">
-      <rect width={size} height={size} fill="#ffffff" rx="8" />
-      {cells.map((row, r) =>
-        row.map((active, c) =>
-          active ? (
-            <rect
-              key={`${r}-${c}`}
-              x={c * cellSize}
-              y={r * cellSize}
-              width={cellSize + 0.3}
-              height={cellSize + 0.3}
-              fill="#0f172a"
-              rx={cellSize > 6 ? 1.5 : 0}
-            />
-          ) : null
-        )
-      )}
-    </svg>
-  );
+  compact?: boolean;
 }
 
 export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
   cardId,
-  initialPayload = 'MAR:Q1:sample-token-ready',
+  initialPayload = '',
   initialExpiresAt,
   initialTtlSeconds = 90,
   onTokenRefreshed,
+  compact = false,
 }) => {
   const [payload, setPayload] = useState<string>(initialPayload);
   const [expiresAt, setExpiresAt] = useState<Date>(
@@ -95,6 +29,8 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
   const [timeLeft, setTimeLeft] = useState<number>(initialTtlSeconds);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState<boolean>(Boolean(initialPayload));
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const refreshToken = useCallback(async () => {
     setLoading(true);
@@ -105,6 +41,7 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
         setError(rpcError || 'Não foi possível renovar o código.');
       } else {
         setPayload(result.qr_payload);
+        setInitialized(true);
         const newExpiry = new Date(result.expires_at);
         setExpiresAt(newExpiry);
         const remaining = Math.max(0, Math.floor((newExpiry.getTime() - Date.now()) / 1000));
@@ -119,6 +56,35 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
       setLoading(false);
     }
   }, [cardId, onTokenRefreshed]);
+
+  useEffect(() => {
+    if (cardId && !initialPayload) void refreshToken();
+  }, [cardId, initialPayload, refreshToken]);
+
+  useEffect(() => {
+    if (!initialized || !payload) {
+      setQrDataUrl('');
+      return;
+    }
+
+    let cancelled = false;
+    void QRCode.toDataURL(payload, {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 360,
+      color: { dark: '#0f172a', light: '#ffffff' },
+    })
+      .then((dataUrl) => {
+        if (!cancelled) setQrDataUrl(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Não foi possível montar o QR Code.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialized, payload]);
 
   // Contagem regressiva precisa em tempo real
   useEffect(() => {
@@ -146,6 +112,34 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
     return 'text-rose-500 stroke-rose-500 animate-pulse';
   }, [timeLeft]);
 
+  if (compact) {
+    return (
+      <div className="w-full">
+        <div className="relative mx-auto grid aspect-square w-full max-w-[210px] place-items-center rounded-3xl bg-white p-3 shadow-xl">
+          {(loading || !initialized) && (
+            <div className="absolute inset-0 z-10 grid place-items-center rounded-3xl bg-white/85">
+              <RefreshCw className="h-8 w-8 animate-spin text-red-700" />
+            </div>
+          )}
+          {initialized && qrDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={qrDataUrl} alt="QR Code dinÃ¢mico de identificaÃ§Ã£o" className="h-full w-full rounded-xl [image-rendering:pixelated]" />
+          ) : (
+            <div className="h-full w-full" />
+          )}
+        </div>
+        <div className="mt-2 flex items-center justify-center gap-2 text-[11px] font-bold text-white/90">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          <span>QR seguro Â· {timeLeft}s</span>
+          <button type="button" onClick={refreshToken} disabled={loading} className="rounded-full bg-white/15 p-1 hover:bg-white/25" aria-label="Atualizar QR Code">
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+        {error && <p className="mt-1 text-center text-[10px] font-bold text-amber-200">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center p-4 bg-slate-900/90 text-white rounded-2xl border border-slate-800 shadow-xl max-w-sm w-full mx-auto backdrop-blur-md">
       <div className="flex items-center justify-between w-full mb-3 px-1">
@@ -161,12 +155,21 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
 
       {/* Container do QR Code */}
       <div className="relative p-3 bg-white rounded-xl shadow-inner flex items-center justify-center">
-        {loading && (
+        {(loading || !initialized) && (
           <div className="absolute inset-0 bg-white/80 rounded-xl flex items-center justify-center z-10 backdrop-blur-[1px]">
             <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
           </div>
         )}
-        {renderQRMatrix(payload, 180)}
+        {initialized && qrDataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={qrDataUrl}
+            alt="QR Code dinâmico de identificação"
+            className="h-[180px] w-[180px] rounded-lg [image-rendering:pixelated]"
+          />
+        ) : (
+          <div className="h-[180px] w-[180px]" />
+        )}
       </div>
 
       {/* Barra de Progresso do TTL */}

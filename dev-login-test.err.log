@@ -1,0 +1,2 @@
+$ node -r ./scripts/patch-fs.cjs ./node_modules/next/dist/bin/next dev
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Sys_MArefeicoes\.next-dev\cache\webpack\server-development\4.pack.gz_' -> 'C:\Sys_MArefeicoes\.next-dev\cache\webpack\server-development\4.pack.gz'

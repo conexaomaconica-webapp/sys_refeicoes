@@ -51,12 +51,16 @@ export async function initiateRechargeServer(input: InitiateRechargeInput): Prom
   // 2. Buscar dados do aluno e validar categoria
   const { data: student, error: studentError } = await adminClient
     .from('students')
-    .select('id, tenant_id, full_name, email, category_id, student_categories (code, requires_wallet)')
+    .select('id, tenant_id, user_id, status, full_name, email, category_id, student_categories (code, requires_wallet)')
     .eq('id', studentId)
     .single();
 
   if (studentError || !student) {
     return { success: false, error: 'Aluno não encontrado no sistema.' };
+  }
+
+  if (student.user_id !== user.id || student.status !== 'active') {
+    return { success: false, error: 'Acesso negado. A recarga deve pertencer ao consumidor autenticado.' };
   }
 
   const category = (student.student_categories as unknown) as { code: string; requires_wallet: boolean } | null;

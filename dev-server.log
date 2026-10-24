@@ -1,0 +1,12 @@
+   ▲ Next.js 15.5.28 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.16:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+Creating turbopack project { dir: 'C:\\Sys_MArefeicoes', testMode: true }
+ ○ Compiling middleware ...
+ ✓ Compiled middleware in 134.5s
+ ✓ Ready in 297s
+ ○ Compiling /login ...
+ ✓ Compiled /login in 469.2s

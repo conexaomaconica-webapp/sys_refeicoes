@@ -149,7 +149,7 @@ export async function manualAdjustmentServer(
     return { transactionId: null, error: authError || 'Acesso negado.' };
   }
 
-  if (!role || !['admin_general', 'operations_director', 'finance'].includes(role)) {
+  if (!role || !['admin_general', 'finance'].includes(role)) {
     return { transactionId: null, error: 'Acesso negado. Apenas perfil administrativo ou financeiro pode fazer ajustes de saldo.' };
   }
 
@@ -189,7 +189,7 @@ export async function reverseTransactionServer(
     return { reversalTransactionId: null, error: authError || 'Acesso negado.' };
   }
 
-  if (!role || !['admin_general', 'operations_director', 'finance'].includes(role)) {
+  if (!role || !['admin_general', 'finance'].includes(role)) {
     return { reversalTransactionId: null, error: 'Acesso negado. Apenas gestores autorizados podem estornar movimentações.' };
   }
 

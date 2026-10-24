@@ -1,10 +1,13 @@
 # ARCHITECTURE.md
+
 ## Arquitetura Funcional e Técnica
+
 **Projeto:** Sistema de Controle de Refeições  
 **Versão:** 1.0  
 **Status:** Arquitetura inicial do MVP  
 **Stack:** Antigravity + Next.js + Supabase + PWA  
-**Documentos relacionados:**  
+**Documentos relacionados:**
+
 - `SISTEMA_REFEICOES_ANTIGRAVITY_v1_2.md`
 - `PERMISSIONS_v1_2.md`
 - `FLOWS_v1_1.md`
@@ -1649,3 +1652,114 @@ Uma unidade pode operar vários caixas ao mesmo tempo. Cada equipamento deve ter
 um `terminal_id` próprio e persistente, como `TERM-01` e `TERM-02`. A exclusão
 mútua é por `unit_id + terminal_id`: outro caixa da mesma unidade não bloqueia a
 abertura, mas dois operadores não podem assumir simultaneamente o mesmo terminal.
+
+### Revisão antes do fechamento definitivo
+
+O fechamento usa duas etapas na interface: primeiro o operador informa o valor
+contado e revisa um resumo com fundo inicial, vendas em dinheiro, suprimentos,
+sangrias, saldo esperado, total contado e diferença. Somente uma segunda ação
+explícita chama a RPC e encerra o caixa. Se houver sobra ou falta, o motivo é
+obrigatório e fica persistido em `cash_shifts.closing_notes`.
+
+# Adendo — Sprint 12: PWA do consumidor (22/10/2026)
+
+O portal `/consumer` é uma superfície autenticada exclusiva do papel `student`.
+O carregamento ocorre em Server Component com o cliente anônimo da sessão e RLS;
+nenhuma chave privilegiada é enviada ao navegador.
+
+A navegação é derivada da categoria atual:
+
+- consumidores com `requires_wallet = true` recebem início, saldo, recarga,
+  extrato do ledger, carteirinha, refeições e dados;
+- consumidores com `requires_wallet = false` recebem apenas início,
+  carteirinha, refeições e dados.
+
+O portal registra o service worker no layout raiz e usa manifest com
+`display: standalone`. O shell offline não armazena HTML autenticado nem dados
+financeiros: sem conexão, `/offline.html` informa que saldo, QR, recarga e
+históricos exigem reconexão. Eventos autorizados de `meal_consumptions` e
+`wallet_transactions` atualizam o portal via Supabase Realtime e podem gerar
+notificações locais do PWA, conforme preferência do consumidor.
+
+## Portais de login personalizáveis
+
+O acesso foi separado em duas superfícies públicas que compartilham Supabase
+Auth, mas validam o papel após autenticar:
+
+- `/login`: administradores, gestores e operadores; rejeita `student`;
+- `/conta/login`: consumidores; aceita exclusivamente `student`.
+
+O perfil técnico `admin_general` representa o usuário Master na interface e é o
+único autorizado a configurar os fundos dos portais. Cada superfície possui URL
+desktop e mobile; abaixo de 768 px a variante mobile é priorizada e, se ausente,
+a imagem desktop é reutilizada. Formulários permanecem HTML acessível sobre um
+painel de contraste, nunca incorporados à imagem de fundo.
+
+O Master também pode ocultar elementos decorativos compartilhados pelos dois
+portais: logomarca, título, descrição, chamada lateral, links auxiliares, troca
+de portal e selo de segurança. O formulário de autenticação nunca pode ser
+ocultado por branding.
+
+A caixa do formulário possui posição percentual independente para portal
+interno e consumidor, em desktop e mobile. O Master ajusta X/Y sobre a prévia
+de cada fundo; o formulário continua como HTML acessível e permanece limitado
+à área visível da tela.
+
+## Carteirinha e terminal personalizáveis
+
+A carteirinha virtual usa o branding público do tenant somente para cor, destaque
+e imagem de fundo. Nome, matrícula, foto opcional, situação, QR dinâmico e saldo
+são componentes HTML alimentados pela sessão do próprio consumidor. Para
+categorias integrais, a faixa financeira exibe o benefício sem consultar ou
+expor carteira.
+
+O Master pode reposicionar logomarca, título, QR Code, foto, nome, status e faixa
+de saldo por coordenadas percentuais, ocultar cada elemento e ajustar sua escala
+entre 50% e 200%. A mesma composição normalizada alimenta a
+prévia administrativa e a carteirinha real, preservando o comportamento
+responsivo. O fundo nunca incorpora QR, saldo ou dados pessoais: esses elementos
+continuam sendo componentes dinâmicos sobrepostos em tempo de execução.
+
+A imagem de fundo também possui enquadramento independente: posição horizontal,
+posição vertical e ampliação. A imagem permanece recortada dentro da
+carteirinha, e a transformação é aplicada abaixo dos elementos dinâmicos para
+não deslocar QR, foto, nome ou saldo.
+
+O fundo da página completa do `/terminal` possui configuração própria de cor ou
+imagem, exclusiva do Master, e abrange carregamento, autenticação e operação. Ele
+não reutiliza `terminal_background_*`, que continua controlando apenas a área
+operacional conforme suas permissões existentes. Regras operacionais e de caixa
+não mudam.
+
+## Gestão administrativa de comensais e acessos
+
+A capacidade `manage_students` é exercida por `admin_general`,
+`operations_director`, `supervisor` e `unit_manager`. Master e Diretor
+Operacional atuam em todo o tenant. Supervisor e Gerente de Unidade acessam
+somente instituições vinculadas diretamente em `user_institution_access` ou
+indiretamente pelas unidades de `user_unit_access`.
+
+A tela `/admin/comensais` permite cadastrar e editar comensais e provisionar a
+conta separada do Portal do Consumidor. A criação e a manutenção no Supabase
+Auth ocorrem exclusivamente em serviço server-side após nova validação de papel,
+tenant e escopo. A conta criada recebe sempre o papel `student`; o perfil do
+gestor que executa a operação nunca é convertido em consumidor.
+
+## Primeiro acesso do consumidor
+
+O cadastro importado e a identidade de autenticação são etapas separadas. A
+planilha cria ou atualiza o comensal; ela nunca define uma senha. Em
+`/conta/primeiro-acesso`, o consumidor informa instituição, matrícula, CPF e
+nome completo. A validação ocorre exclusivamente no servidor contra a listagem
+oficial.
+
+Quando os dados conferem e existe e-mail previamente importado, o Supabase envia
+um convite para esse endereço. O link leva a `/conta/ativar`, onde o consumidor
+escolhe a senha e pode informar telefone e foto. Sem e-mail, ou se a entrega
+falhar, o registro entra em `pending_review` para conferência em
+`/admin/comensais`.
+
+As rotas `/auth/callback` e `/auth/confirm` concluem os links de autenticação.
+O middleware mantém perfis `student` com `must_change_password = true` restritos
+à ativação. A recuperação posterior usa `/conta/esqueci-senha`;
+administradores podem disparar o e-mail, mas não escolhem a senha.

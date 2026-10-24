@@ -21,6 +21,9 @@ import {
   type ActiveShiftResult,
   type CloseShiftResult,
 } from '@/services/cash-shift.service';
+import { useBrand } from '@/components/branding/brand-context';
+import { PrintDocument } from '@/components/printing/PrintDocument';
+import { openPrintDialog } from '@/lib/print-document';
 import type { CashShift, CashMovement, CashPartialSettlement } from '@/types/cash-shift';
 
 interface CashShiftModalProps {
@@ -43,6 +46,12 @@ interface CashShiftModalProps {
   onExitWithoutShift?: () => void;
 }
 
+interface CashClosingReview {
+  countedAmount: number;
+  expectedAmount: number;
+  differenceAmount: number;
+}
+
 export const CashShiftModal: React.FC<CashShiftModalProps> = ({
   isOpen,
   onClose,
@@ -62,6 +71,7 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
   cashShiftMode = 'per_meal',
   onExitWithoutShift,
 }) => {
+  const { branding } = useBrand();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -69,10 +79,14 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
   // Estado do Caixa
   const [activeShift, setActiveShift] = useState<CashShift | null>(null);
   const [movements, setMovements] = useState<CashMovement[]>([]);
-  const [partialSettlements, setPartialSettlements] = useState<CashPartialSettlement[]>([]);
+  const [partialSettlements, setPartialSettlements] = useState<CashPartialSettlement[]>(
+    []
+  );
 
   // Abas quando aberto: 'summary' | 'supply' | 'bleed' | 'history' | 'close'
-  const [tab, setTab] = useState<'summary' | 'partial' | 'supply' | 'bleed' | 'history' | 'close'>('summary');
+  const [tab, setTab] = useState<
+    'summary' | 'partial' | 'supply' | 'bleed' | 'history' | 'close'
+  >('summary');
 
   // Formulário Abertura
   const [openInitialFloat, setOpenInitialFloat] = useState<string>('100.00');
@@ -84,7 +98,10 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
   // Formulário Fechamento
   const [countedAmount, setCountedAmount] = useState<string>('');
   const [closingNotes, setClosingNotes] = useState<string>('');
+  const [closingReview, setClosingReview] = useState<CashClosingReview | null>(null);
   const [closedResult, setClosedResult] = useState<CloseShiftResult | null>(null);
+  const [closedShiftSnapshot, setClosedShiftSnapshot] = useState<CashShift | null>(null);
+  const [closedAt, setClosedAt] = useState<Date | null>(null);
   const [partialCountedAmount, setPartialCountedAmount] = useState<string>('');
   const [partialWithdrawalAmount, setPartialWithdrawalAmount] = useState<string>('0.00');
   const [partialNotes, setPartialNotes] = useState<string>('');
@@ -94,7 +111,10 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res: ActiveShiftResult = await cashShiftService.getActiveShift(unitId, terminalId);
+      const res: ActiveShiftResult = await cashShiftService.getActiveShift(
+        unitId,
+        terminalId
+      );
       setActiveShift(res.shift);
       setMovements(res.movements || []);
       setPartialSettlements(res.partialSettlements || []);
@@ -102,7 +122,9 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
         onShiftStatusChange(res.shift);
       }
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Falha ao consultar turno do caixa.');
+      setErrorMsg(
+        err instanceof Error ? err.message : 'Falha ao consultar turno do caixa.'
+      );
     } finally {
       setLoading(false);
     }
@@ -113,6 +135,11 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
       setErrorMsg(null);
       setSuccessMsg(null);
       setClosedResult(null);
+      setClosedShiftSnapshot(null);
+      setClosedAt(null);
+      setClosingReview(null);
+      setCountedAmount('');
+      setClosingNotes('');
       setTab(requestCloseShift || staleShift ? 'close' : 'summary');
       fetchActiveShift();
     }
@@ -143,7 +170,11 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
         mealTypeId,
         initialFloat: floatNum,
       });
-      setSuccessMsg(cashShiftMode === 'daily' ? 'Caixa diário aberto com sucesso!' : 'Caixa aberto com sucesso! Turno de PDV iniciado.');
+      setSuccessMsg(
+        cashShiftMode === 'daily'
+          ? 'Caixa diário aberto com sucesso!'
+          : 'Caixa aberto com sucesso! Turno de PDV iniciado.'
+      );
       await fetchActiveShift();
       setTab('summary');
     } catch (err: unknown) {
@@ -166,11 +197,15 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
     }
 
     if (!movementDescription.trim()) {
-      setErrorMsg(`Informe a justificativa / motivo do ${type === 'bleed' ? 'sangria' : 'suprimento'}.`);
+      setErrorMsg(
+        `Informe a justificativa / motivo do ${type === 'bleed' ? 'sangria' : 'suprimento'}.`
+      );
       return;
     }
 
-    const expectedCash = Number(activeShift.expected_cash_balance ?? activeShift.system_expected_balance);
+    const expectedCash = Number(
+      activeShift.expected_cash_balance ?? activeShift.system_expected_balance
+    );
     if (type === 'bleed' && amountNum > expectedCash) {
       setErrorMsg(
         `Valor da sangria (R$ ${amountNum.toFixed(2)}) é maior que o saldo em caixa (R$ ${expectedCash.toFixed(2)}).`
@@ -202,8 +237,9 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
     }
   };
 
-  // Handler de Fechamento de Caixa (Conferência Cega)
-  const handleCloseShift = async (e: React.FormEvent) => {
+  // Prepara o resumo sem encerrar o caixa. A baixa definitiva ocorre somente
+  // depois de o operador revisar os valores e confirmar novamente.
+  const handlePrepareClosingReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeShift) return;
     setErrorMsg(null);
@@ -215,13 +251,43 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
       return;
     }
 
+    const expectedAmount = Number(
+      activeShift.expected_cash_balance ?? activeShift.system_expected_balance ?? 0
+    );
+    const differenceAmount = Math.round((countedNum - expectedAmount) * 100) / 100;
+
+    setClosingReview({ countedAmount: countedNum, expectedAmount, differenceAmount });
+  };
+
+  const handleConfirmCloseShift = async () => {
+    if (!activeShift || !closingReview) return;
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    if (closingReview.differenceAmount !== 0 && !closingNotes.trim()) {
+      setErrorMsg(
+        'Informe o motivo da diferença de caixa antes de confirmar o fechamento.'
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await cashShiftService.closeShift({
         cashShiftId: activeShift.id,
-        countedAmount: countedNum,
+        countedAmount: closingReview.countedAmount,
         closingNotes: closingNotes.trim(),
       });
+      const completedAt = new Date();
+      setClosedShiftSnapshot({
+        ...activeShift,
+        status: 'closed',
+        counted_closing_balance: result.counted_closing_balance,
+        difference_amount: result.difference_amount,
+        closing_notes: closingNotes.trim() || null,
+        closed_at: completedAt.toISOString(),
+      });
+      setClosedAt(completedAt);
       setClosedResult(result);
       setSuccessMsg('Turno de caixa encerrado com sucesso!');
       await fetchActiveShift();
@@ -243,7 +309,9 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
 
     const countedAmount = Number(partialCountedAmount.replace(',', '.'));
     const withdrawalAmount = Number(partialWithdrawalAmount.replace(',', '.'));
-    const expectedAmount = Number(activeShift.expected_cash_balance ?? activeShift.system_expected_balance ?? 0);
+    const expectedAmount = Number(
+      activeShift.expected_cash_balance ?? activeShift.system_expected_balance ?? 0
+    );
 
     if (!Number.isFinite(countedAmount) || countedAmount < 0) {
       setErrorMsg('Informe um valor contado válido.');
@@ -254,7 +322,9 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
       return;
     }
     if (withdrawalAmount > countedAmount || withdrawalAmount > expectedAmount) {
-      setErrorMsg('O recolhimento não pode superar o valor contado nem o saldo esperado.');
+      setErrorMsg(
+        'O recolhimento não pode superar o valor contado nem o saldo esperado.'
+      );
       return;
     }
 
@@ -269,13 +339,17 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
         withdrawalAmount,
         notes: partialNotes.trim(),
       });
-      setSuccessMsg('Baixa parcial registrada. O caixa permanece aberto para a próxima refeição.');
+      setSuccessMsg(
+        'Baixa parcial registrada. O caixa permanece aberto para a próxima refeição.'
+      );
       setPartialCountedAmount('');
       setPartialWithdrawalAmount('0.00');
       setPartialNotes('');
       await fetchActiveShift();
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : 'Erro ao registrar a baixa parcial.');
+      setErrorMsg(
+        error instanceof Error ? error.message : 'Erro ao registrar a baixa parcial.'
+      );
     } finally {
       setLoading(false);
     }
@@ -285,7 +359,9 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm animate-in fade-in duration-150 sm:items-center sm:p-4">
-      <div className={`${theme === 'light' ? 'terminal-light-surface' : ''} flex max-h-dvh w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-slate-700 bg-slate-900 shadow-2xl sm:max-h-[90vh] sm:rounded-2xl`}>
+      <div
+        className={`${theme === 'light' ? 'terminal-light-surface' : ''} flex max-h-dvh w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-slate-700 bg-slate-900 shadow-2xl sm:max-h-[90vh] sm:rounded-2xl`}
+      >
         {/* Modal Header */}
         <div className="bg-slate-800/80 px-6 py-4 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -296,7 +372,11 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                   : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
               }`}
             >
-              {activeShift ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+              {activeShift ? (
+                <Unlock className="w-5 h-5" />
+              ) : (
+                <Lock className="w-5 h-5" />
+              )}
             </div>
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -312,8 +392,11 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                {unitName || 'Unidade'} &bull; {cashShiftMode === 'daily' ? 'Caixa diário' : `Turno: ${mealTypeName || 'Atual'}`} &bull; Terminal:{' '}
-                {terminalId.slice(0, 8)}
+                {unitName || 'Unidade'} &bull;{' '}
+                {cashShiftMode === 'daily'
+                  ? 'Caixa diário'
+                  : `Turno: ${mealTypeName || 'Atual'}`}{' '}
+                &bull; Terminal: {terminalId.slice(0, 8)}
               </p>
             </div>
           </div>
@@ -330,33 +413,55 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
 
         {/* Status Alerts */}
         {staleShift && activeShift && (
-          <div className={`mx-6 mt-4 p-3 border rounded-xl flex items-start gap-2 text-sm font-semibold ${theme === 'light' ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-rose-500/15 border-rose-500/40 text-rose-200'}`}>
+          <div
+            className={`mx-6 mt-4 p-3 border rounded-xl flex items-start gap-2 text-sm font-semibold ${theme === 'light' ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-rose-500/15 border-rose-500/40 text-rose-200'}`}
+          >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              Este caixa foi aberto em {new Date(activeShift.opened_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Confira os valores e feche-o antes de iniciar o turno de hoje.
+              Este caixa foi aberto em{' '}
+              {new Date(activeShift.opened_at).toLocaleDateString('pt-BR', {
+                timeZone: 'America/Sao_Paulo',
+              })}
+              . Confira os valores e feche-o antes de iniciar o turno de hoje.
             </span>
           </div>
         )}
         {requestCloseShift && activeShift && (
-          <div className={`mx-6 mt-4 p-3 border rounded-xl flex items-center gap-2 text-sm font-semibold ${theme === 'light' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-amber-500/15 border-amber-500/30 text-amber-200'}`}>
+          <div
+            className={`mx-6 mt-4 p-3 border rounded-xl flex items-center gap-2 text-sm font-semibold ${theme === 'light' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-amber-500/15 border-amber-500/30 text-amber-200'}`}
+          >
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Para encerrar a sessÃ£o do operador, confira e feche o caixa deste terminal.</span>
+            <span>
+              Para encerrar a sessÃ£o do operador, confira e feche o caixa deste terminal.
+            </span>
           </div>
         )}
         {errorMsg && (
-          <div className={`mx-6 mt-4 p-3 border rounded-xl flex items-center gap-2 text-sm ${theme === 'light' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-rose-500/15 border-rose-500/30 text-rose-300'}`}>
-            <AlertTriangle className={`w-4 h-4 shrink-0 ${theme === 'light' ? 'text-rose-600' : 'text-rose-400'}`} />
+          <div
+            className={`mx-6 mt-4 p-3 border rounded-xl flex items-center gap-2 text-sm ${theme === 'light' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-rose-500/15 border-rose-500/30 text-rose-300'}`}
+          >
+            <AlertTriangle
+              className={`w-4 h-4 shrink-0 ${theme === 'light' ? 'text-rose-600' : 'text-rose-400'}`}
+            />
             <span className="flex-1">{errorMsg}</span>
             {!activeShift && onExitWithoutShift && (
-              <button type="button" onClick={onExitWithoutShift} className="shrink-0 rounded-lg border border-current px-3 py-1.5 text-xs font-bold">
+              <button
+                type="button"
+                onClick={onExitWithoutShift}
+                className="shrink-0 rounded-lg border border-current px-3 py-1.5 text-xs font-bold"
+              >
                 Sair do terminal
               </button>
             )}
           </div>
         )}
         {successMsg && (
-          <div className={`mx-6 mt-4 p-3 border rounded-xl flex items-center gap-2 text-sm ${theme === 'light' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'}`}>
-            <CheckCircle className={`w-4 h-4 shrink-0 ${theme === 'light' ? 'text-emerald-600' : 'text-emerald-400'}`} />
+          <div
+            className={`mx-6 mt-4 p-3 border rounded-xl flex items-center gap-2 text-sm ${theme === 'light' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'}`}
+          >
+            <CheckCircle
+              className={`w-4 h-4 shrink-0 ${theme === 'light' ? 'text-emerald-600' : 'text-emerald-400'}`}
+            />
             <span>{successMsg}</span>
           </div>
         )}
@@ -367,11 +472,22 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
             /* Formulário de Abertura do Caixa */
             <form onSubmit={handleOpenShift} className="space-y-4">
               <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 text-sm text-slate-300 space-y-2">
-                <p className="font-semibold text-slate-200">Requisitos para Abertura de PDV:</p>
+                <p className="font-semibold text-slate-200">
+                  Requisitos para Abertura de PDV:
+                </p>
                 <ul className="list-disc list-inside space-y-1 text-xs text-slate-400">
                   <li>O operador deve conferir as cédulas e moedas físicas na gaveta.</li>
-                  <li>Informe o Fundo de Troco inicial disponível para o {cashShiftMode === 'daily' ? 'dia' : 'turno'}.</li>
-                  <li>Todas as vendas e movimentações serão consolidadas neste caixa {cashShiftMode === 'daily' ? 'até o fechamento no final do dia' : 'durante o turno'}.</li>
+                  <li>
+                    Informe o Fundo de Troco inicial disponível para o{' '}
+                    {cashShiftMode === 'daily' ? 'dia' : 'turno'}.
+                  </li>
+                  <li>
+                    Todas as vendas e movimentações serão consolidadas neste caixa{' '}
+                    {cashShiftMode === 'daily'
+                      ? 'até o fechamento no final do dia'
+                      : 'durante o turno'}
+                    .
+                  </li>
                 </ul>
               </div>
 
@@ -393,7 +509,8 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     ))}
                   </select>
                   <p className="mt-2 text-xs text-slate-400">
-                    Se o turno escolhido estiver incorreto, altere-o aqui antes de abrir o caixa.
+                    Se o turno escolhido estiver incorreto, altere-o aqui antes de abrir o
+                    caixa.
                   </p>
                 </div>
               )}
@@ -403,7 +520,9 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                   Fundo de Troco Inicial (R$)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-3 text-slate-400 font-bold">R$</span>
+                  <span className="absolute left-3 top-3 text-slate-400 font-bold">
+                    R$
+                  </span>
                   <input
                     type="number"
                     step="0.01"
@@ -467,13 +586,17 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
 
                 <div className="grid grid-cols-2 gap-3 text-left pt-2">
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                    <span className="text-[11px] text-slate-400 block">Saldo Esperado (Sistema)</span>
+                    <span className="text-[11px] text-slate-400 block">
+                      Saldo Esperado (Sistema)
+                    </span>
                     <span className="text-base font-bold text-white">
                       R$ {Number(closedResult.system_expected_balance).toFixed(2)}
                     </span>
                   </div>
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                    <span className="text-[11px] text-slate-400 block">Valor Contado (Gaveta)</span>
+                    <span className="text-[11px] text-slate-400 block">
+                      Valor Contado (Gaveta)
+                    </span>
                     <span className="text-base font-bold text-white">
                       R$ {Number(closedResult.counted_closing_balance).toFixed(2)}
                     </span>
@@ -485,8 +608,8 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     closedResult.difference_amount === 0
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                       : closedResult.difference_amount > 0
-                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                      : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                        ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                        : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
                   }`}
                 >
                   <span>Divergência de Caixa:</span>
@@ -494,8 +617,8 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     {closedResult.difference_amount === 0
                       ? 'Caixa Batido (R$ 0,00)'
                       : closedResult.difference_amount > 0
-                      ? `Sobra de R$ ${Number(closedResult.difference_amount).toFixed(2)}`
-                      : `Falta de R$ ${Math.abs(Number(closedResult.difference_amount)).toFixed(2)}`}
+                        ? `Sobra de R$ ${Number(closedResult.difference_amount).toFixed(2)}`
+                        : `Falta de R$ ${Math.abs(Number(closedResult.difference_amount)).toFixed(2)}`}
                   </span>
                 </div>
               </div>
@@ -503,7 +626,11 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() =>
+                    openPrintDialog(
+                      `Comprovante de fechamento - ${unitName || 'Unidade'}`
+                    )
+                  }
                   className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl flex items-center justify-center gap-2 border border-slate-700 transition"
                 >
                   <Printer className="w-4 h-4" />
@@ -616,7 +743,12 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                           theme === 'light' ? 'text-emerald-950' : 'text-white'
                         }`}
                       >
-                        R$ {Number(activeShift.expected_cash_balance ?? activeShift.system_expected_balance ?? 0).toFixed(2)}
+                        R${' '}
+                        {Number(
+                          activeShift.expected_cash_balance ??
+                            activeShift.system_expected_balance ??
+                            0
+                        ).toFixed(2)}
                       </span>
                     </div>
                     <button
@@ -633,7 +765,9 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                   {/* Cards de Métricas do Turno */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-                      <span className="text-[11px] text-slate-400 block font-medium">Troco Inicial</span>
+                      <span className="text-[11px] text-slate-400 block font-medium">
+                        Troco Inicial
+                      </span>
                       <span className="text-base font-bold text-white">
                         R$ {Number(activeShift.initial_float_amount || 0).toFixed(2)}
                       </span>
@@ -649,14 +783,18 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     </div>
 
                     <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-                      <span className="text-[11px] text-slate-400 block font-medium">Suprimentos</span>
+                      <span className="text-[11px] text-slate-400 block font-medium">
+                        Suprimentos
+                      </span>
                       <span className="text-base font-bold text-cyan-400">
                         +R$ {Number(activeShift.total_supplies_amount || 0).toFixed(2)}
                       </span>
                     </div>
 
                     <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-                      <span className="text-[11px] text-slate-400 block font-medium">Sangrias (Cofre)</span>
+                      <span className="text-[11px] text-slate-400 block font-medium">
+                        Sangrias (Cofre)
+                      </span>
                       <span className="text-base font-bold text-rose-400">
                         -R$ {Number(activeShift.total_bleed_amount || 0).toFixed(2)}
                       </span>
@@ -672,97 +810,141 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                       </strong>
                     </span>
                     <span>
-                      Operador: <strong className="text-slate-300">{operatorName || 'Operador'}</strong>
+                      Operador:{' '}
+                      <strong className="text-slate-300">
+                        {operatorName || 'Operador'}
+                      </strong>
                     </span>
                   </div>
                 </div>
               )}
 
               {/* Aba: Sangria */}
-              {tab === 'partial' && (activeShift.cash_shift_mode || cashShiftMode) === 'daily' && (
-                <div className="space-y-4">
-                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
-                    <p className="text-sm font-bold">Baixa parcial de {mealTypeName || 'refeição'}</p>
-                    <p className="mt-1">
-                      Confira a gaveta e, se necessário, recolha dinheiro ao cofre. O caixa continuará aberto para a próxima refeição.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handlePartialSettlement} className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                          Total contado na gaveta (R$)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          required
-                          value={partialCountedAmount}
-                          onChange={(event) => setPartialCountedAmount(event.target.value)}
-                          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg font-bold text-white outline-none focus:border-amber-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                          Recolher para o cofre (R$)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={partialWithdrawalAmount}
-                          onChange={(event) => setPartialWithdrawalAmount(event.target.value)}
-                          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg font-bold text-white outline-none focus:border-amber-500"
-                        />
-                      </div>
+              {tab === 'partial' &&
+                (activeShift.cash_shift_mode || cashShiftMode) === 'daily' && (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
+                      <p className="text-sm font-bold">
+                        Baixa parcial de {mealTypeName || 'refeição'}
+                      </p>
+                      <p className="mt-1">
+                        Confira a gaveta e, se necessário, recolha dinheiro ao cofre. O
+                        caixa continuará aberto para a próxima refeição.
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-400">
-                      Saldo esperado atual: <strong className="text-slate-200">R$ {Number(activeShift.expected_cash_balance ?? activeShift.system_expected_balance ?? 0).toFixed(2)}</strong>. Informe zero no recolhimento para apenas conferir o caixa.
-                    </p>
-                    <div>
-                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                        Observação opcional
-                      </label>
-                      <input
-                        type="text"
-                        value={partialNotes}
-                        onChange={(event) => setPartialNotes(event.target.value)}
-                        placeholder="Ex: Encerramento do café da manhã"
-                        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading || staleShift}
-                      className="w-full rounded-xl bg-amber-400 px-4 py-3.5 font-bold text-slate-950 transition hover:bg-amber-300 disabled:opacity-50"
-                    >
-                      Registrar baixa parcial e manter caixa aberto
-                    </button>
-                  </form>
 
-                  {partialSettlements.length > 0 && (
-                    <div className="space-y-2 border-t border-slate-700 pt-4">
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Baixas realizadas hoje</p>
-                      {partialSettlements.map((settlement) => (
-                        <div key={settlement.id} className="rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-xs text-slate-300">
-                          <div className="flex items-center justify-between gap-3">
-                            <strong>{new Date(settlement.period_ended_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</strong>
-                            <span>Recolhido: R$ {Number(settlement.withdrawal_amount).toFixed(2)}</span>
-                          </div>
-                          <div className="mt-2 grid grid-cols-2 gap-2 text-slate-400 sm:grid-cols-4">
-                            <span>Dinheiro: R$ {Number(settlement.cash_sales_amount).toFixed(2)}</span>
-                            <span>Pix: R$ {Number(settlement.pix_sales_amount).toFixed(2)}</span>
-                            <span>Cartão: R$ {Number(settlement.card_sales_amount).toFixed(2)}</span>
-                            <span>Diferença: R$ {Number(settlement.difference_amount).toFixed(2)}</span>
-                          </div>
+                    <form onSubmit={handlePartialSettlement} className="space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                            Total contado na gaveta (R$)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            required
+                            value={partialCountedAmount}
+                            onChange={(event) =>
+                              setPartialCountedAmount(event.target.value)
+                            }
+                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg font-bold text-white outline-none focus:border-amber-500"
+                          />
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                        <div>
+                          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                            Recolher para o cofre (R$)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={partialWithdrawalAmount}
+                            onChange={(event) =>
+                              setPartialWithdrawalAmount(event.target.value)
+                            }
+                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg font-bold text-white outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Saldo esperado atual:{' '}
+                        <strong className="text-slate-200">
+                          R${' '}
+                          {Number(
+                            activeShift.expected_cash_balance ??
+                              activeShift.system_expected_balance ??
+                              0
+                          ).toFixed(2)}
+                        </strong>
+                        . Informe zero no recolhimento para apenas conferir o caixa.
+                      </p>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                          Observação opcional
+                        </label>
+                        <input
+                          type="text"
+                          value={partialNotes}
+                          onChange={(event) => setPartialNotes(event.target.value)}
+                          placeholder="Ex: Encerramento do café da manhã"
+                          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={loading || staleShift}
+                        className="w-full rounded-xl bg-amber-400 px-4 py-3.5 font-bold text-slate-950 transition hover:bg-amber-300 disabled:opacity-50"
+                      >
+                        Registrar baixa parcial e manter caixa aberto
+                      </button>
+                    </form>
+
+                    {partialSettlements.length > 0 && (
+                      <div className="space-y-2 border-t border-slate-700 pt-4">
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                          Baixas realizadas hoje
+                        </p>
+                        {partialSettlements.map((settlement) => (
+                          <div
+                            key={settlement.id}
+                            className="rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-xs text-slate-300"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <strong>
+                                {new Date(settlement.period_ended_at).toLocaleTimeString(
+                                  'pt-BR',
+                                  { hour: '2-digit', minute: '2-digit' }
+                                )}
+                              </strong>
+                              <span>
+                                Recolhido: R${' '}
+                                {Number(settlement.withdrawal_amount).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-slate-400 sm:grid-cols-4">
+                              <span>
+                                Dinheiro: R${' '}
+                                {Number(settlement.cash_sales_amount).toFixed(2)}
+                              </span>
+                              <span>
+                                Pix: R$ {Number(settlement.pix_sales_amount).toFixed(2)}
+                              </span>
+                              <span>
+                                Cartão: R${' '}
+                                {Number(settlement.card_sales_amount).toFixed(2)}
+                              </span>
+                              <span>
+                                Diferença: R${' '}
+                                {Number(settlement.difference_amount).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               {tab === 'bleed' && (
                 <div className="space-y-4">
@@ -771,8 +953,8 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     <div className="text-xs text-rose-300 space-y-1">
                       <p className="font-bold text-sm">Realizar Sangria de Caixa</p>
                       <p>
-                        Retirada de cédulas em excesso para o cofre da unidade ou malote de segurança,
-                        reduzindo o risco operacional no balcão.
+                        Retirada de cédulas em excesso para o cofre da unidade ou malote
+                        de segurança, reduzindo o risco operacional no balcão.
                       </p>
                     </div>
                   </div>
@@ -825,8 +1007,8 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     <div className="text-xs text-emerald-300 space-y-1">
                       <p className="font-bold text-sm">Adicionar Suprimento de Caixa</p>
                       <p>
-                        Entrada de valores extras durante o turno (ex: reforço de moedas ou troco adicional
-                        trazido da tesouraria).
+                        Entrada de valores extras durante o turno (ex: reforço de moedas
+                        ou troco adicional trazido da tesouraria).
                       </p>
                     </div>
                   </div>
@@ -891,10 +1073,10 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                                 ['visitor_sale', 'meal_sale'].includes(m.type)
                                   ? 'bg-emerald-500/20 text-emerald-400'
                                   : m.type === 'supply'
-                                  ? 'bg-cyan-500/20 text-cyan-400'
-                                  : m.type === 'bleed'
-                                  ? 'bg-rose-500/20 text-rose-400'
-                                  : 'bg-indigo-500/20 text-indigo-400'
+                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                    : m.type === 'bleed'
+                                      ? 'bg-rose-500/20 text-rose-400'
+                                      : 'bg-indigo-500/20 text-indigo-400'
                               }`}
                             >
                               {m.type === 'bleed' ? (
@@ -908,16 +1090,20 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                                 {['visitor_sale', 'meal_sale'].includes(m.type)
                                   ? 'Refeição Visitante (Entrada)'
                                   : m.type === 'supply'
-                                  ? 'Suprimento de Troco'
-                                  : m.type === 'bleed'
-                                  ? 'Sangria de Caixa'
-                                  : m.type === 'initial_float'
-                                  ? 'Fundo de Troco Inicial'
-                                  : 'Ajuste de Caixa'}
+                                    ? 'Suprimento de Troco'
+                                    : m.type === 'bleed'
+                                      ? 'Sangria de Caixa'
+                                      : m.type === 'initial_float'
+                                        ? 'Fundo de Troco Inicial'
+                                        : 'Ajuste de Caixa'}
                               </p>
                               <p className="text-[11px] text-slate-400">
-                                {new Date(m.created_at).toLocaleTimeString('pt-BR')} &bull;{' '}
-                                {m.description || (m.payment_method ? `Pagamento: ${m.payment_method.toUpperCase()}` : '')}
+                                {new Date(m.created_at).toLocaleTimeString('pt-BR')}{' '}
+                                &bull;{' '}
+                                {m.description ||
+                                  (m.payment_method
+                                    ? `Pagamento: ${m.payment_method.toUpperCase()}`
+                                    : '')}
                               </p>
                             </div>
                           </div>
@@ -926,7 +1112,8 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                               m.type === 'bleed' ? 'text-rose-400' : 'text-emerald-400'
                             }`}
                           >
-                            {m.type === 'bleed' ? '-' : '+'}R$ {Number(m.amount).toFixed(2)}
+                            {m.type === 'bleed' ? '-' : '+'}R${' '}
+                            {Number(m.amount).toFixed(2)}
                           </span>
                         </div>
                       ))}
@@ -937,61 +1124,283 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
 
               {/* Aba: Fechamento de Caixa */}
               {tab === 'close' && (
-                <form onSubmit={handleCloseShift} className="space-y-4">
+                <form onSubmit={handlePrepareClosingReview} className="space-y-4">
                   <div className="bg-amber-500/10 border border-amber-500/25 p-4 rounded-xl flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                     <div className="text-xs text-amber-300 space-y-1">
                       <p className="font-bold text-sm">Conferência Cega de Caixa</p>
                       <p>
-                        Conte todas as cédulas e moedas físicas na gaveta e informe o total real abaixo. O
-                        sistema comparará com as vendas e calculará sobras ou faltas para auditoria.
+                        Conte todas as cédulas e moedas físicas na gaveta e informe o
+                        total real abaixo. O sistema comparará com as vendas e calculará
+                        sobras ou faltas para auditoria.
                       </p>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                      Valor Físico Apurado na Gaveta (R$)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-3 text-slate-400 font-bold">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        required
-                        value={countedAmount}
-                        onChange={(e) => setCountedAmount(e.target.value)}
-                        placeholder="0,00"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white text-lg font-bold focus:outline-none focus:border-rose-500"
-                      />
+                  {!closingReview ? (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                          Valor Físico Apurado na Gaveta (R$)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-3 text-slate-400 font-bold">
+                            R$
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            required
+                            value={countedAmount}
+                            onChange={(e) => setCountedAmount(e.target.value)}
+                            placeholder="0,00"
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white text-lg font-bold focus:outline-none focus:border-rose-500"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20 transition disabled:opacity-50"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        Revisar Resumo do Fechamento
+                      </button>
+                    </>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-bold text-white">
+                              Resumo para conferência
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              O caixa continua aberto até a confirmação abaixo.
+                            </p>
+                          </div>
+                          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                            Aguardando confirmação
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-slate-700 bg-slate-950 p-3">
+                            <span className="block text-[11px] text-slate-400">
+                              Fundo inicial
+                            </span>
+                            <span className="font-bold text-white">
+                              R${' '}
+                              {Number(activeShift.initial_float_amount || 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="rounded-xl border border-slate-700 bg-slate-950 p-3">
+                            <span className="block text-[11px] text-slate-400">
+                              Vendas em dinheiro
+                            </span>
+                            <span className="font-bold text-emerald-400">
+                              R${' '}
+                              {Number(
+                                activeShift.counter_cash_amount ??
+                                  activeShift.total_visitors_amount ??
+                                  0
+                              ).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="rounded-xl border border-slate-700 bg-slate-950 p-3">
+                            <span className="block text-[11px] text-slate-400">
+                              Suprimentos
+                            </span>
+                            <span className="font-bold text-cyan-400">
+                              +R${' '}
+                              {Number(activeShift.total_supplies_amount || 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="rounded-xl border border-slate-700 bg-slate-950 p-3">
+                            <span className="block text-[11px] text-slate-400">
+                              Sangrias
+                            </span>
+                            <span className="font-bold text-rose-400">
+                              -R$ {Number(activeShift.total_bleed_amount || 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="rounded-xl border border-slate-700 bg-slate-950 p-3">
+                            <span className="block text-[11px] text-slate-400">
+                              Esperado na gaveta
+                            </span>
+                            <span className="font-bold text-white">
+                              R$ {closingReview.expectedAmount.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="rounded-xl border border-slate-700 bg-slate-950 p-3">
+                            <span className="block text-[11px] text-slate-400">
+                              Total contado
+                            </span>
+                            <span className="font-bold text-white">
+                              R$ {closingReview.countedAmount.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`mt-3 flex items-center justify-between rounded-xl border p-3 text-sm font-bold ${
+                            closingReview.differenceAmount === 0
+                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                              : closingReview.differenceAmount > 0
+                                ? 'border-blue-500/30 bg-blue-500/10 text-blue-400'
+                                : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+                          }`}
+                        >
+                          <span>Resultado da conferência</span>
+                          <span>
+                            {closingReview.differenceAmount === 0
+                              ? 'Caixa batido (R$ 0,00)'
+                              : closingReview.differenceAmount > 0
+                                ? `Sobra de R$ ${closingReview.differenceAmount.toFixed(2)}`
+                                : `Falta de R$ ${Math.abs(closingReview.differenceAmount).toFixed(2)}`}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                          {closingReview.differenceAmount === 0
+                            ? 'Observações do Fechamento (opcional)'
+                            : 'Motivo da Diferença de Caixa (obrigatório)'}
+                        </label>
+                        <textarea
+                          rows={3}
+                          required={closingReview.differenceAmount !== 0}
+                          value={closingNotes}
+                          onChange={(e) => setClosingNotes(e.target.value)}
+                          placeholder={
+                            closingReview.differenceAmount === 0
+                              ? 'Ex: Envelopes de sangria entregues ao gerente.'
+                              : 'Descreva o motivo apurado para a sobra ou falta.'
+                          }
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-slate-500"
+                        />
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClosingReview(null);
+                            setErrorMsg(null);
+                          }}
+                          disabled={loading}
+                          className="flex items-center justify-center gap-2 rounded-xl border border-slate-600 px-4 py-3.5 font-bold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50"
+                        >
+                          <ArrowLeft className="h-5 w-5" />
+                          Corrigir valor contado
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleConfirmCloseShift}
+                          disabled={
+                            loading ||
+                            (closingReview.differenceAmount !== 0 && !closingNotes.trim())
+                          }
+                          className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3.5 font-bold text-white shadow-lg shadow-rose-900/30 transition hover:bg-rose-500 disabled:opacity-50"
+                        >
+                          <Lock className="w-5 h-5" />
+                          {loading
+                            ? 'Fechando caixa...'
+                            : 'Confirmar Fechamento Definitivo'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                      Observações / Justificativas do Fechamento
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={closingNotes}
-                      onChange={(e) => setClosingNotes(e.target.value)}
-                      placeholder="Ex: Turno encerrado sem intercorrências; envelopes de sangria entregues ao gerente."
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-slate-500"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-rose-900/30 transition disabled:opacity-50"
-                  >
-                    <Lock className="w-5 h-5" />
-                    Encerrar e Fechar Turno de Caixa
-                  </button>
+                  )}
                 </form>
               )}
             </div>
+          )}
+
+          {closedResult && closedAt && (
+            <PrintDocument
+              variant="receipt"
+              title="Fechamento de caixa"
+              companyName={branding.app_name}
+              logoUrl={branding.logo_url}
+              primaryColor={branding.primary_color || branding.terminal_primary_color}
+              issuedAt={closedAt}
+              metadata={[
+                { label: 'Unidade', value: unitName || 'Unidade não informada' },
+                {
+                  label: 'Turno / refeição',
+                  value:
+                    cashShiftMode === 'daily'
+                      ? 'Caixa diário'
+                      : mealTypeName || 'Turno atual',
+                },
+                { label: 'Terminal', value: terminalId },
+                { label: 'Operador', value: operatorName || 'Operador atual' },
+                {
+                  label: 'Abertura',
+                  value: closedShiftSnapshot?.opened_at
+                    ? new Date(closedShiftSnapshot.opened_at).toLocaleString('pt-BR')
+                    : 'Não informada',
+                },
+                { label: 'Código do caixa', value: closedResult.shift_id },
+              ]}
+              footerText="Comprovante de fechamento para conferência e auditoria"
+            >
+              <div className="print-value-grid">
+                <div className="print-value-card">
+                  <span>Fundo inicial</span>
+                  <strong>
+                    R$ {Number(closedShiftSnapshot?.initial_float_amount || 0).toFixed(2)}
+                  </strong>
+                </div>
+                <div className="print-value-card">
+                  <span>Vendas em dinheiro</span>
+                  <strong>
+                    R${' '}
+                    {Number(
+                      closedShiftSnapshot?.counter_cash_amount ??
+                        closedShiftSnapshot?.total_visitors_amount ??
+                        0
+                    ).toFixed(2)}
+                  </strong>
+                </div>
+                <div className="print-value-card">
+                  <span>Suprimentos</span>
+                  <strong>
+                    R$ {Number(closedShiftSnapshot?.total_supplies_amount || 0).toFixed(2)}
+                  </strong>
+                </div>
+                <div className="print-value-card">
+                  <span>Sangrias</span>
+                  <strong>
+                    R$ {Number(closedShiftSnapshot?.total_bleed_amount || 0).toFixed(2)}
+                  </strong>
+                </div>
+                <div className="print-value-card">
+                  <span>Esperado pelo sistema</span>
+                  <strong>R$ {Number(closedResult.system_expected_balance).toFixed(2)}</strong>
+                </div>
+                <div className="print-value-card">
+                  <span>Valor contado</span>
+                  <strong>R$ {Number(closedResult.counted_closing_balance).toFixed(2)}</strong>
+                </div>
+              </div>
+
+              <div className="print-highlight">
+                {closedResult.difference_amount === 0
+                  ? 'Caixa conferido sem diferença (R$ 0,00)'
+                  : closedResult.difference_amount > 0
+                    ? `Sobra de R$ ${Number(closedResult.difference_amount).toFixed(2)}`
+                    : `Falta de R$ ${Math.abs(Number(closedResult.difference_amount)).toFixed(2)}`}
+              </div>
+
+              <div className="print-notes">
+                <strong>Observação / motivo da diferença:</strong>{' '}
+                {closingNotes.trim() || 'Sem observações.'}
+              </div>
+            </PrintDocument>
           )}
         </div>
       </div>

@@ -2,11 +2,28 @@
   "name": "Sistema de Controle de Refeições",
   "short_name": "SysRefeições",
   "description": "Controle de acesso, recarga e consumo de refeições universitárias",
-  "start_url": "/",
+  "id": "/consumer",
+  "start_url": "/consumer",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#090d16",
   "theme_color": "#0d1b2a",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "categories": ["food", "finance", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Minha carteirinha",
+      "short_name": "Carteirinha",
+      "url": "/consumer?view=card",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Histórico de refeições",
+      "short_name": "Refeições",
+      "url": "/consumer?view=meals",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",

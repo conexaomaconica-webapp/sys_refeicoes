@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useBrand } from './BrandProvider';
+import { useBrand } from './brand-context';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { Utensils, ShieldCheck } from 'lucide-react';
 

@@ -4,7 +4,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { ReceptionTerminal } from '@/components/terminal/ReceptionTerminal';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { Loader2, Lock, User, AlertCircle, ArrowRight, ShieldCheck, Terminal as TerminalIcon } from 'lucide-react';
-import { useBrand } from '@/components/branding/BrandProvider';
+import { useBrand } from '@/components/branding/brand-context';
+import { getTerminalPageBackgroundStyle } from '@/lib/terminal-background';
 import { cashShiftService } from '@/services/cash-shift.service';
 
 interface ProfileRecord {
@@ -82,6 +83,7 @@ interface TerminalContextState {
 
 export default function TerminalPage() {
   const { branding, selectTenantSlug } = useBrand();
+  const terminalPageBackground = getTerminalPageBackgroundStyle(branding);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loginEmail, setLoginEmail] = useState<string>('');
@@ -359,7 +361,7 @@ export default function TerminalPage() {
   // 1. Tela de Carregamento
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center text-slate-600 space-y-3">
+      <div className="min-h-screen flex flex-col items-center justify-center text-slate-600 space-y-3" style={terminalPageBackground}>
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: branding.terminal_primary_color }} />
         <p className="text-sm font-mono tracking-wider">Verificando Credenciais do Terminal...</p>
       </div>
@@ -369,7 +371,7 @@ export default function TerminalPage() {
   // 2. Tela de Autenticação Segura do Operador (Caso não haja sessão ativa)
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4 text-slate-900">
+      <div className="min-h-screen flex items-center justify-center p-4 text-slate-900" style={terminalPageBackground}>
         <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl space-y-6">
           <div className="flex flex-col items-center text-center space-y-2">
             {branding.logo_url ? (

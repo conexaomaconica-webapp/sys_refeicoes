@@ -1,10 +1,13 @@
 # SECURITY.md
+
 ## Segurança da Aplicação e dos Dados
+
 **Projeto:** Sistema de Controle de Refeições  
 **Versão:** 1.0  
 **Status:** Planejamento de segurança do MVP  
 **Stack:** Next.js + Supabase + PWA  
-**Documentos relacionados:**  
+**Documentos relacionados:**
+
 - `SISTEMA_REFEICOES_ANTIGRAVITY_v1_2.md`
 - `PERMISSIONS_v1_2.md`
 - `FLOWS_v1_1.md`
@@ -1566,3 +1569,78 @@ deve ser considerada inválida até revisão formal.
   exclusivo enquanto seu caixa estiver aberto.
 - Cada equipamento persiste seu próprio identificador; compartilhar o mesmo
   código entre máquinas causa bloqueio intencional para evitar mistura financeira.
+
+### Justificativa de divergência no fechamento
+
+- A tela apresenta o resumo antes da ação definitiva, sem alterar o caixa nessa
+  etapa de conferência.
+- `close_cash_shift(...)` recalcula a diferença sob lock e rejeita sobra ou falta
+  sem motivo não vazio, protegendo a regra mesmo fora do frontend.
+- A validação não altera RLS, escopos de unidade nem a exigência de que o operador
+  seja responsável pelo caixa ao usar a wrapper operacional.
+
+## Adendo — Segurança do PWA do consumidor
+
+- `/consumer` exige perfil ativo com papel `student`; outros perfis são
+  redirecionados para suas superfícies autorizadas.
+- Toda leitura pessoal depende simultaneamente de tenant e de
+  `students.user_id = auth.uid()`.
+- A criação de recarga valida que o `student_id` pertence ao usuário autenticado
+  antes de contatar qualquer gateway.
+- Bolsistas integrais não acessam saldo, ledger, pagamentos ou recargas nem pela
+  interface nem pelas policies de leitura.
+- Preferências e emissão da própria carteirinha usam RPCs `SECURITY DEFINER` com
+  `search_path` fixo e autorização interna; não há mutação direta liberada.
+- O service worker não armazena páginas autenticadas, QR, saldo, extrato ou
+  histórico. O fallback offline contém somente instrução estática de reconexão.
+
+## Adendo — Configurações Master dos portais de login
+
+- `admin_general` é apresentado como Master e continua sendo o único perfil com
+  acesso à tela e à RPC de configuração dos fundos de login.
+- A autorização é validada novamente em `update_tenant_login_branding(...)`; a
+  ocultação do menu não é considerada controle suficiente.
+- O upload aceita apenas PNG, JPEG e WebP, com limite de 5 MB, e usa o diretório
+  do próprio tenant no bucket `tenant-branding`.
+- Os fundos são dados públicos de identidade visual. Nenhuma informação de
+  sessão, perfil ou consumidor é embutida nas URLs ou nas imagens.
+- O layout público da carteirinha contém somente coordenadas visuais. A RPC de
+  posicionamento revalida perfil Master ativo, tenant e limites numéricos; QR,
+  foto, nome e saldo não são persistidos no branding.
+- O enquadramento do fundo expõe apenas três números (`x`, `y`, `zoom`),
+  normalizados no cliente e novamente validados na RPC Master-only.
+- O portal interno rejeita `student`; o portal do consumidor rejeita qualquer
+  outro papel e encerra imediatamente a sessão incompatível.
+
+## Adendo — provisionamento de acesso do consumidor
+
+- A chave `SUPABASE_SERVICE_ROLE_KEY` permanece restrita ao servidor.
+- Criar ou atualizar uma conta de consumidor exige sessão ativa, a capacidade
+  `manage_students`, igualdade de tenant e escopo sobre a instituição.
+- A identidade criada recebe invariavelmente `profiles.role = 'student'` e é
+  vinculada por `students.user_id`; uma identidade não pode atender dois
+  comensais.
+- Supervisor e Gerente não ampliam o próprio escopo ao provisionar contas.
+- Desativar o acesso altera o status do perfil, preservando cadastro, carteira,
+  consumos e livro-razão.
+
+## Segurança do primeiro acesso
+
+- Senhas provisórias derivadas de CPF ou matrícula são proibidas.
+- `CONSUMER_IDENTITY_HMAC_KEY` deve ser um segredo estável de pelo menos 32
+  caracteres, diferente por ambiente e sem prefixo `NEXT_PUBLIC_`.
+- O CPF recebido é validado e transformado em HMAC no servidor; não entra nos
+  logs de tentativa nem retorna ao navegador.
+- A resposta pública é idêntica para sucesso, divergência, conta existente e
+  análise manual, reduzindo enumeração de cadastros.
+- Tentativas são limitadas por fingerprint HMAC e auditadas sem CPF ou
+  matrícula em claro.
+- O convite é enviado somente ao e-mail da listagem oficial. Foto e telefone
+  são aceitos apenas depois da confirmação do link.
+- Gestores podem solicitar um e-mail de recuperação, mas nunca definir ou
+  conhecer a nova senha.
+
+No Supabase Auth, as URLs `/auth/callback` e `/auth/confirm` devem constar na
+allowlist. O template de convite deve preservar o `redirectTo` fornecido pelo
+servidor ou apontar para `/auth/confirm` com `token_hash`, `type=invite` e
+`next=/conta/ativar`.

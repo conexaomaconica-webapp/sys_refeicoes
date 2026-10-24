@@ -33,10 +33,11 @@ export async function GET() {
 
   const workbook = XLSX.utils.book_new();
   const dinersSheet = XLSX.utils.aoa_to_sheet([
-    ['matricula', 'nome', 'categoria', 'curso_ou_setor', 'email', 'telefone', 'status'],
-    ['000001', 'Comensal Exemplo', firstCategory, 'Curso ou setor', 'pessoa.exemplo@instituicao.edu.br', '(98) 99999-0000', 'ativo'],
+    ['matricula', 'cpf', 'nome', 'categoria', 'curso_ou_setor', 'email', 'telefone', 'status'],
+    ['000001', '52998224725', 'Comensal Exemplo', firstCategory, 'Curso ou setor', 'pessoa.exemplo@instituicao.edu.br', '(98) 99999-0000', 'ativo'],
   ]);
   dinersSheet['!cols'] = [
+    { wch: 16 },
     { wch: 16 },
     { wch: 34 },
     { wch: 24 },
@@ -49,6 +50,7 @@ export async function GET() {
   const instructionsSheet = XLSX.utils.aoa_to_sheet([
     ['Campo', 'Obrigatório', 'Orientação'],
     ['matricula', 'Sim', 'Matrícula acadêmica ou funcional, única por instituição. Zeros à esquerda são preservados.'],
+    ['cpf', 'Para primeiro acesso', 'Informe os 11 dígitos. O sistema protege o CPF com HMAC e não o exibe no preview.'],
     ['nome', 'Sim', 'Nome completo, com no mínimo 3 caracteres.'],
     ['categoria', 'Sim no modo geral', 'Use exatamente um código ativo listado na aba Categorias.'],
     ['curso_ou_setor', 'Não', 'Curso do aluno ou setor do servidor/funcionário.'],

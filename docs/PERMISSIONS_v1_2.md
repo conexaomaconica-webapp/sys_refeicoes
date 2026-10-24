@@ -1285,3 +1285,61 @@ continuam governando o direito de consumo.
 
 Um caixa aberto em outro terminal da mesma unidade não impede nova abertura. Um
 caixa aberto no mesmo terminal continua bloqueando a tomada por outro operador.
+
+## Adendo — Portal do consumidor
+
+| Ação | Parcial (`requires_wallet`) | Integral | Escopo |
+| --- | --- | --- | --- |
+| Ver carteirinha e QR | permitido | permitido | próprio `student.user_id` |
+| Ver histórico de refeições | permitido | permitido | próprio `student.user_id` |
+| Ver e atualizar contatos | permitido | permitido | próprio `student.user_id` |
+| Ver saldo e ledger | permitido | negado | próprio `student.user_id` |
+| Criar recarga Pix/cartão | permitido | negado | próprio `student.user_id` |
+| Configurar alerta de saldo | permitido | oculto | próprio `student.user_id` |
+| Configurar notificações PWA | permitido | permitido | próprio `student.user_id` |
+
+O saldo residual de uma carteira preservada após reclassificação para integral
+não concede acesso financeiro ao consumidor. A restrição é aplicada no menu, na
+action server-side e nas policies RLS.
+
+## Adendo — Configurações Master
+
+Na interface, o perfil técnico `admin_general` é denominado **Master**. Essa
+denominação não cria um novo papel nem amplia permissões de outros perfis.
+
+| Ação | Master (`admin_general`) | Outros administradores | Consumidor |
+| --- | --- | --- | --- |
+| Alterar fundo do login interno | permitido | negado | negado |
+| Alterar fundo do login do consumidor | permitido | negado | negado |
+| Enviar variantes desktop/mobile | permitido | negado | negado |
+| Alterar cor ou imagem da carteirinha | permitido | negado | somente visualiza a configuração publicada |
+| Reposicionar elementos da carteirinha | permitido | negado | somente visualiza a configuração publicada |
+| Alterar fundo da área operacional | permitido | conforme permissão operacional existente | negado |
+| Alterar fundo da página completa do terminal | permitido | negado | negado |
+| Acessar `/login` | permitido | conforme papel | negado após validação |
+| Acessar `/conta/login` | negado após validação | negado após validação | permitido |
+
+## Adendo — gestão de comensais e contas do consumidor
+
+| Papel | Cadastrar/editar comensal | Criar/editar acesso do consumidor | Escopo |
+| --- | --- | --- | --- |
+| Master (`admin_general`) | permitido | permitido | tenant |
+| Diretor Operacional | permitido | permitido | tenant |
+| Supervisor | permitido | permitido | instituições vinculadas |
+| Gerente de Unidade | permitido | permitido | instituições das unidades vinculadas |
+| Financeiro, Operador e Instituição | negado | negado | — |
+| Consumidor (`student`) | somente contatos próprios | negado | próprio cadastro |
+
+Ter acesso à área administrativa não basta: toda mutação é revalidada no
+servidor pela combinação papel + tenant + instituição. A conta do consumidor é
+uma identidade `student` separada da conta do colaborador.
+
+### Primeiro acesso e credenciais
+
+| Ação | Consumidor | Gestor autorizado | Público |
+| --- | --- | --- | --- |
+| Solicitar primeiro acesso com dados da lista | permitido | não necessário | permitido sem sessão |
+| Definir a senha pessoal pelo convite | permitido | negado | negado |
+| Solicitar recuperação da própria senha | permitido | pode apenas disparar o e-mail | permitido sem sessão |
+| Revisar solicitação sem e-mail | negado | permitido conforme escopo institucional | negado |
+| Alterar CPF protegido ou estado de ativação diretamente | negado | somente pelo fluxo server-side | negado |

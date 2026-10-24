@@ -1,0 +1,42 @@
+   ▲ Next.js 15.5.28
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.16:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 25.6s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 74.1s (171 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 83.2s (778 modules)
+ GET /login 200 in 99900ms
+ ✓ Compiled in 26.9s (320 modules)
+ ○ Compiling /consumer/login ...
+ ✓ Compiled /consumer/login in 13.2s (764 modules)
+ GET /consumer/login 200 in 24417ms
+ ✓ Compiled in 22.5s (491 modules)
+ ✓ Compiled in 16.7s (491 modules)
+ ✓ Compiled in 4.5s (171 modules)
+ ✓ Compiled in 13.6s (320 modules)
+ ✓ Compiled in 7.6s (320 modules)
+ ✓ Compiled in 10.6s (320 modules)
+ ✓ Compiled in 5.2s (171 modules)
+ ✓ Compiled in 42.5s (320 modules)
+ ✓ Compiled in 27.6s (320 modules)
+ ✓ Compiled in 34.3s (306 modules)
+ ✓ Compiled in 25s (320 modules)
+ ✓ Compiled in 10.2s (320 modules)
+ ✓ Compiled in 36.8s (320 modules)
+ ✓ Compiled in 14.8s (320 modules)
+ ✓ Compiled in 82.2s (320 modules)
+ ✓ Compiled in 30.9s (320 modules)
+ ✓ Compiled in 20.9s (320 modules)
+ ✓ Compiled in 15.5s (320 modules)
+ ✓ Compiled in 31.9s (320 modules)
+ ✓ Compiled in 31.2s (320 modules)
+ ✓ Compiled in 5.5s (306 modules)
+ ✓ Compiled in 8.5s (320 modules)
+ ✓ Compiled in 5.3s (320 modules)
+ ✓ Compiled in 10s (320 modules)
+ ✓ Compiled in 7.4s (320 modules)
+[?25h

@@ -5,6 +5,7 @@ import { ImportMode, ImportPreviewResult, ImportRecord, ImportRowRecord } from '
 import { parseImportBuffer } from './import-parser.service';
 import { validateAndClassifyRows, CategoryLookup, ExistingStudentLookup } from './import-validator.service';
 import { sanitizeCellForExport } from '@/lib/security/formula-sanitizer';
+import { cpfLast4, hashCpf, isValidCpf } from '@/lib/security/consumer-identity';
 import * as XLSX from 'xlsx';
 
 export interface StageImportParams {
@@ -67,6 +68,12 @@ export class AdminImportService {
 
     // 2. Parsing Seguro da Planilha em Memória
     const parsedData = await parseImportBuffer(params.fileBuffer);
+    for (const row of parsedData.rows) {
+      if (row.normalized.cpf && isValidCpf(row.normalized.cpf)) {
+        row.normalized.cpf_lookup_hash = hashCpf(row.normalized.cpf);
+        row.normalized.cpf_last4 = cpfLast4(row.normalized.cpf);
+      }
+    }
 
     // 3. Buscar Categorias do Tenant no Banco
     const { data: categoriesData, error: catError } = await supabase
@@ -96,6 +103,7 @@ export class AdminImportService {
         course,
         email,
         phone,
+        cpf_lookup_hash,
         status,
         updated_at,
         student_categories ( code )
@@ -118,6 +126,7 @@ export class AdminImportService {
         course: (s.course as string) || '',
         email: (s.email as string) || '',
         phone: (s.phone as string) || '',
+        cpf_lookup_hash: (s.cpf_lookup_hash as string) || '',
         status: s.status as string,
         updated_at: s.updated_at as string
       };
@@ -144,6 +153,13 @@ export class AdminImportService {
       existingStudents,
       allTenantEmails
     });
+
+    // CPF em claro existe apenas durante parsing/validação em memória. O
+    // manifesto, o preview enviado ao navegador e os relatórios recebem apenas
+    // o HMAC de busca e os quatro últimos dígitos.
+    for (const row of previewRows) {
+      if (row.normalized_data) delete row.normalized_data.cpf;
+    }
 
     // 7. Salvar arquivo original no Bucket Privado 'import-files' com Path Canônico
     // Path Canônico: {tenant_id}/{institution_id}/{unit_id}/{temp_hash}/original.{xlsx|csv}

@@ -35,6 +35,9 @@ export interface RawImportRow {
 export interface NormalizedImportData {
   registration_number: string;
   full_name: string;
+  cpf?: string;
+  cpf_lookup_hash?: string;
+  cpf_last4?: string;
   category_code?: string;
   category_id?: string;
   course?: string;

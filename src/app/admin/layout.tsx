@@ -25,19 +25,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const profile = profileData as { tenant_id: string; role: UserRole; status: string } | null;
 
   if (!profile || profile.status !== 'active' || !ADMIN_ROLES.includes(profile.role)) {
-    redirect('/terminal');
+    redirect(profile?.role === 'student' ? '/consumer' : '/terminal');
   }
 
   const [{ data: tenantData }, { data: brandingData }] = await Promise.all([
     supabase.from('tenants').select('slug,name').eq('id', profile.tenant_id).maybeSingle(),
     supabase
       .from('tenant_branding')
-      .select('app_name,logo_url,primary_color')
+      .select('app_name,logo_url,primary_color,secondary_color')
       .eq('tenant_id', profile.tenant_id)
       .maybeSingle(),
   ]);
   const tenant = tenantData as { slug: string; name: string } | null;
-  const branding = brandingData as { app_name: string; logo_url: string | null; primary_color: string | null } | null;
+  const branding = brandingData as {
+    app_name: string;
+    logo_url: string | null;
+    primary_color: string | null;
+    secondary_color: string | null;
+  } | null;
 
   return (
     <AdminShell
@@ -47,6 +52,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         logoUrl: branding?.logo_url || null,
         slug: tenant?.slug || 'tenant',
         primaryColor: branding?.primary_color || '#C5161D',
+        secondaryColor: branding?.secondary_color || '#7F1D1D',
       }}
     >
       {children}

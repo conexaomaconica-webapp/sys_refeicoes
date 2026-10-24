@@ -1,6 +1,10 @@
 import 'server-only';
 
 import { getAdminClient } from '@/lib/supabase/admin';
+import {
+  canManageStudentInstitution,
+  getStudentManagementAccessServer,
+} from '@/services/student-management-access.service';
 import type { CreateStudentParams, Student, StudentAcademicStatus } from '@/types/student';
 
 export interface UpdateStudentAdminParams {
@@ -25,20 +29,14 @@ export interface UpdateStudentAdminParams {
 /**
  * Valida se o usuário solicitante possui perfil administrativo ativo no tenant.
  */
-async function validateStaffRequester(requestingUserId: string, tenantId: string): Promise<boolean> {
-  const adminClient = getAdminClient();
-  const { data: requester, error } = await adminClient
-    .from('profiles')
-    .select('tenant_id, role, status')
-    .eq('id', requestingUserId)
-    .single();
-
-  if (error || !requester) return false;
-  return (
-    requester.tenant_id === tenantId &&
-    ['admin_general', 'operations_director'].includes(requester.role) &&
-    requester.status === 'active'
-  );
+async function validateStaffRequester(
+  requestingUserId: string,
+  tenantId: string,
+  institutionId?: string
+): Promise<boolean> {
+  const { access } = await getStudentManagementAccessServer(requestingUserId, tenantId);
+  if (!access) return false;
+  return institutionId ? canManageStudentInstitution(access, institutionId) : true;
 }
 
 async function validateStudentReferences(
@@ -66,7 +64,7 @@ export async function createStudentServer(
 ): Promise<{ student: Student | null; error?: string }> {
   const { tenantId, institutionId, categoryId, registrationNumber, fullName, course, email, phone, status } = params;
 
-  const isAuthorized = await validateStaffRequester(requestingUserId, tenantId);
+  const isAuthorized = await validateStaffRequester(requestingUserId, tenantId, institutionId);
   if (!isAuthorized) {
     return { student: null, error: 'Acesso negado. Apenas administradores ativos do tenant podem cadastrar alunos.' };
   }
@@ -119,7 +117,11 @@ export async function updateStudentServer(
   studentId: string,
   params: UpdateStudentAdminParams
 ): Promise<{ student: Student | null; error?: string }> {
-  const isAuthorized = await validateStaffRequester(requestingUserId, params.tenantId);
+  const isAuthorized = await validateStaffRequester(
+    requestingUserId,
+    params.tenantId,
+    params.institutionId
+  );
   if (!isAuthorized) {
     return { student: null, error: 'Acesso negado. Apenas administradores ativos do tenant podem editar comensais.' };
   }
@@ -134,12 +136,22 @@ export async function updateStudentServer(
   const adminClient = getAdminClient();
   const { data: current } = await adminClient
     .from('students')
-    .select('id, category_id')
+    .select('id, category_id, institution_id')
     .eq('id', studentId)
     .eq('tenant_id', params.tenantId)
     .maybeSingle();
 
   if (!current) return { student: null, error: 'Comensal não encontrado.' };
+
+  if (
+    !(await validateStaffRequester(
+      requestingUserId,
+      params.tenantId,
+      current.institution_id
+    ))
+  ) {
+    return { student: null, error: 'O comensal atual está fora do seu escopo institucional.' };
+  }
 
   const { data: duplicate } = await adminClient
     .from('students')
@@ -175,7 +187,12 @@ export async function updateStudentServer(
   }
 
   if (current.category_id !== params.categoryId) {
-    const { error: historyError } = await adminClient.from('student_category_history').insert({
+    const historyClient = adminClient as unknown as {
+      from: (table: string) => {
+        insert: (values: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+      };
+    };
+    const { error: historyError } = await historyClient.from('student_category_history').insert({
       tenant_id: params.tenantId,
       student_id: studentId,
       previous_category_id: current.category_id,
@@ -205,12 +222,21 @@ export async function updateStudentAcademicStatusServer(
   tenantId: string,
   newStatus: StudentAcademicStatus
 ): Promise<{ success: boolean; error?: string }> {
-  const isAuthorized = await validateStaffRequester(requestingUserId, tenantId);
+  const adminClient = getAdminClient();
+  const { data: student } = await adminClient
+    .from('students')
+    .select('institution_id')
+    .eq('id', studentId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  const isAuthorized = Boolean(
+    student &&
+      (await validateStaffRequester(requestingUserId, tenantId, student.institution_id))
+  );
   if (!isAuthorized) {
     return { success: false, error: 'Acesso negado.' };
   }
 
-  const adminClient = getAdminClient();
   const { error } = await adminClient
     .from('students')
     .update({ status: newStatus })
@@ -263,6 +289,10 @@ export async function uploadStudentPhotoServer(
 
   if (studentError || !student) {
     return { photoPath: null, error: 'Aluno não encontrado.' };
+  }
+
+  if (!(await validateStaffRequester(requestingUserId, tenantId, student.institution_id))) {
+    return { photoPath: null, error: 'Acesso negado para a instituição deste comensal.' };
   }
 
   // Gerar caminho canônico e coerente com a extensão real

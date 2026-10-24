@@ -14,6 +14,7 @@ import {
   HardDrive,
   ShieldCheck,
   Zap,
+  Nfc,
   Activity,
   RefreshCw,
   ArrowRight,
@@ -31,8 +32,12 @@ import {
   Palette,
   Calculator,
 } from 'lucide-react';
-import { useBrand } from '@/components/branding/BrandProvider';
-import { detectTerminalImageIsDark, getTerminalBackgroundStyle } from '@/lib/terminal-background';
+import { useBrand } from '@/components/branding/brand-context';
+import {
+  detectTerminalImageIsDark,
+  getTerminalBackgroundStyle,
+  getTerminalPageBackgroundStyle,
+} from '@/lib/terminal-background';
 import { CashShiftModal } from '@/components/terminal/CashShiftModal';
 import { ShiftReportsModal } from '@/components/terminal/ShiftReportsModal';
 import { cashShiftService } from '@/services/cash-shift.service';
@@ -183,6 +188,7 @@ export function ReceptionTerminal({
   const usesTerminalImage = branding.terminal_background_mode === 'image' && Boolean(branding.terminal_background_url);
   const centralTextIsLight = usesTerminalImage ? terminalImageIsDark ?? isDark : isDark;
   const terminalBackgroundStyle = getTerminalBackgroundStyle(branding, isDark, terminalImageIsDark);
+  const terminalPageBackgroundStyle = getTerminalPageBackgroundStyle(branding);
   const [recentAccesses, setRecentAccesses] = useState<RecentTerminalAccess[]>([]);
   const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorDisplay, setCalculatorDisplay] = useState('0');
@@ -937,6 +943,7 @@ export function ReceptionTerminal({
     <div
       onClick={keepFocus}
       style={{
+        ...terminalPageBackgroundStyle,
         '--terminal-primary-local': branding.terminal_primary_color,
         '--terminal-accent-local': branding.terminal_accent_color,
         '--terminal-surface-local': branding.terminal_surface_color,
@@ -1228,7 +1235,7 @@ export function ReceptionTerminal({
         {!activeDisplay && (
           <div className="flex max-h-full w-full max-w-xl flex-col items-center space-y-3 animate-in fade-in duration-200 2xl:space-y-5">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-dashed shadow-lg animate-pulse 2xl:h-18 2xl:w-18" style={{ borderColor: `${branding.terminal_primary_color}66`, backgroundColor: `${branding.terminal_primary_color}0D` }}>
-              <Zap className="h-6 w-6 2xl:h-8 2xl:w-8" style={{ color: branding.terminal_primary_color }} />
+              <Nfc className="h-7 w-7 2xl:h-9 2xl:w-9" style={{ color: branding.terminal_primary_color }} aria-label="Aproxime o cartão ou informe a matrícula" />
             </div>
 
             <div>

@@ -1,9 +1,12 @@
 # DATABASE.md
+
 ## Modelo de Dados — Sistema de Controle de Refeições
+
 **Versão:** 1.0  
 **Status:** Modelagem inicial para implementação  
 **Stack:** Supabase + PostgreSQL  
-**Documentos relacionados:**  
+**Documentos relacionados:**
+
 - `SISTEMA_REFEICOES_ANTIGRAVITY_v1_2.md`
 - `PERMISSIONS_v1_2.md`
 - `FLOWS_v1_1.md`
@@ -210,6 +213,19 @@ terminal_show_kpi_values boolean
 terminal_background_mode text
 terminal_background_preset text
 terminal_background_url text nullable
+staff_login_background_url text nullable
+staff_login_mobile_background_url text nullable
+consumer_login_background_url text nullable
+consumer_login_mobile_background_url text nullable
+consumer_card_background_mode text
+consumer_card_background_color text
+consumer_card_accent_color text
+consumer_card_background_url text nullable
+consumer_card_layout jsonb
+consumer_card_background_transform jsonb
+terminal_page_background_mode text
+terminal_page_background_color text
+terminal_page_background_url text nullable
 report_logo_url text nullable
 report_header_text text nullable
 report_footer_text text nullable
@@ -227,6 +243,28 @@ O fundo do terminal é opcional. `terminal_background_mode` aceita `none`,
 `preset` ou `image`; temas predefinidos são identificados por
 `terminal_background_preset`. Imagens personalizadas ficam no bucket público
 `tenant-branding`, com escrita restrita ao administrador geral do próprio tenant.
+
+A carteirinha do consumidor aceita `consumer_card_background_mode` igual a
+`color` ou `image`. As cores usam hexadecimal `#RRGGBB`; a imagem é apenas
+identidade visual, enquanto nome, foto, QR, situação e saldo são renderizados
+dinamicamente. A RPC de atualização é exclusiva de `admin_general`.
+
+`consumer_card_layout` guarda coordenadas percentuais `x`/`y` para `logo`,
+`title`, `qr`, `photo`, `name` e `balance`. A RPC
+`update_tenant_consumer_card_layout(jsonb)` valida os seis elementos e o
+intervalo de 0 a 100 no servidor; somente `admin_general` ativo do mesmo tenant
+pode persistir a composição. O branding público expõe apenas essas coordenadas,
+sem dados pessoais do consumidor.
+
+`consumer_card_background_transform` registra somente `x`, `y` e `zoom` da
+imagem de fundo. A posição aceita 0 a 100 e a ampliação aceita 100% a 200%, com
+validação server-side exclusiva do Master pela RPC
+`update_tenant_consumer_card_background_transform(jsonb)`.
+
+O fundo da página completa do caixa é independente do fundo da área operacional.
+`terminal_page_background_mode` aceita `color` ou `image`; sua RPC de atualização
+é exclusiva de `admin_general`. Os campos legados `terminal_background_*`
+continuam controlando somente a área operacional.
 
 ---
 
@@ -993,9 +1031,9 @@ Saída:
   "student_name": "...",
   "category": "partial",
   "meal_type": "lunch",
-  "student_price": 2.00,
-  "balance_before": 20.00,
-  "balance_after": 18.00
+  "student_price": 2.0,
+  "balance_before": 20.0,
+  "balance_after": 18.0
 }
 ```
 
@@ -1817,3 +1855,83 @@ do caixa ativo.
 Caixas simultâneos são isolados por `(unit_id, terminal_id)`. Não existe trava
 global de caixa aberto por unidade; cada equipamento deve possuir identificador
 distinto e estável.
+
+### Conferência final e divergência de caixa
+
+A migration `20261022000062` mantém o caixa aberto durante a revisão do resumo
+de fechamento. A baixa definitiva continua sendo atômica pela RPC
+`close_operator_cash_shift(...)`, que delega a `close_cash_shift(...)`.
+
+Quando o valor contado for diferente de `expected_cash_balance`, a RPC exige
+uma justificativa não vazia em `closing_notes`. Assim, toda sobra ou falta fica
+registrada no próprio caixa para consulta e auditoria, inclusive quando a RPC é
+chamada fora da interface.
+
+### Preferências do PWA do consumidor
+
+A migration `20261022000063` cria `consumer_preferences`, com uma linha por
+consumidor e os campos `low_balance_enabled`, `low_balance_threshold` e
+`push_enabled`. A tabela mantém RLS forçado; o aluno lê somente sua linha e toda
+escrita ocorre por `upsert_my_consumer_preferences(...)`, que valida sessão,
+papel `student`, status ativo, tenant e vínculo `students.user_id = auth.uid()`.
+
+`ensure_my_digital_card()` provisiona idempotentemente a carteirinha digital do
+próprio consumidor ativo. As políticas de aluno em `wallets`,
+`wallet_transactions`, `payments` e `recharges` passam a exigir também
+`student_categories.requires_wallet = true`. Assim, eventual saldo histórico
+preservado após reclassificação para integral permanece contabilizado, mas não é
+exposto ao consumidor integral.
+
+### Identidade visual dos portais de login
+
+A migration `20261022000064` adiciona quatro URLs opcionais em
+`tenant_branding`: login interno e login do consumidor, cada um com variante
+desktop e mobile. `get_public_tenant_branding_v5(text)` expõe somente esses
+ativos visuais junto ao branding público necessário antes da autenticação.
+
+`update_tenant_login_branding(...)` aceita alteração somente de um perfil ativo
+`admin_general` do próprio tenant. Os arquivos permanecem no bucket público
+`tenant-branding`; a escrita continua isolada pelo primeiro diretório da chave,
+que deve corresponder ao `tenant_id` do usuário autenticado.
+
+A migration `20261023000070` adiciona `login_element_visibility` e
+`consumer_card_elements` como objetos JSONB validados. A primeira configuração
+controla somente elementos decorativos dos logins; a segunda guarda
+`visible:boolean` e `zoom:number` (50 a 200) por elemento da carteirinha. A RPC
+pública `get_public_tenant_branding_v9(text)` expõe essas preferências visuais,
+enquanto as RPCs de atualização exigem perfil ativo `admin_general`. A mesma
+migration estende `consumer_card_layout` com a posição independente de `status`.
+
+A migration `20261023000071` adiciona `login_panel_positions`, com coordenadas
+X/Y para `staff_desktop`, `staff_mobile`, `consumer_desktop` e
+`consumer_mobile`. `get_public_tenant_branding_v10(text)` expõe a composição e
+`update_tenant_login_panel_positions(jsonb)` valida coordenadas entre 8 e 92 e
+permite atualização somente pelo `admin_general` ativo do próprio tenant.
+
+### Gestão de comensais por escopo
+
+A migration `20261022000066` cria
+`can_manage_students_at_institution(uuid)`, usada pela policy de leitura de
+`students`. Master e Diretor Operacional possuem escopo no tenant; Supervisor e
+Gerente de Unidade dependem de `user_institution_access` ou de uma unidade
+vinculada à mesma instituição em `user_unit_access`.
+
+O índice parcial único `uq_students_user_id` garante que uma identidade de Auth
+seja vinculada a no máximo um comensal. A migration é aditiva, preserva RLS e
+não concede escrita direta em `students`.
+
+## Identidade protegida e primeiro acesso
+
+A migration `20261022000067_create_consumer_first_access.sql` acrescenta
+`profiles.must_change_password`; os campos protegidos e estados de ativação em
+`students`; e `consumer_first_access_attempts`, com RLS habilitado e forçado,
+sem policies para clientes.
+
+`cpf_lookup_hash` é HMAC-SHA256 determinístico calculado no servidor com chave
+privada por ambiente. O manifesto não guarda CPF legível, apenas HMAC e os quatro
+últimos dígitos. O arquivo original permanece no bucket privado
+`import-files`, sujeito à política de retenção do tenant.
+
+Estados válidos: `unavailable`, `eligible`, `pending_review`, `invited`,
+`active` e `disabled`. Um trigger sincroniza a identidade protegida do manifesto
+processado com `students` na confirmação da importação.

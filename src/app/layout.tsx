@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { BrandProvider } from '@/components/branding/BrandProvider';
+import { PwaRegistration } from '@/components/pwa/PwaRegistration';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body>
         <BrandProvider>
+          <PwaRegistration />
           <main>{children}</main>
         </BrandProvider>
       </body>
