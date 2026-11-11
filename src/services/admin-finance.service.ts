@@ -147,6 +147,7 @@ export async function getFinanceDashboardServer(
   }
 
   const studentIds = (students || []).map((student) => student.id);
+  const studentIdSet = new Set(studentIds);
   if (!studentIds.length) {
     return {
       data: {
@@ -160,13 +161,56 @@ export async function getFinanceDashboardServer(
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
+
+  // Evita URLs gigantes no PostgREST (?student_id=in.(...)) que geram 400 Bad Request em tenants com muitos alunos.
+  // Quando há filtro por instituição (unit_manager/supervisor) com <= 50 alunos usa .in(); caso contrário filtra por tenant_id e aplica o recorte em memória.
+  const canUseDirectStudentIn = Boolean(requester.institutionIds) && studentIds.length <= 50;
+
+  let walletsQuery = adminClient
+    .from('wallets')
+    .select('id,student_id,balance,status,updated_at')
+    .eq('tenant_id', requester.tenantId)
+    .order('updated_at', { ascending: false });
+  let transactionsQuery = adminClient
+    .from('wallet_transactions')
+    .select('id,student_id,type,amount,balance_before,balance_after,description,created_at')
+    .eq('tenant_id', requester.tenantId)
+    .order('created_at', { ascending: false })
+    .limit(canUseDirectStudentIn ? 200 : 400);
+  let paymentsQuery = adminClient
+    .from('payments')
+    .select('id,student_id,provider_id,method,amount,status,created_at')
+    .eq('tenant_id', requester.tenantId)
+    .order('created_at', { ascending: false })
+    .limit(canUseDirectStudentIn ? 100 : 250);
+  let rechargesQuery = adminClient
+    .from('recharges')
+    .select('id,student_id,source,amount,status,created_at')
+    .eq('tenant_id', requester.tenantId)
+    .order('created_at', { ascending: false })
+    .limit(canUseDirectStudentIn ? 100 : 250);
+  let monthRechargeQuery = adminClient
+    .from('recharges')
+    .select('student_id,amount')
+    .eq('tenant_id', requester.tenantId)
+    .eq('status', 'confirmed')
+    .gte('confirmed_at', monthStart.toISOString());
+
+  if (canUseDirectStudentIn) {
+    walletsQuery = walletsQuery.in('student_id', studentIds);
+    transactionsQuery = transactionsQuery.in('student_id', studentIds);
+    paymentsQuery = paymentsQuery.in('student_id', studentIds);
+    rechargesQuery = rechargesQuery.in('student_id', studentIds);
+    monthRechargeQuery = monthRechargeQuery.in('student_id', studentIds);
+  }
+
   const [walletResult, transactionResult, paymentResult, rechargeResult, monthRechargeResult, providerResult] =
     await Promise.all([
-      adminClient.from('wallets').select('id,student_id,balance,status,updated_at').eq('tenant_id', requester.tenantId).in('student_id', studentIds).order('updated_at', { ascending: false }),
-      adminClient.from('wallet_transactions').select('id,student_id,type,amount,balance_before,balance_after,description,created_at').eq('tenant_id', requester.tenantId).in('student_id', studentIds).order('created_at', { ascending: false }).limit(200),
-      adminClient.from('payments').select('id,student_id,provider_id,method,amount,status,created_at').eq('tenant_id', requester.tenantId).in('student_id', studentIds).order('created_at', { ascending: false }).limit(100),
-      adminClient.from('recharges').select('id,student_id,source,amount,status,created_at').eq('tenant_id', requester.tenantId).in('student_id', studentIds).order('created_at', { ascending: false }).limit(100),
-      adminClient.from('recharges').select('amount').eq('tenant_id', requester.tenantId).in('student_id', studentIds).eq('status', 'confirmed').gte('confirmed_at', monthStart.toISOString()),
+      walletsQuery,
+      transactionsQuery,
+      paymentsQuery,
+      rechargesQuery,
+      monthRechargeQuery,
       adminClient.from('payment_providers').select('id,name').eq('tenant_id', requester.tenantId),
     ]);
 
@@ -178,8 +222,18 @@ export async function getFinanceDashboardServer(
   const institutionsById = new Map((institutions || []).map((institution) => [institution.id, institution.name]));
   const providersById = new Map((providerResult.data || []).map((provider) => [provider.id, provider.name]));
   const canManage = MANAGE_ROLES.includes(requester.role);
-  const wallets = walletResult.data || [];
-  const pendingPayments = (paymentResult.data || []).filter((payment) => payment.status === 'pending');
+  const scopeFilter = <T extends { student_id: string }>(rows: T[] | null | undefined, max?: number): T[] => {
+    const filtered = requester.institutionIds
+      ? (rows || []).filter((row) => studentIdSet.has(row.student_id))
+      : rows || [];
+    return max ? filtered.slice(0, max) : filtered;
+  };
+  const wallets = scopeFilter(walletResult.data);
+  const scopedTransactions = scopeFilter(transactionResult.data, 200);
+  const scopedPayments = scopeFilter(paymentResult.data, 100);
+  const scopedRecharges = scopeFilter(rechargeResult.data, 100);
+  const scopedMonthRecharges = scopeFilter(monthRechargeResult.data);
+  const pendingPayments = scopedPayments.filter((payment) => payment.status === 'pending');
 
   return {
     data: {
@@ -196,7 +250,7 @@ export async function getFinanceDashboardServer(
           updatedAt: wallet.updated_at,
         };
       }),
-      transactions: (transactionResult.data || []).map((transaction) => ({
+      transactions: scopedTransactions.map((transaction) => ({
         id: transaction.id,
         studentId: transaction.student_id,
         studentName: studentsById.get(transaction.student_id)?.full_name || 'Comensal não encontrado',
@@ -208,7 +262,7 @@ export async function getFinanceDashboardServer(
         createdAt: transaction.created_at,
         canReverse: canManage && !['reversal', 'refund'].includes(transaction.type),
       })),
-      payments: (paymentResult.data || []).map((payment) => ({
+      payments: scopedPayments.map((payment) => ({
         id: payment.id,
         studentName: studentsById.get(payment.student_id)?.full_name || 'Comensal não encontrado',
         providerName: providersById.get(payment.provider_id) || 'Provedor não encontrado',
@@ -217,7 +271,7 @@ export async function getFinanceDashboardServer(
         status: payment.status,
         createdAt: payment.created_at,
       })),
-      recharges: (rechargeResult.data || []).map((recharge) => ({
+      recharges: scopedRecharges.map((recharge) => ({
         id: recharge.id,
         studentName: studentsById.get(recharge.student_id)?.full_name || 'Comensal não encontrado',
         source: recharge.source,
@@ -231,7 +285,7 @@ export async function getFinanceDashboardServer(
         activeWallets: wallets.filter((wallet) => wallet.status === 'active').length,
         pendingPayments: pendingPayments.length,
         pendingAmount: pendingPayments.reduce((sum, payment) => sum + Number(payment.amount), 0),
-        confirmedRechargesMonth: (monthRechargeResult.data || []).reduce((sum, recharge) => sum + Number(recharge.amount), 0),
+        confirmedRechargesMonth: scopedMonthRecharges.reduce((sum, recharge) => sum + Number(recharge.amount), 0),
       },
     },
   };

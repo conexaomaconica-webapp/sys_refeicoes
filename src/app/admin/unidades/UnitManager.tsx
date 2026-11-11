@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, Clock3, Edit3, Loader2, MapPin, Plus, Search, Store, X } from 'lucide-react';
 import type {
@@ -63,6 +63,8 @@ export function UnitManager({ units, institutions, canCreate, canManageLifecycle
   const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([]);
   const [municipalitiesLoading, setMunicipalitiesLoading] = useState(false);
   const [municipalitiesError, setMunicipalitiesError] = useState<string | null>(null);
+  const [municipalitiesRetry, setMunicipalitiesRetry] = useState(0);
+  const municipalitiesCacheRef = useRef<Record<string, MunicipalityOption[]>>({});
   const [institutionForm, setInstitutionForm] = useState<SaveInstitutionInput>(emptyInstitutionForm);
   const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
@@ -70,35 +72,70 @@ export function UnitManager({ units, institutions, canCreate, canManageLifecycle
     if (!modalOpen || !form.state) {
       setMunicipalities([]);
       setMunicipalitiesError(null);
+      setMunicipalitiesLoading(false);
+      return;
+    }
+
+    const uf = form.state.trim().toUpperCase();
+    const cached = municipalitiesCacheRef.current[uf];
+    if (cached && cached.length > 0 && municipalitiesRetry === 0) {
+      setMunicipalities(cached);
+      setMunicipalitiesError(null);
+      setMunicipalitiesLoading(false);
       return;
     }
 
     const controller = new AbortController();
     setMunicipalitiesLoading(true);
     setMunicipalitiesError(null);
-    void fetch(`/api/localidades/municipios?uf=${encodeURIComponent(form.state)}`, {
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const body = await response.json() as MunicipalityOption[] | { error?: string };
-        if (!response.ok || !Array.isArray(body)) {
-          throw new Error(!Array.isArray(body) ? body.error : 'Falha ao carregar municípios.');
+
+    const loadMunicipalities = async () => {
+      try {
+        const response = await fetch(`/api/localidades/municipios?uf=${encodeURIComponent(uf)}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        const body = (await response.json()) as MunicipalityOption[] | { error?: string };
+        if (response.ok && Array.isArray(body) && body.length > 0) {
+          municipalitiesCacheRef.current[uf] = body;
+          setMunicipalities(body);
+          return;
         }
-        setMunicipalities(body);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        setMunicipalities([]);
-        setMunicipalitiesError(
-          error instanceof Error ? error.message : 'Não foi possível carregar os municípios.'
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+      }
+
+      // Fallback direto para API pública do IBGE (CORS *) caso a rota interna falhe ou sofra bloqueio de proxy/cache
+      try {
+        const directRes = await fetch(
+          `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${encodeURIComponent(uf)}/municipios?orderBy=nome`,
+          { signal: controller.signal }
         );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setMunicipalitiesLoading(false);
-      });
+        const directBody = (await directRes.json()) as Array<{ id: number; nome: string }>;
+        if (directRes.ok && Array.isArray(directBody) && directBody.length > 0) {
+          const normalized = directBody
+            .map((item) => ({ id: item.id, name: item.nome }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+          municipalitiesCacheRef.current[uf] = normalized;
+          setMunicipalities(normalized);
+          return;
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+      }
+
+      if (!controller.signal.aborted) {
+        setMunicipalities([]);
+        setMunicipalitiesError('Não foi possível consultar a lista automática de municípios do IBGE.');
+      }
+    };
+
+    void loadMunicipalities().finally(() => {
+      if (!controller.signal.aborted) setMunicipalitiesLoading(false);
+    });
 
     return () => controller.abort();
-  }, [form.state, modalOpen]);
+  }, [form.state, modalOpen, municipalitiesRetry]);
 
   const filteredUnits = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR');
@@ -218,7 +255,59 @@ export function UnitManager({ units, institutions, canCreate, canManageLifecycle
               <label className="text-sm font-bold md:col-span-2">Instituição<select value={form.institutionId} onChange={(event) => setForm({ ...form, institutionId: event.target.value })} required disabled={Boolean(editing) && !canManageLifecycle} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal disabled:bg-slate-100">{institutions.map((institution) => <option key={institution.id} value={institution.id} disabled={institution.status !== 'active' && institution.id !== form.institutionId}>{institution.name}{institution.status !== 'active' ? ' — inativa' : ''}</option>)}</select></label>
               <label className="text-sm font-bold md:col-span-2">Nome da unidade<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label>
               <label className="text-sm font-bold">UF<select value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value, city: '' })} required className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-normal"><option value="">Selecione o estado</option>{brazilianStates.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}</select></label>
-              <label className="text-sm font-bold">Cidade<div className="relative mt-1.5"><select value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} required disabled={!form.state || municipalitiesLoading || Boolean(municipalitiesError)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 pr-10 font-normal disabled:bg-slate-100 disabled:text-slate-500"><option value="">{!form.state ? 'Selecione primeiro o estado' : municipalitiesLoading ? 'Carregando municípios...' : municipalitiesError ? 'Municípios indisponíveis' : 'Selecione a cidade'}</option>{form.city && !municipalities.some((municipality) => municipality.name === form.city) && <option value={form.city}>{form.city}</option>}{municipalities.map((municipality) => <option key={municipality.id} value={municipality.name}>{municipality.name}</option>)}</select>{municipalitiesLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-slate-400" />}</div>{municipalitiesError && <span className="mt-1 block text-xs font-semibold text-red-700">{municipalitiesError} Feche e abra o formulário para tentar novamente.</span>}</label>
+              <label className="text-sm font-bold">Cidade
+                {municipalitiesError ? (
+                  <div className="mt-1.5 space-y-1.5">
+                    <input
+                      value={form.city}
+                      onChange={(event) => setForm({ ...form, city: event.target.value })}
+                      required
+                      placeholder="Digite o nome da cidade"
+                      className="w-full rounded-xl border border-amber-300 bg-white px-3 py-3 font-normal"
+                    />
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-amber-800">{municipalitiesError} Preencha manualmente ou tente recarregar.</span>
+                      <button
+                        type="button"
+                        onClick={() => setMunicipalitiesRetry((c) => c + 1)}
+                        className="shrink-0 font-black underline"
+                        style={{ color: 'var(--admin-primary)' }}
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative mt-1.5">
+                    <select
+                      value={form.city}
+                      onChange={(event) => setForm({ ...form, city: event.target.value })}
+                      required
+                      disabled={!form.state || municipalitiesLoading}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 pr-10 font-normal disabled:bg-slate-100 disabled:text-slate-500"
+                    >
+                      <option value="">
+                        {!form.state
+                          ? 'Selecione primeiro o estado'
+                          : municipalitiesLoading
+                          ? 'Carregando municípios...'
+                          : 'Selecione a cidade'}
+                      </option>
+                      {form.city && !municipalities.some((municipality) => municipality.name === form.city) && (
+                        <option value={form.city}>{form.city}</option>
+                      )}
+                      {municipalities.map((municipality) => (
+                        <option key={municipality.id} value={municipality.name}>
+                          {municipality.name}
+                        </option>
+                      ))}
+                    </select>
+                    {municipalitiesLoading && (
+                      <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-slate-400" />
+                    )}
+                  </div>
+                )}
+              </label>
               <label className="text-sm font-bold">Fuso horário<select value={form.timezone} onChange={(event) => setForm({ ...form, timezone: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal">{timezones.map((timezone) => <option key={timezone} value={timezone}>{timezone}</option>)}</select></label>
               {(!editing || canManageLifecycle) && <label className="text-sm font-bold">Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as 'active' | 'inactive' })} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal"><option value="active">Ativa</option><option value="inactive">Inativa</option></select></label>}
             </div>
