@@ -18,6 +18,7 @@ interface ConsumerVirtualCardProps {
     institutionName?: string;
     status: string;
     categoryName: string;
+    qrPayload?: string;
   };
   card?: Card | null;
   balance?: number | null;
@@ -49,12 +50,12 @@ export function ConsumerVirtualCard({ student, card, balance, requiresWallet }: 
           <div className="pointer-events-none absolute inset-0" style={backgroundImageStyle} />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/30" />
-        {branding.consumer_card_elements.logo.visible && <div className="absolute z-10 w-[40%] text-center" style={getConsumerCardElementStyle(branding.consumer_card_layout.logo, branding.consumer_card_elements.logo.zoom)}>
+        {branding.consumer_card_elements.logo.visible && <div className="absolute z-10 w-[65%] max-w-[240px] text-center" style={getConsumerCardElementStyle(branding.consumer_card_layout.logo, branding.consumer_card_elements.logo.zoom)}>
           {branding.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={branding.logo_url} alt={branding.app_name} className="mx-auto max-h-16 max-w-full object-contain" />
+            <img src={branding.logo_url} alt={branding.app_name} className="mx-auto max-h-16 w-auto object-contain drop-shadow-md" />
           ) : (
-            <p className="truncate text-xs font-black uppercase tracking-[0.2em] text-white/90">{branding.app_name}</p>
+            <p className="truncate text-base font-black uppercase tracking-[0.2em] text-white/90">{branding.app_name}</p>
           )}
         </div>}
 
@@ -62,37 +63,50 @@ export function ConsumerVirtualCard({ student, card, balance, requiresWallet }: 
           Cartão virtual<br /><strong className="font-black">de consumo</strong>
         </h2>}
 
-        {branding.consumer_card_elements.qr.visible && <div className="absolute z-10 w-[74%] max-w-[290px]" style={getConsumerCardElementStyle(branding.consumer_card_layout.qr, branding.consumer_card_elements.qr.zoom)}>
-          <DynamicQRCode compact cardId={card?.id} />
+        {branding.consumer_card_elements.qr.visible && <div className="absolute z-10 w-[58%] max-w-[210px]" style={getConsumerCardElementStyle(branding.consumer_card_layout.qr, branding.consumer_card_elements.qr.zoom)}>
+          <DynamicQRCode
+            compact
+            hideLabel
+            cardId={card?.id}
+            initialPayload={student.qrPayload}
+            registrationNumber={student.registrationNumber}
+          />
         </div>}
 
-        {branding.consumer_card_elements.photo.visible && <div className="absolute z-10 grid h-20 w-20 place-items-center overflow-hidden rounded-full border-4 bg-white text-slate-600 shadow-lg" style={{ ...getConsumerCardElementStyle(branding.consumer_card_layout.photo, branding.consumer_card_elements.photo.zoom), borderColor: branding.consumer_card_accent_color }}>
+        {branding.consumer_card_elements.photo.visible && <div className="absolute z-10 grid h-16 w-16 place-items-center overflow-hidden rounded-full border-2 bg-slate-800 text-white shadow-xl ring-2 ring-black/20" style={{ ...getConsumerCardElementStyle(branding.consumer_card_layout.photo, branding.consumer_card_elements.photo.zoom), borderColor: branding.consumer_card_accent_color }}>
           {student.photoPath ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={student.photoPath} alt={student.fullName} className="h-full w-full object-cover" />
+            <img
+              src={student.photoPath}
+              alt={student.fullName}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
           ) : student.fullName ? (
-            <span className="text-xl font-black">{getInitials(student.fullName)}</span>
+            <span className="text-base font-black">{getInitials(student.fullName)}</span>
           ) : (
-            <User className="h-9 w-9" />
+            <User className="h-8 w-8" />
           )}
         </div>}
 
-        {branding.consumer_card_elements.name.visible && <div className="absolute z-10 w-[58%] rounded-2xl bg-black/20 p-3 text-center backdrop-blur-md" style={getConsumerCardElementStyle(branding.consumer_card_layout.name, branding.consumer_card_elements.name.zoom)}>
-          <h3 className="truncate text-lg font-black">{student.fullName}</h3>
-          <p className="mt-0.5 truncate font-mono text-xs text-white/80">{student.registrationNumber}</p>
+        {branding.consumer_card_elements.name.visible && <div className="absolute z-10 w-[58%] max-w-[220px] text-left drop-shadow-md" style={getConsumerCardElementStyle(branding.consumer_card_layout.name, branding.consumer_card_elements.name.zoom)}>
+          <h3 className="truncate text-base font-black text-white leading-tight drop-shadow-sm">{student.fullName}</h3>
+          <p className="mt-0.5 truncate font-mono text-[11px] font-bold text-white/95 drop-shadow-sm">Matrícula: {student.registrationNumber}</p>
           {(student.course || student.institutionName) && (
-            <p className="mt-2 line-clamp-2 text-[10px] text-white/75">
+            <p className="mt-0.5 truncate text-[10px] font-medium text-white/80 drop-shadow-sm">
               {[student.course, student.institutionName].filter(Boolean).join(' · ')}
             </p>
           )}
         </div>}
 
-        {branding.consumer_card_elements.status.visible && <div className="absolute z-10 flex max-w-[58%] flex-wrap items-center justify-center gap-1.5" style={getConsumerCardElementStyle(branding.consumer_card_layout.status, branding.consumer_card_elements.status.zoom)}>
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-black ${isActive ? 'bg-emerald-500 text-emerald-950' : 'bg-slate-900/80 text-white'}`}>
+        {branding.consumer_card_elements.status.visible && <div className="absolute z-10 flex max-w-[54%] flex-wrap items-center justify-start gap-1.5" style={getConsumerCardElementStyle(branding.consumer_card_layout.status, branding.consumer_card_elements.status.zoom)}>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${isActive ? 'bg-emerald-500 text-emerald-950 shadow-sm' : 'bg-slate-900/80 text-white'}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-950' : 'bg-slate-400'}`} />
             {isActive ? 'ATIVO' : 'INATIVO'}
           </span>
-          <span className="max-w-full truncate rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold">{student.categoryName}</span>
+          <span className="max-w-full truncate rounded-full bg-white/20 backdrop-blur-sm px-2 py-0.5 text-[9px] font-bold text-white shadow-sm">{student.categoryName}</span>
         </div>}
 
         {branding.consumer_card_elements.balance.visible && <div className="absolute z-10 flex min-h-20 w-[86%] items-center justify-center gap-3 rounded-3xl px-5 py-4 text-center text-slate-950 shadow-lg" style={{ ...getConsumerCardElementStyle(branding.consumer_card_layout.balance, branding.consumer_card_elements.balance.zoom), backgroundColor: branding.consumer_card_accent_color }}>

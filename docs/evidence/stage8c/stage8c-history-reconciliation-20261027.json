@@ -1,0 +1,18 @@
+{
+  "stage": "8C.2",
+  "executedAt": "2026-10-27",
+  "approved": true,
+  "mechanism": "supabase-cli-migration-repair",
+  "migrationBodiesReexecuted": false,
+  "versions": [
+    "20261026000072",
+    "20261026000073",
+    "20261027000074",
+    "20261027000075"
+  ],
+  "postVerification": {
+    "localAndRemoteAligned": true,
+    "missingVersions": [],
+    "unexpectedVersions": []
+  }
+}

@@ -10,6 +10,9 @@ import type { ProfileStatus } from '@/types/auth';
 export interface SaveConsumerAccessInput {
   studentId: string;
   email: string;
+  password?: string;
+  mustChangePassword?: boolean;
+  provisioningMethod?: 'invite' | 'password';
   status: Extract<ProfileStatus, 'active' | 'inactive'>;
   sendRecoveryEmail?: boolean;
   redirectTo: string;
@@ -20,6 +23,7 @@ export interface ConsumerAccessResult {
   email: string;
   status: Extract<ProfileStatus, 'active' | 'inactive'>;
   created: boolean;
+  temporaryPassword?: string;
 }
 
 const normalizeEmail = (email: string) => email.trim().toLocaleLowerCase('pt-BR');
@@ -65,10 +69,13 @@ export async function saveConsumerAccessServer(
       return { access: null, error: 'O vínculo atual não corresponde a uma conta de consumidor válida.' };
     }
 
-    const authAttributes: { email: string; email_confirm: boolean } = {
+    const authAttributes: { email: string; email_confirm: boolean; password?: string } = {
       email,
       email_confirm: true,
     };
+    if (input.password && input.password.trim().length >= 6) {
+      authAttributes.password = input.password.trim();
+    }
 
     const { error: authError } = await adminClient.auth.admin.updateUserById(
       student.user_id,
@@ -78,13 +85,23 @@ export async function saveConsumerAccessServer(
       return { access: null, error: `Não foi possível atualizar o acesso: ${authError.message}` };
     }
 
+    const profileUpdates: {
+      email: string;
+      full_name: string;
+      status: Extract<ProfileStatus, 'active' | 'inactive'>;
+      must_change_password?: boolean;
+    } = {
+      email,
+      full_name: student.full_name,
+      status: input.status,
+    };
+    if (input.mustChangePassword !== undefined) {
+      profileUpdates.must_change_password = input.mustChangePassword;
+    }
+
     const { error: profileError } = await adminClient
       .from('profiles')
-      .update({
-        email,
-        full_name: student.full_name,
-        status: input.status,
-      })
+      .update(profileUpdates)
       .eq('id', student.user_id)
       .eq('tenant_id', requesterAccess.tenantId)
       .eq('role', 'student');
@@ -99,7 +116,7 @@ export async function saveConsumerAccessServer(
         email,
         first_access_status: input.status === 'inactive'
           ? 'disabled'
-          : profile.must_change_password ? 'invited' : 'active',
+          : (input.mustChangePassword ?? profile.must_change_password) ? 'invited' : 'active',
       })
       .eq('id', student.id)
       .eq('tenant_id', requesterAccess.tenantId);
@@ -110,21 +127,42 @@ export async function saveConsumerAccessServer(
       });
       if (recoveryError) {
         return {
-          access: { userId: student.user_id, email, status: input.status, created: false },
+          access: {
+            userId: student.user_id,
+            email,
+            status: input.status,
+            created: false,
+            temporaryPassword: input.password?.trim(),
+          },
           warning: `Acesso salvo, mas o e-mail de redefinição não pôde ser enviado: ${recoveryError.message}`,
         };
       }
     }
 
     return {
-      access: { userId: student.user_id, email, status: input.status, created: false },
+      access: {
+        userId: student.user_id,
+        email,
+        status: input.status,
+        created: false,
+        temporaryPassword: input.password?.trim(),
+      },
     };
   }
 
-  const { data: authData, error: authError } = await adminClient.auth.admin.inviteUserByEmail(
-    email,
-    { redirectTo: input.redirectTo }
-  );
+  const isDirectPassword = input.provisioningMethod === 'password' && input.password;
+  if (isDirectPassword && input.password!.trim().length < 6) {
+    return { access: null, error: 'A senha informada deve possuir no mínimo 6 caracteres.' };
+  }
+
+  const { data: authData, error: authError } = isDirectPassword
+    ? await adminClient.auth.admin.createUser({
+        email,
+        password: input.password!.trim(),
+        email_confirm: true,
+        user_metadata: { full_name: student.full_name },
+      })
+    : await adminClient.auth.admin.inviteUserByEmail(email, { redirectTo: input.redirectTo });
 
   if (authError || !authData.user) {
     return {
@@ -134,6 +172,8 @@ export async function saveConsumerAccessServer(
   }
 
   const userId = authData.user.id;
+  const mustChange = input.mustChangePassword !== undefined ? input.mustChangePassword : true;
+
   const { error: profileError } = await adminClient.from('profiles').insert({
     id: userId,
     tenant_id: requesterAccess.tenantId,
@@ -141,7 +181,7 @@ export async function saveConsumerAccessServer(
     email,
     role: 'student',
     status: input.status,
-    must_change_password: true,
+    must_change_password: mustChange,
   });
 
   if (profileError) {
@@ -154,7 +194,9 @@ export async function saveConsumerAccessServer(
     .update({
       user_id: userId,
       email,
-      first_access_status: input.status === 'inactive' ? 'disabled' : 'invited',
+      first_access_status: input.status === 'inactive'
+        ? 'disabled'
+        : mustChange ? 'invited' : 'active',
       first_access_requested_at: new Date().toISOString(),
     })
     .eq('id', student.id)

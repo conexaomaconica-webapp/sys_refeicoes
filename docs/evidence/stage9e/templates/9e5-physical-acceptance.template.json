@@ -1,0 +1,17 @@
+{
+  "stage": "9E.5",
+  "executionStatus": "not_executed",
+  "authorization": { "status": "required", "reference": null },
+  "environment": { "kind": "physical-unit-pending", "isolated": null, "containsRealData": false },
+  "startedAt": null,
+  "completedAt": null,
+  "results": { "passed": 0, "failed": 0, "notTested": 16, "totalRequired": 16 },
+  "metrics": { "samples": null, "p50Ms": null, "p95Ms": null, "p99Ms": null, "errorCount": null },
+  "equipmentAliases": [],
+  "externalActionsPerformed": false,
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "evidence": [],
+  "residualRisks": [],
+  "decision": "NO_GO_NOT_EXECUTED"
+}

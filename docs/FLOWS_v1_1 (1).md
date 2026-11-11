@@ -1224,11 +1224,14 @@ Define perfil
         ↓
 Define unidades
         ↓
-Envia convite
+Escolhe convite ou senha temporária
         ↓
-Usuário aceita
+Convite: usuário aceita o link
+Senha temporária: usuário entra com a credencial mostrada uma vez
         ↓
-Conta ativa
+Usuário define a senha pessoal
+        ↓
+Conta ativa para uso normal
 ```
 
 ---

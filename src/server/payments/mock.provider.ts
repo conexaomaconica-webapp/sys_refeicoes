@@ -11,6 +11,7 @@ import type { IPaymentProvider } from './provider.interface';
 
 export class MockPaymentProvider implements IPaymentProvider {
   readonly code = 'mock';
+  readonly environment = 'local' as const;
 
   async createPixCharge(params: CreatePixParams): Promise<PixChargeResult> {
     const mockId = `mock_pix_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;

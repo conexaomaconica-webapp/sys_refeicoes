@@ -1,0 +1,25 @@
+{
+  "stage": "8C.1",
+  "executedAt": "2026-10-27",
+  "environment": "official-supabase-project",
+  "approved": true,
+  "identity": {
+    "kind": "ephemeral-synthetic-supervisor",
+    "created": true,
+    "deleted": true,
+    "residueVerifiedAbsent": true
+  },
+  "checks": {
+    "anonymousShiftReportsDenied": true,
+    "anonymousIntelligenceDenied": true,
+    "scopedShiftReportsAllowed": true,
+    "unauthorizedTargetShiftReportsDenied": true,
+    "scopedIntelligenceAllowed": true,
+    "unauthorizedTargetIntelligenceDenied": true
+  },
+  "unauthorizedTargetKind": "nonexistent-unit",
+  "limitations": [
+    "O cadastro possuia somente uma unidade ativa; o teste negativo comprovou fail-closed para unidade inexistente, nao isolamento entre duas unidades reais.",
+    "As respostas operacionais foram reduzidas a booleanos e nenhum identificador ou dado operacional foi persistido na evidencia."
+  ]
+}

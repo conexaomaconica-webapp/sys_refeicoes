@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
 import { ConsumerDashboard } from '@/components/consumer/ConsumerDashboard';
+import { generateEncryptedStudentQr } from '@/lib/security/static-qr-crypto';
 import type { Card } from '@/types/card';
 import type {
   ConsumerMealConsumption,
@@ -181,6 +183,25 @@ export default async function ConsumerPage() {
     pushEnabled: preferenceRow?.push_enabled ?? false,
   };
 
+  let resolvedPhotoUrl: string | null = null;
+  if (student.photo_path) {
+    if (student.photo_path.startsWith('http://') || student.photo_path.startsWith('https://') || student.photo_path.startsWith('data:')) {
+      resolvedPhotoUrl = student.photo_path;
+    } else {
+      const adminClient = getAdminClient();
+      const { data: signedData } = await adminClient.storage
+        .from('student-photos')
+        .createSignedUrl(student.photo_path, 86400 * 7);
+      resolvedPhotoUrl = signedData?.signedUrl || null;
+    }
+  }
+
+  const staticQrPayload = await generateEncryptedStudentQr({
+    registrationNumber: student.registration_number,
+    tenantId: student.tenant_id,
+    studentId: student.id,
+  });
+
   const portalData: ConsumerPortalData = {
     student: {
       id: student.id,
@@ -190,7 +211,8 @@ export default async function ConsumerPage() {
       course: student.course,
       email: student.email,
       phone: student.phone,
-      photoPath: student.photo_path,
+      photoPath: resolvedPhotoUrl || student.photo_path,
+      qrPayload: staticQrPayload,
       status: student.status,
       institutionName: institution?.name || 'Instituição de ensino',
       category: {

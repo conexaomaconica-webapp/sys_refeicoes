@@ -11,6 +11,7 @@ const actions = read('src/app/consumer/actions.ts');
 const rechargeService = read('src/services/recharge.service.ts');
 const login = read('src/app/(auth)/login/page.tsx');
 const portalLogin = read('src/components/auth/PortalLogin.tsx');
+const postLoginDestination = read('src/lib/auth/post-login-destination.ts');
 const layout = read('src/app/layout.tsx');
 const dynamicQr = read('src/components/cards/DynamicQRCode.tsx');
 const manifest = JSON.parse(read('public/manifest.json'));
@@ -28,8 +29,8 @@ const checks = [
   ],
   [
     'login directs students to the consumer portal',
-    (login + portalLogin).includes("profile.role === 'student'") &&
-      (login + portalLogin).includes("'/consumer'"),
+    (login + portalLogin).includes('getPostLoginDestination(profile.role)') &&
+      postLoginDestination.includes("if (role === 'student') return '/consumer'"),
   ],
   [
     'integral consumers do not execute financial queries',

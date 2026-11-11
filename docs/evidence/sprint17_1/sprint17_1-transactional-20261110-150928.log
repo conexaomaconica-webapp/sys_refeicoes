@@ -1,0 +1,36 @@
+﻿PASS 01 PostgreSQL 17 descartável confirmado | v170011
+PASS 02 Data directory exclusivo descartável confirmado
+PASS 03 Listener restrito a loopback | 127.0.0.1:55441
+PASS 04 Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS
+PASS 05 Cadeia de migrations 77 -> 78 -> 79 -> 80 -> 81 compilada sobre baseline
+PASS 06 C1.1 Financeiro Tenant B bloqueado no relatório de Tenant A | 42501
+PASS 07 C1.2 Gerente A1 bloqueado na Unidade A2 no relatório financeiro | 42501
+PASS 08 C1.3a Storage bucket contingency-evidence isola SELECT por tenant_id
+PASS 09 C1.3b Storage bucket contingency-evidence bloqueia INSERT cruzado em Tenant B | 42501
+PASS 10 C2.1 Gerente submete contingência com meal_rules/meal_types válidos
+PASS 11 C2.2 Gerente bloqueado ao tentar autoaprovar via UPDATE direto (WITH CHECK) | 42501
+PASS 12 C2.3 Gerente bloqueado na RPC review_contingency_batch
+PASS 13 C2.4 Segregação de funções impede diretor de aprovar próprio lote
+PASS 14 C2.5 Diretor aprova lote de gerente (10 refeições = R$ 95,00 subsídio)
+PASS 15 C2.6 Lote aprovado torna-se imutável pela trigger prevent_contingency_tampering | 42501
+PASS 16 C3.1 authenticated bloqueado em UPDATE de wallet_transactions | 42501
+PASS 17 C3.2 Trigger bloqueia DELETE em wallet_transactions até para proprietário | 42501
+FAIL 18 C3.3 Trigger BEFORE TRUNCATE bloqueia TRUNCATE em wallet_transactions | esperado /LEDGER_IMMUTABLE/, recebido: cannot truncate a table referenced in a foreign key constraint
+PASS 19 C3.4 Caminho legítimo append-only de lançamento no ledger funciona
+PASS 20 C4.1 Batimento patrimonial 1:1 equilibrado (96.00 = 100.00 - 4.00)
+PASS 21 C4.2 audit_wallet_custody_integrity detecta deriva patrimonial (+10.00)
+PASS 22 C5.1/C6.1 Relatório fiscal segrega receita (4.00), subsídio (104.50), recargas (100.00), custódia (96.00) e taxa JSON (2.50)
+PASS 23 C6.2 Filtro por instituição A2 exclui consumos, contingência e recargas da instituição A1
+PASS 24 C7.1 Conciliação detecta todos os 5 tipos de divergência e re-execução é idempotente sem mutar ledger
+PASS 25 C8.1 Todas as 6 RPCs críticas têm SECURITY DEFINER, search_path="" e zero EXECUTE para PUBLIC/anon
+PASS 26 C9.1 Papel anon bloqueado por ACL nas RPCs | 42501
+PASS 27 C9.2 Usuário inativo bloqueado em audit_wallet_custody_integrity | 42501
+PASS 28 C9.3 Supervisor sem unidade é bloqueado fail-closed | 42501
+PASS 29 C9.4 Operador de terminal é excluído de operational_dashboard_signals
+PASS 30 C10.1 RPC get_realtime_operational_dashboard executa sem erro de sc.is_integral para gerente da unidade
+PASS 31 C10.2 Publicação supabase_realtime contém apenas operational_dashboard_signals (sem meal_consumptions/blocked_attempts)
+PASS 32 C10.3 Rollback recusa apagar tabelas da Sprint 16 quando há registros gravados | P0001
+PASS 33 C10.4 Rollback reverso 81->80->79 preserva 100% dos dados anteriores e restaura supabase_realtime pré-81
+PASS 34 C10.5 Reaplicação 79 -> 80 -> 81 após rollback concluída com sucesso
+
+RESULT passed=33 failed=1 total=34

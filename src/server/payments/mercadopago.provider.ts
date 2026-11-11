@@ -1,6 +1,4 @@
 import 'server-only';
-import crypto from 'crypto';
-
 import type {
   CardChargeResult,
   CreateCardParams,
@@ -9,6 +7,7 @@ import type {
   PixChargeResult,
 } from '@/types/payment';
 import type { IPaymentProvider } from './provider.interface';
+import { verifyMercadoPagoWebhookSignature } from './webhook-signature';
 
 export interface MercadoPagoConfig {
   accessToken: string;
@@ -27,6 +26,10 @@ export class MercadoPagoPaymentProvider implements IPaymentProvider {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    if (!this.accessToken || /^(?:mock_|configure-)/i.test(this.accessToken)) {
+      throw new Error('PAYMENT_CREDENTIAL_MISSING: credencial Mercado Pago nao configurada.');
+    }
+
     const headers = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${this.accessToken}`,
@@ -125,27 +128,19 @@ export class MercadoPagoPaymentProvider implements IPaymentProvider {
     return this.createCardCharge(params);
   }
 
-  async verifyWebhookSignature(headers: Headers, _rawBody: string, secretOverride?: string): Promise<boolean> {
-    const xSignature = headers.get('x-signature');
+  async verifyWebhookSignature(
+    headers: Headers,
+    rawBody: string,
+    secretOverride?: string,
+    context?: { dataId?: string }
+  ): Promise<boolean> {
     const secret = secretOverride || this.webhookSecret;
-    if (!secret || !xSignature) return true; // Em testes locais se não configurado
-
-    try {
-      const parts = xSignature.split(',');
-      let ts = '';
-      let hash = '';
-      parts.forEach((p) => {
-        const [k, v] = p.split('=');
-        if (k.trim() === 'ts') ts = v.trim();
-        if (k.trim() === 'v1') hash = v.trim();
-      });
-
-      if (!ts || !hash) return false;
-      const expected = crypto.createHmac('sha256', secret).update(`id:${ts};`).digest('hex');
-      return hash === expected;
-    } catch {
-      return false;
-    }
+    return verifyMercadoPagoWebhookSignature({
+      headers,
+      rawBody,
+      configuredSecret: secret,
+      dataId: context?.dataId,
+    });
   }
 
   parseWebhook(payload: unknown): ParsedWebhookEvent {

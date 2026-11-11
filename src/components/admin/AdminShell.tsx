@@ -5,15 +5,21 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
+  AlertTriangle,
   Building2,
   CreditCard,
   FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
+  Gauge,
   LayoutDashboard,
+  KeyRound,
+  PlugZap,
   Menu,
   Monitor,
   Palette,
+  Receipt,
+  Scale,
   ShieldCheck,
   Tags,
   Users,
@@ -21,6 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import type { UserRole } from '@/types/auth';
+import { ChangePasswordForm } from '@/app/conta/alterar-senha/ChangePasswordForm';
 import { AdminSignOutButton } from './AdminSignOutButton';
 
 interface AdminBranding {
@@ -39,20 +46,26 @@ interface AdminShellProps {
 
 const navigation: Array<{ href: string; label: string; icon: typeof LayoutDashboard; roles: UserRole[] }> = [
   { href: '/admin', label: 'Visão geral', icon: LayoutDashboard, roles: ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'] },
+  { href: '/admin/dashboard', label: 'Dashboard operacional', icon: Gauge, roles: ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'] },
   { href: '/admin/identidade', label: 'Configurações Master', icon: Palette, roles: ['admin_general'] },
+  { href: '/admin/integracoes', label: 'Integrações e APIs', icon: PlugZap, roles: ['admin_general'] },
   { href: '/admin/usuarios', label: 'Usuários e acessos', icon: ShieldCheck, roles: ['admin_general', 'operations_director', 'unit_manager'] },
   { href: '/admin/unidades', label: 'Unidades', icon: Building2, roles: ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'] },
   { href: '/admin/financeiro', label: 'Financeiro', icon: CreditCard, roles: ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'] },
+  { href: '/admin/relatorios', label: 'Relatórios fiscais', icon: Receipt, roles: ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'] },
+  { href: '/admin/conciliacao', label: 'Conciliação e fechamento', icon: Scale, roles: ['admin_general', 'operations_director', 'finance'] },
   { href: '/admin/categorias', label: 'Categorias e valores', icon: Tags, roles: ['admin_general', 'operations_director', 'supervisor', 'unit_manager'] },
   { href: '/admin/caixa', label: 'Caixas e turnos', icon: WalletCards, roles: ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'] },
   { href: '/admin/comensais', label: 'Comensais', icon: Users, roles: ['admin_general', 'operations_director', 'supervisor', 'unit_manager'] },
   { href: '/admin/importacoes', label: 'Importação de comensais', icon: FileSpreadsheet, roles: ['admin_general', 'operations_director'] },
+  { href: '/admin/contingencia', label: 'Contingência e ajustes', icon: AlertTriangle, roles: ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'] },
 ];
 
 export function AdminShell({ children, role, branding }: AdminShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const allowedNavigation = navigation.filter((item) => item.roles.includes(role));
 
   useEffect(() => {
@@ -182,10 +195,34 @@ export function AdminShell({ children, role, branding }: AdminShellProps) {
               <p className="truncate text-xs text-slate-500">{branding.appName}</p>
             </div>
           </div>
-          <AdminSignOutButton />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setChangePasswordOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:border-amber-300 hover:text-amber-700 sm:px-4 cursor-pointer"
+              title="Alterar senha da sua conta"
+            >
+              <KeyRound className="h-4 w-4" />
+              <span className="hidden sm:inline">Alterar senha</span>
+              <span className="sm:hidden">Senha</span>
+            </button>
+            <AdminSignOutButton />
+          </div>
         </header>
 
         <div className="min-w-0">{children}</div>
+
+        {changePasswordOpen && (
+          <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-slate-950/65 p-4">
+            <div className="my-6 w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+              <ChangePasswordForm
+                isModal={true}
+                onClose={() => setChangePasswordOpen(false)}
+                branding={branding}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

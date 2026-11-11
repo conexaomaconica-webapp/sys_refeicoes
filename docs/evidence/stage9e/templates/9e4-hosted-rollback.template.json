@@ -1,0 +1,17 @@
+{
+  "stage": "9E.4",
+  "executionStatus": "not_executed",
+  "authorization": { "status": "required", "reference": null },
+  "environment": { "kind": "hosted-isolated-pending", "isolated": null, "containsRealData": false },
+  "startedAt": null,
+  "completedAt": null,
+  "results": { "passed": 0, "failed": 0, "notTested": 6, "totalRequired": 6 },
+  "metrics": { "rollbackRtoMinutes": null, "healthChecksPassed": null, "databaseChanges": null },
+  "versions": { "knownGoodAlias": "VERSION_A", "candidateAlias": "VERSION_B" },
+  "externalActionsPerformed": false,
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "evidence": [],
+  "residualRisks": [],
+  "decision": "NO_GO_NOT_EXECUTED"
+}

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getPostLoginDestination } from '@/lib/auth/post-login-destination';
 
 export async function redefinePasswordAction(password: string, confirmation: string) {
-  if (password.length < 8) return { success: false as const, error: 'A senha deve ter pelo menos 8 caracteres.' };
+  if (password.length < 6) return { success: false as const, error: 'A senha deve ter pelo menos 6 caracteres.' };
   if (password !== confirmation) return { success: false as const, error: 'A confirmação da senha não confere.' };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

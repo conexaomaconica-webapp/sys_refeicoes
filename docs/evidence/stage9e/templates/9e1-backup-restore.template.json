@@ -1,0 +1,17 @@
+{
+  "stage": "9E.1",
+  "executionStatus": "not_executed",
+  "authorization": { "status": "required", "reference": null },
+  "environment": { "kind": "pending", "isolated": null, "containsRealData": null },
+  "startedAt": null,
+  "completedAt": null,
+  "results": { "passed": 0, "failed": 0, "notTested": 8, "totalRequired": 8 },
+  "metrics": { "rpoMinutes": null, "rtoMinutes": null },
+  "controls": { "sourceUntouched": null, "storageReconciled": null, "rlsScenariosPassed": null, "externalEffects": null },
+  "externalActionsPerformed": false,
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "evidence": [],
+  "residualRisks": [],
+  "decision": "NO_GO_NOT_EXECUTED"
+}

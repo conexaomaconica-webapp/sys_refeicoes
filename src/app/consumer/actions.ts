@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
 import { initiateRechargeServer } from '@/services/recharge.service';
 import type { PaymentMethod } from '@/types/payment';
 
@@ -155,3 +156,80 @@ export async function updateConsumerContact(input: {
     };
   }
 }
+
+export async function updateConsumerPhotoAction(formData: FormData): Promise<{
+  success: boolean;
+  photoUrl?: string;
+  error?: string;
+}> {
+  try {
+    const { supabase, user } = await requireConsumer();
+    const file = formData.get('file') as File | null;
+    if (!file) {
+      return { success: false, error: 'Nenhum arquivo enviado.' };
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return { success: false, error: 'A foto deve ter no máximo 5MB.' };
+    }
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      return { success: false, error: 'Formato inválido. Use JPG, PNG ou WEBP.' };
+    }
+
+    const { data: student, error: studentError } = await (supabase
+      .from('students')
+      .select('id, tenant_id, institution_id')
+      .eq('user_id', user.id)
+      .maybeSingle() as unknown as Promise<{
+        data: { id: string; tenant_id: string; institution_id: string } | null;
+        error: { message: string } | null;
+      }>);
+
+    if (studentError || !student) {
+      return { success: false, error: 'Cadastro do estudante não encontrado.' };
+    }
+
+    const studentRecord = student;
+    const adminClient = getAdminClient();
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filePath = `${studentRecord.tenant_id}/${studentRecord.institution_id}/${studentRecord.id}/profile_${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await adminClient.storage
+      .from('student-photos')
+      .upload(filePath, file, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      return { success: false, error: `Falha no envio da foto: ${uploadError.message}` };
+    }
+
+    const { error: dbError } = await adminClient
+      .from('students')
+      .update({ photo_path: filePath })
+      .eq('id', studentRecord.id);
+
+    if (dbError) {
+      return { success: false, error: `Falha ao salvar foto no cadastro: ${dbError.message}` };
+    }
+
+    const { data: signedData } = await adminClient.storage
+      .from('student-photos')
+      .createSignedUrl(filePath, 86400 * 7);
+
+    revalidatePath('/consumer');
+    return {
+      success: true,
+      photoUrl: signedData?.signedUrl || filePath,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao atualizar foto.',
+    };
+  }
+}
+

@@ -26,7 +26,12 @@ const checks = [
   ['identity match uses tenant, institution, registration and CPF HMAC', firstAccess.includes(".eq('registration_number', registrationNumber)") && firstAccess.includes(".eq('cpf_lookup_hash', hashCpf(input.cpf))")],
   ['missing imported email enters administrative review', firstAccess.includes("first_access_status: 'pending_review'")],
   ['eligible consumers receive an email invitation', firstAccess.includes('inviteUserByEmail') && firstAccess.includes("must_change_password: true")],
-  ['activation validates account ownership and optional photo', activation.includes("profile.role !== 'student'") && activation.includes('photo.size > 5 * 1024 * 1024')],
+  [
+    'activation validates account ownership and optional photo',
+    activation.includes("const isConsumer = profile.role === 'student'") &&
+      activation.includes(".eq('user_id', user.id)") &&
+      activation.includes('photo.size > 5 * 1024 * 1024'),
+  ],
   ['password recovery is consumer-controlled', recovery.includes('resetPasswordForEmail') && middleware.includes('must_change_password')],
   ['email token confirmation is server-side', confirmRoute.includes('verifyOtp') && confirmRoute.includes('token_hash')],
   ['private HMAC configuration is documented', environment.includes('CONSUMER_IDENTITY_HMAC_KEY=') && !environment.includes('NEXT_PUBLIC_CONSUMER_IDENTITY')],

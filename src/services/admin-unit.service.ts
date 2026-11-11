@@ -2,6 +2,7 @@ import 'server-only';
 
 import { getAdminClient } from '@/lib/supabase/admin';
 import type { UserRole } from '@/types/auth';
+import { brazilianStateCodes } from '@/lib/brazil-locations';
 
 type UnitStatus = 'active' | 'inactive';
 
@@ -39,6 +40,12 @@ export interface SaveUnitInput {
   state: string;
   timezone: string;
   status: UnitStatus;
+}
+
+export interface SaveInstitutionInput {
+  name: string;
+  shortName: string;
+  document: string;
 }
 
 interface Requester {
@@ -183,7 +190,7 @@ export async function saveUnitServer(
   const timezone = input.timezone.trim();
   if (!name) return { success: false, error: 'Informe o nome da unidade.' };
   if (!city) return { success: false, error: 'Informe a cidade.' };
-  if (!/^[A-Z]{2}$/.test(state)) return { success: false, error: 'Informe a UF com duas letras.' };
+  if (!brazilianStateCodes.has(state)) return { success: false, error: 'Selecione uma UF válida.' };
   if (!validateTimezone(timezone)) return { success: false, error: 'Informe um fuso horário válido.' };
   if (!['active', 'inactive'].includes(input.status)) return { success: false, error: 'Status inválido.' };
 
@@ -232,5 +239,40 @@ export async function saveUnitServer(
     .update({ institution_id: institutionId, name, city, state, timezone, status })
     .eq('id', input.id)
     .eq('tenant_id', requester.tenantId);
+  return error ? { success: false, error: error.message } : { success: true };
+}
+
+export async function saveInstitutionServer(
+  requestingUserId: string,
+  input: SaveInstitutionInput
+): Promise<{ success: boolean; error?: string }> {
+  const requester = await getRequester(requestingUserId);
+  if (!requester || requester.role !== 'admin_general') {
+    return { success: false, error: 'Apenas o Master pode criar instituições.' };
+  }
+
+  const name = input.name.trim();
+  const shortName = input.shortName.trim();
+  const document = input.document.trim();
+  if (!name) return { success: false, error: 'Informe o nome da instituição.' };
+
+  const adminClient = getAdminClient();
+  const { data: existing, error: lookupError } = await adminClient
+    .from('institutions')
+    .select('id')
+    .eq('tenant_id', requester.tenantId)
+    .ilike('name', name)
+    .limit(1)
+    .maybeSingle();
+  if (lookupError) return { success: false, error: lookupError.message };
+  if (existing) return { success: false, error: 'Já existe uma instituição com este nome.' };
+
+  const { error } = await adminClient.from('institutions').insert({
+    tenant_id: requester.tenantId,
+    name,
+    short_name: shortName || null,
+    document: document || null,
+    status: 'active',
+  });
   return error ? { success: false, error: error.message } : { success: true };
 }

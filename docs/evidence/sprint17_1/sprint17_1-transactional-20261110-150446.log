@@ -1,0 +1,30 @@
+﻿PASS 01 PostgreSQL 17 descartável confirmado | v170011
+PASS 02 Data directory exclusivo descartável confirmado
+PASS 03 Listener restrito a loopback | 127.0.0.1:55441
+PASS 04 Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS
+PASS 05 Cadeia de migrations 77 -> 78 -> 79 -> 80 -> 81 compilada sobre baseline
+PASS 06 C1.1 Financeiro Tenant B bloqueado no relatório de Tenant A | 42501
+PASS 07 C1.2 Gerente A1 bloqueado na Unidade A2 no relatório financeiro | 42501
+PASS 08 C1.3a Storage bucket contingency-evidence isola SELECT por tenant_id
+PASS 09 C1.3b Storage bucket contingency-evidence bloqueia INSERT cruzado em Tenant B | 42501
+PASS 10 C2.1 Gerente submete contingência com meal_rules/meal_types válidos
+node.exe : FAIL 11 C2.2 Gerente bloqueado ao tentar autoaprovar via UPDATE direto (WITH CHECK) | esperado 
+/42501|row-level security|FORBIDDEN_APPROVAL/, recebido: permission denied for table contingency_meal_batches
+No C:\Sys_MArefeicoes\scripts\sprint17_1\run-native-disposable.ps1:134 caractere:15
++     $output = & $node.Source $runner 2>&1
++               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL 11 C2.2 Ge...cy_meal_batches:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS 12 C2.3 Gerente bloqueado na RPC review_contingency_batch
+PASS 13 C2.4 Segregação de funções impede diretor de aprovar próprio lote
+PASS 14 C2.5 Diretor aprova lote de gerente (10 refeições = R$ 95,00 subsídio)
+FAIL 15 C2.6 Lote aprovado torna-se imutável pela trigger prevent_contingency_tampering | esperado 
+/CONTINGENCY_IMMUTABLE/, recebido: permission denied for table contingency_meal_batches
+PASS 16 C3.1 authenticated bloqueado em UPDATE de wallet_transactions | 42501
+PASS 17 C3.2 Trigger bloqueia DELETE em wallet_transactions até para proprietário | 42501
+FAIL 18 C3.3 Trigger BEFORE TRUNCATE bloqueia TRUNCATE em wallet_transactions | esperado /LEDGER_IMMUTABLE/, recebido: 
+current transaction is aborted, commands ignored until end of transaction block
+FALHA NA HOMOLOGAÇÃO TRANSACIONAL SPRINT 17.1: current transaction is aborted, commands ignored until end of 
+transaction block
+

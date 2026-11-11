@@ -1,0 +1,29 @@
+﻿PASS 01 PostgreSQL 17 descartável confirmado | v170011
+PASS 02 Data directory descartável exclusivo confirmado
+PASS 03 Listener restrito a loopback | 127.0.0.1:55443
+PASS 04 Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS
+PASS 05 Cadeia de migrations 77 -> 81 -> 83 aplicada sobre baseline
+PASS 06 Papel anon é bloqueado em close_financial_daily_period | permission denied for function close_financial_daily_period
+PASS 07 Chamada authenticated sem JWT sub é rejeitada | AUTH_REQUIRED: Autenticação obrigatória para fechar período financeiro.
+PASS 08 Perfil financeiro inativo é bloqueado | ACTIVE_PROFILE_REQUIRED: Perfil ativo não encontrado ou inativo.
+PASS 09 Operador não autorizado é bloqueado (PERMISSION_DENIED) | PERMISSION_DENIED: Papel operator não autorizado a consolidar fechamento diário.
+PASS 10 Financeiro do Tenant B não pode fechar período do Tenant A | TENANT_MISMATCH: Acesso negado para consolidar fechamento de outro tenant.
+PASS 11 Unidade de outro tenant é bloqueada (UNIT_TENANT_MISMATCH) | UNIT_TENANT_MISMATCH: Unidade informada não pertence ao tenant autenticado.
+PASS 12 Tentativa de fechamento em data futura é bloqueada | INVALID_CLOSING_DATE: Não é permitido fechar data futura (2026-11-12).
+PASS 13 Justificativa curta (<5 caracteres) é bloqueada | JUSTIFICATION_REQUIRED: Informe justificativa ou observação de conferência (mínimo 5 caracteres).
+PASS 14 Fechamento da Unidade A1 persistido com status equilibrado | id=ae093cc4-06a8-442c-adc9-16e3cb5aaddd
+PASS 15 Fechamento duplicado para mesma data e unidade é bloqueado | DAILY_CLOSING_ALREADY_EXISTS: O fechamento de 2026-11-10 já foi persistido para este escopo.
+PASS 16 Fechamento consolidado (unit_id NULL) persistido
+PASS 17 Índice único parcial bloqueia duplicidade consolidada (unit_id IS NULL) | DAILY_CLOSING_ALREADY_EXISTS: O fechamento de 2026-11-10 já foi persistido para este escopo.
+PASS 18 Consulta histórica retorna ambos os fechamentos do Tenant A | rows=2
+PASS 19 Fechamento da Unidade A1 segrega corretamente recebimentos, custódia, receita realizada e subsídios
+PASS 20 Fechamento consolidado soma corretamente múltiplas unidades sem inflar custódia
+PASS 21 RLS multi-tenant oculta fechamentos do Tenant A para Tenant B
+PASS 22 RLS bloqueia leitura de financial_daily_closings para papel operator
+PASS 23 Concorrência simultânea garante exatamente 1 gravação e erro determinístico DAILY_CLOSING_ALREADY_EXISTS na segunda | fulfilled=1, rows=1
+PASS 24 Fechamentos diários preservam integralmente carteiras e wallet_transactions sem ajustes ocultos
+PASS 25 Authenticated bloqueado de alterar financial_daily_closings | permission denied for table financial_daily_closings
+PASS 26 Trigger de imutabilidade bloqueia UPDATE até para owner/service_role | IMMUTABLE_DAILY_CLOSING: Registros de financial_daily_closings são imutáveis e não permitem UPDATE.
+PASS 27 Trigger de imutabilidade bloqueia DELETE até para owner/service_role | IMMUTABLE_DAILY_CLOSING: Registros de financial_daily_closings são imutáveis e não permitem DELETE.
+
+MIGRATION 83 TRANSACTIONAL HOMOLOGATION: 27/27 PASS (0 failures)

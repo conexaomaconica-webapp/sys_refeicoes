@@ -1,0 +1,17 @@
+{
+  "stage": "9E.3",
+  "executionStatus": "not_executed",
+  "authorization": { "status": "required", "reference": null },
+  "environment": { "kind": "pending", "isolated": null, "containsRealData": null },
+  "startedAt": null,
+  "completedAt": null,
+  "results": { "passed": 0, "failed": 0, "notTested": 24, "totalRequired": 24 },
+  "metrics": { "crossUnitRowsExposed": null, "crossTenantRowsExposed": null, "legitimateAccessFailures": null },
+  "aliases": { "unitA": "UNIT_A", "unitB": "UNIT_B" },
+  "externalActionsPerformed": false,
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "evidence": [],
+  "residualRisks": [],
+  "decision": "NO_GO_NOT_EXECUTED"
+}

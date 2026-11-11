@@ -276,7 +276,9 @@ const checks = [
   [
     'development output is isolated from production builds',
     nextConfig.includes("'.next-dev'") &&
-      packageJson.scripts?.dev?.includes('--turbopack'),
+      [packageJson.scripts?.dev, packageJson.scripts?.['dev:turbo']].some((command) =>
+        command?.includes('--turbopack')
+      ),
   ],
   [
     'terminal does not download offline snapshot',

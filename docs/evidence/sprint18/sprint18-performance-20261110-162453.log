@@ -1,0 +1,23 @@
+﻿PASS 01 PostgreSQL 17 descartável confirmado | v170011
+PASS 02 Data directory exclusivo descartável confirmado
+PASS 03 Listener restrito a loopback | 127.0.0.1:55442
+PASS 04 Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS
+PASS 05 Cadeia de migrations 36 -> 31 -> 72 -> 77 -> 78 -> 79 -> 80 -> 81 -> 82 compilada
+PASS 06 Massa sintética multi-tenant criada (5.254 comensais e carteiras) | 3504.32ms
+PASS 07 Fase 18.2: 1.800 refeições operacionais (950 almoço + 850 jantar) processadas com 0 erros | approved=1800, lunchP95=47.26ms, dinnerP95=35.14ms
+PASS 08 Fase 18.2: Latência p95 dentro da meta inicial (<= 400ms) | lunchP95=47.26ms, dinnerP95=35.14ms
+PASS 09 Fase 18.2: Dashboard operacional tempo real p95 <= 400ms após 1.800 refeições | p95=40.81ms
+PASS 10 Fase 18.3: 3.000 operações de estresse executadas integralmente sem perda | approved=3000
+PASS 11 Fase 18.3: Recuperação pós-pico restabelece latência p95 nominal | baselineP95=23.78ms, peakP95=65.82ms (rps=40.02), recoveryP95=13.42ms
+PASS 12 Fase 18.3: Relatório financeiro consolidado p95 <= 1000ms pós-4.800 consumos | p95=51.13ms
+PASS 13 Fase 18.4.1: Concorrência de 12 bips na mesma matrícula aprova exatamente 1 e bloqueia 11 sem débito duplo | outcomes={"approved":1,"CONCURRENT_CONSUMPTION_CONFLICT":3,"ALREADY_CONSUMED_TODAY":8}, balance=195.50
+PASS 14 Fase 18.4.2: Replay idempotente retorna o consumo original sem novo débito | consumption_id=46790091-a50b-429f-9089-49b6ded78f33, balance=195.50
+PASS 15 Fase 18.4.3: Saldo insuficiente sob concorrência mantém saldo R$ 0,50 sem negativar | outcomes={"CONCURRENT_CONSUMPTION_CONFLICT":5,"INSUFFICIENT_FUNDS":1}, balance=0.50
+PASS 16 Fase 18.4.4a: RPC legada reconcile_offline_consumptions segue revogada para authenticated (42501)
+PASS 17 Fase 18.4.4b: Eventos offline fora de ordem e repetidos reconciliados sem débito duplo | results=[{"k":"OFF-KEY-002","st":"conflict_duplicate"},{"k":"OFF-KEY-001","st":"confirmed_regular"},{"k":"OFF-KEY-001","st":"confirmed_regular","replay":true}]
+PASS 18 Fase 18.4.5: Isolamento multi-tenant e de unidade preserva bloqueio pós-carga | crossUnit=CASH_SHIFT_REQUIRED, crossStudent=STUDENT_NOT_FOUND
+PASS 19 Fase 18.4.6: Consistência 1:1 carteira/ledger e 0 saldos negativos em 5.254 carteiras após 4.800+ consumos | mismatches=0, patrimonyBalanced=true, signals=4822
+PASS 20 Fase 18.4.7: Sinais realtime sem PII emitidos sob carga sem bloquear operação do terminal | signals=4822
+PASS 21 Índice Sprint 18 idx_cash_shifts_open_operator_terminal utilizado em carga real | scans=9594
+
+Resumo Sprint 18 PG17: 21/21 aprovadas, 0 falhas.

@@ -1,0 +1,26 @@
+﻿PASS 01 PostgreSQL 17 descartavel confirmado
+PASS 02 banco descartavel confirmado
+PASS 03 data directory exclusivo confirmado
+FAIL 04 listener restrito a loopback
+PASS 05 papeis de aplicacao sem superuser ou bypass RLS
+PASS 06 baseline contem as 12 assinaturas reais
+PASS 07 baseline reproduz EXECUTE de PUBLIC nas 12 funcoes
+PASS 08 migrations 72 a 75 compilam juntas
+PASS 09 rollback restaura integralmente os ACLs anteriores
+PASS 10 migration 75 remove EXECUTE de PUBLIC nas 12 funcoes
+PASS 11 authenticated nao executa as quatro RPCs legadas
+PASS 12 somente authenticated conserva EXECUTE da RPC ativa
+PASS 13 funcoes de trigger nao sao chamaveis por papeis de aplicacao
+PASS 14 RPC ativa responde no escopo autorizado
+PASS 15 RPC ativa bloqueia acesso cruzado por unidade
+PASS 16 trigger handle_updated_at continua funcional
+PASS 17 triggers de caixa continuam funcionais
+PASS 18 trigger de sincronizacao continua funcional
+PASS 19 trigger de estudante permite campo autorizado
+PASS 20 trigger de perfil bloqueia escalada
+PASS 21 trigger de estudante bloqueia adulteracao
+PASS 22 event trigger continua associado e executavel
+PASS 23 segunda aplicacao da migration 75 e idempotente
+PASS 24 pos-condicao permanece valida apos reaplicacao
+RESULT passed=23 failed=1 total=24
+

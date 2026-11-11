@@ -1,0 +1,137 @@
+{
+  "stage": "8A.4",
+  "generatedAt": "2026-10-27T14:27:58.376Z",
+  "server": {
+    "versionNum": 170011,
+    "address": "127.0.0.1",
+    "listenAddresses": "127.0.0.1",
+    "port": 55439
+  },
+  "checks": [
+    {
+      "name": "PostgreSQL 17 descartavel confirmado",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "banco descartavel confirmado",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "data directory exclusivo confirmado",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "listener restrito a loopback",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "papeis de aplicacao sem superuser ou bypass RLS",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "baseline contem as 12 assinaturas reais",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "baseline reproduz EXECUTE de PUBLIC nas 12 funcoes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "migrations 72 a 75 compilam juntas",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "rollback restaura integralmente os ACLs anteriores",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "migration 75 remove EXECUTE de PUBLIC nas 12 funcoes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "authenticated nao executa as quatro RPCs legadas",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "somente authenticated conserva EXECUTE da RPC ativa",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "funcoes de trigger nao sao chamaveis por papeis de aplicacao",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "RPC ativa responde no escopo autorizado",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "RPC ativa bloqueia acesso cruzado por unidade",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "trigger handle_updated_at continua funcional",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "triggers de caixa continuam funcionais",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "trigger de sincronizacao continua funcional",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "trigger de estudante permite campo autorizado",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "trigger de perfil bloqueia escalada",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "trigger de estudante bloqueia adulteracao",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "event trigger continua associado e executavel",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "segunda aplicacao da migration 75 e idempotente",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "pos-condicao permanece valida apos reaplicacao",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "summary": {
+    "passed": 24,
+    "failed": 0,
+    "total": 24
+  }
+}

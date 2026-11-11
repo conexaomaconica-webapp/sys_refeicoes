@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit3, KeyRound, Plus, Search, UserCheck, Users, UserX, X } from 'lucide-react';
+import { Check, Copy, Edit3, Eye, EyeOff, KeyRound, Plus, Search, Sparkles, UserCheck, Users, UserX, X } from 'lucide-react';
 import {
   saveCommensalAction,
   saveConsumerAccessAction,
@@ -60,6 +60,34 @@ const emptyForm = (institutions: SelectOption[], categories: SelectOption[]): Co
   status: 'active',
 });
 
+function generateClientStrongPassword(): string {
+  const letters = 'abcdefghjkmnpqrstuvwxyz';
+  const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const numbers = '23456789';
+  const symbols = '!@#$';
+
+  const pick = (chars: string) => chars[Math.floor(Math.random() * chars.length)];
+
+  const chars = [
+    pick(uppercase),
+    pick(letters),
+    pick(numbers),
+    pick(symbols),
+  ];
+
+  const pool = letters + uppercase + numbers;
+  while (chars.length < 8) {
+    chars.push(pick(pool));
+  }
+
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join('');
+}
+
 export function CommensalManager({ students, categories, institutions }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -75,9 +103,15 @@ export function CommensalManager({ students, categories, institutions }: Props) 
   const [accessForm, setAccessForm] = useState<ConsumerAccessFormInput>({
     studentId: '',
     email: '',
+    password: '',
+    mustChangePassword: true,
+    provisioningMethod: 'password',
     status: 'active',
     sendRecoveryEmail: false,
   });
+  const [showAccessPassword, setShowAccessPassword] = useState(false);
+  const [temporaryCredential, setTemporaryCredential] = useState<{ email: string; password: string } | null>(null);
+  const [credentialCopied, setCredentialCopied] = useState(false);
   const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
   const filtered = useMemo(() => {
@@ -126,9 +160,13 @@ export function CommensalManager({ students, categories, institutions }: Props) 
     setAccessForm({
       studentId: student.id,
       email: student.access_email || student.email || '',
+      password: '',
+      mustChangePassword: true,
+      provisioningMethod: 'password',
       status: student.access_status === 'inactive' ? 'inactive' : 'active',
       sendRecoveryEmail: false,
     });
+    setShowAccessPassword(false);
     setMessage(null);
     setAccessModalOpen(true);
   };
@@ -156,6 +194,10 @@ export function CommensalManager({ students, categories, institutions }: Props) 
       if (!result.success) {
         setMessage({ kind: 'error', text: result.error });
         return;
+      }
+      if (result.temporaryCredential) {
+        setTemporaryCredential(result.temporaryCredential);
+        setCredentialCopied(false);
       }
       setMessage({ kind: 'success', text: result.message });
       setAccessModalOpen(false);
@@ -281,6 +323,84 @@ export function CommensalManager({ students, categories, institutions }: Props) 
                 <span className="mb-1 block text-xs font-bold uppercase text-slate-500">E-mail de acesso</span>
                 <input type="email" required value={accessForm.email} onChange={(event) => setAccessForm({ ...accessForm, email: event.target.value })} className="w-full rounded-xl border border-slate-300 px-3 py-3 outline-none focus:border-red-600" />
               </label>
+
+              {!accessStudent.user_id && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setAccessForm({ ...accessForm, provisioningMethod: 'password' })}
+                    className={`rounded-xl border p-3 text-left transition ${
+                      accessForm.provisioningMethod === 'password'
+                        ? 'border-red-600 bg-red-50/50 ring-2 ring-red-500/20'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <strong className="block text-xs font-bold text-slate-900">Senha direta</strong>
+                    <span className="text-[11px] text-slate-500">Ativa sem precisar de e-mail</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAccessForm({ ...accessForm, provisioningMethod: 'invite' })}
+                    className={`rounded-xl border p-3 text-left transition ${
+                      accessForm.provisioningMethod === 'invite'
+                        ? 'border-red-600 bg-red-50/50 ring-2 ring-red-500/20'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <strong className="block text-xs font-bold text-slate-900">Convite por e-mail</strong>
+                    <span className="text-[11px] text-slate-500">Envia link de ativação</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Campo de Senha */}
+              {(!accessStudent.user_id ? accessForm.provisioningMethod === 'password' : true) && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase text-slate-700">
+                      {accessStudent.user_id ? 'Redefinir senha (opcional)' : 'Senha de acesso (6 a 8 dígitos) *'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pwd = generateClientStrongPassword();
+                        setAccessForm((prev) => ({ ...prev, password: pwd }));
+                        setShowAccessPassword(true);
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-red-700 hover:text-red-800"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" /> Gerar aleatória
+                    </button>
+                  </div>
+                  <div className="relative mt-2">
+                    <input
+                      type={showAccessPassword ? 'text' : 'password'}
+                      value={accessForm.password || ''}
+                      onChange={(e) => setAccessForm({ ...accessForm, password: e.target.value })}
+                      placeholder={accessStudent.user_id ? 'Deixe em branco para manter a atual' : 'Digite ou gere a senha'}
+                      required={!accessStudent.user_id && accessForm.provisioningMethod === 'password'}
+                      className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-3 pr-10 text-sm outline-none focus:border-red-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAccessPassword(!showAccessPassword)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      {showAccessPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <label className="mt-2.5 flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={accessForm.mustChangePassword !== false}
+                      onChange={(e) => setAccessForm({ ...accessForm, mustChangePassword: e.target.checked })}
+                      className="h-4 w-4 rounded accent-red-600"
+                    />
+                    Exigir troca de senha no primeiro login
+                  </label>
+                </div>
+              )}
+
               <label className="block">
                 <span className="mb-1 block text-xs font-bold uppercase text-slate-500">Situação do acesso</span>
                 <select value={accessForm.status} onChange={(event) => setAccessForm({ ...accessForm, status: event.target.value as 'active' | 'inactive' })} className="w-full rounded-xl border border-slate-300 px-3 py-3 outline-none focus:border-red-600">
@@ -288,22 +408,72 @@ export function CommensalManager({ students, categories, institutions }: Props) 
                   <option value="inactive">Inativo</option>
                 </select>
               </label>
+
               {accessStudent.user_id && (
                 <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-700">
                   <input type="checkbox" checked={Boolean(accessForm.sendRecoveryEmail)} onChange={(event) => setAccessForm({ ...accessForm, sendRecoveryEmail: event.target.checked })} className="mt-0.5 h-4 w-4" />
                   Enviar e-mail para o próprio consumidor redefinir sua senha
                 </label>
               )}
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-                O acesso será criado como consumidor (`student`) e o convite seguirá para o e-mail cadastrado. Gestores não visualizam nem definem a senha pessoal.
-              </div>
             </div>
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setAccessModalOpen(false)} className="rounded-xl border border-slate-300 px-5 py-3 font-bold">Cancelar</button>
-              <button type="submit" disabled={isPending} className="rounded-xl bg-[#C5161D] px-5 py-3 font-black text-white disabled:opacity-50">{isPending ? 'Salvando...' : accessStudent.user_id ? 'Salvar acesso' : 'Criar e enviar convite'}</button>
+              <button type="submit" disabled={isPending} className="rounded-xl bg-[#C5161D] px-5 py-3 font-black text-white disabled:opacity-50">
+                {isPending ? 'Salvando...' : accessStudent.user_id ? 'Salvar alterações' : accessForm.provisioningMethod === 'password' ? 'Criar acesso com senha' : 'Criar e enviar convite'}
+              </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Modal de Exibição de Credencial Criada para o Comensal */}
+      {temporaryCredential && (
+        <div className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-slate-950/70 p-4">
+          <section role="dialog" aria-modal="true" aria-labelledby="consumer-cred-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl md:p-8">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
+              <KeyRound className="h-6 w-6" />
+            </div>
+            <h2 id="consumer-cred-title" className="mt-4 text-2xl font-black text-slate-900">
+              Acesso do consumidor ativado
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              A conta do comensal foi ativada. O usuário já pode acessar o portal do consumidor em <code>/conta/login</code> com as credenciais abaixo:
+            </p>
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">E-mail de login</p>
+              <p className="mt-1 break-all font-bold text-slate-900">{temporaryCredential.email}</p>
+
+              <p className="mt-4 text-xs font-black uppercase tracking-wide text-slate-500">Senha definida</p>
+              <div className="mt-1 flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-xl bg-white px-3 py-3 text-sm font-bold text-slate-950 ring-1 ring-slate-200">
+                  {temporaryCredential.password}
+                </code>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(temporaryCredential.password);
+                    setCredentialCopied(true);
+                  }}
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-300 bg-white hover:border-red-500 transition-colors"
+                  aria-label="Copiar senha"
+                  title="Copiar senha"
+                >
+                  {credentialCopied ? <Check className="h-5 w-5 text-emerald-700" /> : <Copy className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setTemporaryCredential(null);
+                setCredentialCopied(false);
+              }}
+              className="mt-6 w-full rounded-xl bg-red-700 px-5 py-3 text-sm font-black text-white hover:bg-red-600 transition-colors"
+            >
+              Concluir e fechar
+            </button>
+          </section>
         </div>
       )}
     </main>

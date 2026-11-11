@@ -1,38 +1,48 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ShieldCheck, RefreshCw, AlertCircle, Clock } from 'lucide-react';
+import { ShieldCheck, RefreshCw, AlertCircle, Clock, QrCode as QrIcon } from 'lucide-react';
 import QRCode from 'qrcode';
 import { generateStudentQRToken } from '@/services/card.service';
 
 interface DynamicQRCodeProps {
   cardId?: string;
+  registrationNumber?: string;
   initialPayload?: string;
   initialExpiresAt?: string;
   initialTtlSeconds?: number;
   onTokenRefreshed?: (payload: string, expiresAt: string) => void;
   compact?: boolean;
+  hideLabel?: boolean;
 }
 
 export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
   cardId,
+  registrationNumber,
   initialPayload = '',
   initialExpiresAt,
   initialTtlSeconds = 90,
   onTokenRefreshed,
   compact = false,
+  hideLabel = false,
 }) => {
-  const [payload, setPayload] = useState<string>(initialPayload);
+  // Quando um payload estático (como QR criptografado) ou matrícula for fornecido, ele é o payload fixo do QR code
+  const staticPayload = initialPayload?.trim() || (registrationNumber ? registrationNumber.trim() : null);
+  const isStatic = Boolean(staticPayload);
+  const displayRegistration = registrationNumber?.trim() || (staticPayload?.startsWith('MAR:S:') ? '' : staticPayload);
+
+  const [payload, setPayload] = useState<string>(staticPayload || initialPayload);
   const [expiresAt, setExpiresAt] = useState<Date>(
     initialExpiresAt ? new Date(initialExpiresAt) : new Date(Date.now() + initialTtlSeconds * 1000)
   );
   const [timeLeft, setTimeLeft] = useState<number>(initialTtlSeconds);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState<boolean>(Boolean(initialPayload));
+  const [initialized, setInitialized] = useState<boolean>(Boolean(staticPayload || initialPayload));
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const refreshToken = useCallback(async () => {
+    if (isStatic) return;
     setLoading(true);
     setError(null);
     try {
@@ -55,11 +65,16 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [cardId, onTokenRefreshed]);
+  }, [cardId, isStatic, onTokenRefreshed]);
 
   useEffect(() => {
+    if (staticPayload) {
+      setPayload(staticPayload);
+      setInitialized(true);
+      return;
+    }
     if (cardId && !initialPayload) void refreshToken();
-  }, [cardId, initialPayload, refreshToken]);
+  }, [cardId, initialPayload, refreshToken, staticPayload]);
 
   useEffect(() => {
     if (!initialized || !payload) {
@@ -70,7 +85,7 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
     let cancelled = false;
     void QRCode.toDataURL(payload, {
       errorCorrectionLevel: 'M',
-      margin: 2,
+      margin: 1,
       width: 360,
       color: { dark: '#0f172a', light: '#ffffff' },
     })
@@ -86,8 +101,10 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
     };
   }, [initialized, payload]);
 
-  // Contagem regressiva precisa em tempo real
+  // Contagem regressiva ativa apenas no modo dinâmico rotativo
   useEffect(() => {
+    if (isStatic) return;
+
     const timer = setInterval(() => {
       const remaining = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
       setTimeLeft(remaining);
@@ -99,7 +116,7 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [expiresAt, loading, refreshToken]);
+  }, [expiresAt, isStatic, loading, refreshToken]);
 
   // Cálculo da barra de progresso (90s max)
   const progressPercent = useMemo(() => {
@@ -115,26 +132,47 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
   if (compact) {
     return (
       <div className="w-full">
-        <div className="relative mx-auto grid aspect-square w-full max-w-[210px] place-items-center rounded-3xl bg-white p-3 shadow-xl">
+        <div className="relative mx-auto grid aspect-square w-full max-w-[210px] place-items-center rounded-2xl bg-white p-2.5 shadow-xl border-2 border-white/40">
           {(loading || !initialized) && (
-            <div className="absolute inset-0 z-10 grid place-items-center rounded-3xl bg-white/85">
+            <div className="absolute inset-0 z-10 grid place-items-center rounded-2xl bg-white/85">
               <RefreshCw className="h-8 w-8 animate-spin text-red-700" />
             </div>
           )}
           {initialized && qrDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={qrDataUrl} alt="QR Code dinÃ¢mico de identificaÃ§Ã£o" className="h-full w-full rounded-xl [image-rendering:pixelated]" />
+            <img
+              src={qrDataUrl}
+              alt={isStatic ? `QR Code da Matrícula ${displayRegistration || ''}` : 'QR Code de identificação'}
+              className="h-full w-full rounded-lg [image-rendering:pixelated]"
+            />
           ) : (
             <div className="h-full w-full" />
           )}
         </div>
-        <div className="mt-2 flex items-center justify-center gap-2 text-[11px] font-bold text-white/90">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          <span>QR seguro Â· {timeLeft}s</span>
-          <button type="button" onClick={refreshToken} disabled={loading} className="rounded-full bg-white/15 p-1 hover:bg-white/25" aria-label="Atualizar QR Code">
-            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+        {!hideLabel && (
+          <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-bold text-white/90">
+            {isStatic ? (
+              <>
+                <QrIcon className="h-3.5 w-3.5" />
+                <span>Matrícula: <strong className="font-mono text-white">{displayRegistration || 'Identificada'}</strong></span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>QR seguro · {timeLeft}s</span>
+                <button
+                  type="button"
+                  onClick={refreshToken}
+                  disabled={loading}
+                  className="rounded-full bg-white/15 p-1 hover:bg-white/25"
+                  aria-label="Atualizar QR Code"
+                >
+                  <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {error && <p className="mt-1 text-center text-[10px] font-bold text-amber-200">{error}</p>}
       </div>
     );
@@ -145,12 +183,14 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
       <div className="flex items-center justify-between w-full mb-3 px-1">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
           <ShieldCheck className="w-4 h-4" />
-          <span>QR Dinâmico de Identificação</span>
+          <span>{isStatic ? `Matrícula: ${displayRegistration || 'Identificada'}` : 'QR Dinâmico de Identificação'}</span>
         </div>
-        <div className={`flex items-center gap-1 text-xs font-mono ${timerColor}`}>
-          <Clock className="w-3.5 h-3.5" />
-          <span className="font-bold">{timeLeft}s</span>
-        </div>
+        {!isStatic && (
+          <div className={`flex items-center gap-1 text-xs font-mono ${timerColor}`}>
+            <Clock className="w-3.5 h-3.5" />
+            <span className="font-bold">{timeLeft}s</span>
+          </div>
+        )}
       </div>
 
       {/* Container do QR Code */}
@@ -164,7 +204,7 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={qrDataUrl}
-            alt="QR Code dinâmico de identificação"
+            alt={isStatic ? `QR Code da Matrícula ${displayRegistration || ''}` : 'QR Code de identificação'}
             className="h-[180px] w-[180px] rounded-lg [image-rendering:pixelated]"
           />
         ) : (
@@ -172,36 +212,40 @@ export const DynamicQRCode: React.FC<DynamicQRCodeProps> = ({
         )}
       </div>
 
-      {/* Barra de Progresso do TTL */}
-      <div className="w-full mt-3">
-        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-all duration-1000 ease-linear ${
-              timeLeft > 30 ? 'bg-emerald-500' : timeLeft > 10 ? 'bg-amber-500' : 'bg-rose-500'
-            }`}
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-      </div>
+      {!isStatic && (
+        <>
+          {/* Barra de Progresso do TTL */}
+          <div className="w-full mt-3">
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-1000 ease-linear ${
+                  timeLeft > 30 ? 'bg-emerald-500' : timeLeft > 10 ? 'bg-amber-500' : 'bg-rose-500'
+                }`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
 
-      {error ? (
-        <div className="flex items-center gap-1 text-xs text-rose-400 mt-2">
-          <AlertCircle className="w-3.5 h-3.5" />
-          <span>{error}</span>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between w-full mt-2.5 px-1">
-          <span className="text-[11px] text-slate-400">Rotativo a cada 90s</span>
-          <button
-            type="button"
-            onClick={refreshToken}
-            disabled={loading}
-            className="flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 disabled:opacity-50 transition"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-            <span>Atualizar</span>
-          </button>
-        </div>
+          {error ? (
+            <div className="flex items-center gap-1 text-xs text-rose-400 mt-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>{error}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between w-full mt-2.5 px-1">
+              <span className="text-[11px] text-slate-400">Rotativo a cada 90s</span>
+              <button
+                type="button"
+                onClick={refreshToken}
+                disabled={loading}
+                className="flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 disabled:opacity-50 transition"
+              >
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                <span>Atualizar</span>
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

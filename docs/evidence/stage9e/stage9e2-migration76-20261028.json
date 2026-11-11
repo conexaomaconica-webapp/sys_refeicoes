@@ -1,0 +1,47 @@
+{
+  "stage": "9E.2",
+  "executionStatus": "completed",
+  "authorization": {
+    "status": "authorized",
+    "reference": "Autorização expressa do usuário para aplicar a migration 76 em 2026-10-28"
+  },
+  "environment": {
+    "kind": "supabase-official-development",
+    "isolated": false,
+    "containsRealData": true
+  },
+  "startedAt": "2026-10-28T00:00:00-03:00",
+  "completedAt": "2026-10-28T00:00:00-03:00",
+  "results": {
+    "passed": 0,
+    "failed": 0,
+    "notTested": 14,
+    "totalRequired": 14
+  },
+  "metrics": {
+    "migrationControlsPassed": 5,
+    "migrationControlsTotal": 5,
+    "localControlsPassed": 20,
+    "signatureTestsPassed": 10,
+    "configuredIntegrations": 0,
+    "managedVaultSecrets": 0,
+    "realFinancialTransactions": 0
+  },
+  "providersTested": [],
+  "externalActionsPerformed": true,
+  "remoteConnectionsPerformed": 6,
+  "realFinancialTransactionsPerformed": 0,
+  "evidence": [
+    "migration 76 aplicada em transação única",
+    "histórico remoto reconciliado",
+    "RLS forçado e acesso direto autenticado bloqueado",
+    "build de produção com 27 páginas e BUILD_ID válido"
+  ],
+  "residualRisks": [
+    "PAY-01 a PAY-14 ainda não executados",
+    "nenhuma credencial Asaas Sandbox cadastrada",
+    "ativação produtiva permanece bloqueada",
+    "restauração 9E.1-C não homologada por decisão do responsável"
+  ],
+  "decision": "NO_GO"
+}

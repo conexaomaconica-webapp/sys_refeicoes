@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import type { PublicTenantBranding } from '@/types/tenant';
 import { BrandContext } from '@/components/branding/brand-context';
 import {
@@ -16,18 +17,21 @@ export interface BrandProviderProps {
 }
 
 export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
+  const pathname = usePathname();
+  const isIsolatedDemo = pathname.startsWith('/demonstracao/central-inteligencia');
   const [tenantSlug, setTenantSlug] = useState<string>(() => normalizeTenantSlug(initialSlug));
   const [branding, setBranding] = useState<PublicTenantBranding>(FALLBACK_BRANDING);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    if (isIsolatedDemo) return;
     const querySlug = new URLSearchParams(window.location.search).get('tenant');
     const storedSlug = window.localStorage.getItem('ma-refeicoes-tenant-slug');
     const resolvedSlug = normalizeTenantSlug(querySlug || storedSlug || initialSlug);
 
     if (querySlug) window.localStorage.setItem('ma-refeicoes-tenant-slug', resolvedSlug);
     if (resolvedSlug !== tenantSlug) setTenantSlug(resolvedSlug);
-  }, [initialSlug, tenantSlug]);
+  }, [initialSlug, isIsolatedDemo, tenantSlug]);
 
   const selectTenantSlug = useCallback((rawSlug: string) => {
     const resolvedSlug = normalizeTenantSlug(rawSlug);
@@ -36,6 +40,11 @@ export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
   }, []);
 
   const loadBranding = useCallback(async () => {
+    if (isIsolatedDemo) {
+      setBranding(FALLBACK_BRANDING);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const data = await getPublicTenantBranding(tenantSlug);
@@ -53,7 +62,7 @@ export function BrandProvider({ children, initialSlug }: BrandProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantSlug]);
+  }, [isIsolatedDemo, tenantSlug]);
 
   useEffect(() => {
     loadBranding();

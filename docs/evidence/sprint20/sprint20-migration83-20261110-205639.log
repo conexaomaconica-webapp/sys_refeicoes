@@ -1,0 +1,6 @@
+﻿PASS 01 PostgreSQL 17 descartável confirmado | v170011
+PASS 02 Data directory descartável exclusivo confirmado
+PASS 03 Listener restrito a loopback | 127.0.0.1:55443
+PASS 04 Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS
+PASS 05 Cadeia de migrations 77 -> 81 -> 83 aplicada sobre baseline
+FATAL: cannot insert multiple commands into a prepared statement

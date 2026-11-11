@@ -12,7 +12,7 @@ validação da sessão, papel e tenant. O navegador nunca recebe a service role.
 
 O fluxo persiste primeiro um manifesto em `imports`/`import_rows` e somente a
 confirmação executa as linhas válidas. Cada linha possui subtransação própria;
-uma rejeição não reverte as demais. XLSX e CSV são gerados no servidor e
+uma rejeição não reverte aAutorizo aplicar exclusivamente a migration 55 no banco remoto atuals demais. XLSX e CSV são gerados no servidor e
 neutralizam formula injection.
 
 ## Banco de dados

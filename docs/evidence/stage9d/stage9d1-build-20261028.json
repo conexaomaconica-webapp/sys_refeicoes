@@ -1,0 +1,38 @@
+{
+  "stage": "9D.1",
+  "scope": "local-clean-production-build",
+  "date": "2026-10-28",
+  "diagnosis": {
+    "physicalMemoryBytes": 4005040128,
+    "freeMemoryBytesAtPreflight": 492445696,
+    "freeDiskBytesAtPreflight": 3697610752,
+    "filesystem": "NTFS",
+    "nodeVersion": "v22.23.3",
+    "pnpmVersion": "12.6.0",
+    "preexistingNodeProcesses": 0,
+    "rootCause": "custom-webpack-config-disabled-automatic-build-worker-under-severe-memory-pressure"
+  },
+  "correction": {
+    "webpackBuildWorker": true,
+    "webpackMemoryOptimizations": true,
+    "typescriptChecksDisabled": false,
+    "eslintChecksDisabled": false
+  },
+  "validation": {
+    "stage9d1Controls": "12/12",
+    "stage9dSuites": "11/11",
+    "stage9dChecks": "315/315",
+    "lintPassed": true,
+    "typecheckPassed": true,
+    "buildExitCode": 0,
+    "buildDurationSeconds": 378.7,
+    "staticPagesGenerated": "26/26",
+    "buildArtifactChecks": "6/6",
+    "buildIdPresent": true,
+    "httpSmoke": "10/10",
+    "residualNodeProcesses": 0
+  },
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "deploymentPerformed": false
+}

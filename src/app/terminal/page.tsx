@@ -91,22 +91,24 @@ export default function TerminalPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
   const [mealOptions, setMealOptions] = useState<TerminalMealOption[]>([]);
+  const [unitOptions, setUnitOptions] = useState<UnitRecord[]>([]);
+  const [activeProfile, setActiveProfile] = useState<ProfileRecord | null>(null);
 
   // Configuração física do terminal (Desacoplada da identidade do operador)
   const [physicalTerminalId, setPhysicalTerminalId] = useState<string>('TERM-01');
   const [terminalConfigReady, setTerminalConfigReady] = useState<boolean>(false);
 
   const [context, setContext] = useState<TerminalContextState>({
-    tenantId: 'e1000000-0000-0000-0000-000000000001',
-    unitId: 'e2222222-2222-2222-2222-222222222221',
-    unitName: 'RU Central Universitário',
+    tenantId: '',
+    unitId: '',
+    unitName: '',
     terminalId: physicalTerminalId,
     operatorId: '',
     operatorName: '',
     operatorRole: 'operator',
-    mealTypeId: 'e5555555-5555-5555-5555-555555555552',
-    mealTypeName: 'Almoço',
-    studentPrice: 3.5,
+    mealTypeId: '',
+    mealTypeName: 'Selecionar turno',
+    studentPrice: 0,
     cashShiftMode: 'per_meal',
   });
 
@@ -118,65 +120,13 @@ export default function TerminalPage() {
     setTerminalConfigReady(true);
   }, []);
 
-  // Função para carregar contexto do operador autenticado
-  const initSessionFromAuthUser = useCallback(async (userId: string) => {
+  const loadUnitTerminalContext = useCallback(async (profile: ProfileRecord, unit: UnitRecord) => {
     const supabase = createBrowserClient();
-
-    // 1. Validar Perfil e Papel do Operador
-    const { data: profileData, error: profileErr } = await supabase
-      .from('profiles')
-      .select('id, full_name, role, tenant_id')
-      .eq('id', userId)
-      .maybeSingle();
-
-    const profile = profileData as unknown as ProfileRecord | null;
-
-    if (profileErr || !profile) {
-      throw new Error('Perfil de operador não encontrado.');
-    }
-
-    const allowedRoles = ['operator', 'unit_manager', 'supervisor', 'operations_director', 'admin_general'];
-    if (!allowedRoles.includes(profile.role)) {
-      throw new Error(`Perfil '${profile.role}' não possui permissão operacional neste terminal.`);
-    }
-
-    // A sessão autenticada é a fonte de verdade do tenant. Isso corrige o
-    // branding mesmo quando a Vercel ainda não possui um slug padrão ou o
-    // navegador guardou anteriormente o slug de outro ambiente.
-    const { data: tenantData } = await supabase
-      .from('tenants')
-      .select('slug')
-      .eq('id', profile.tenant_id)
-      .maybeSingle();
-    const tenant = tenantData as unknown as TenantRecord | null;
-    if (tenant?.slug) selectTenantSlug(tenant.slug);
-
-    // 2. Localizar uma unidade ativa permitida pela RLS.
-    // Perfis globais acessam todas as unidades do tenant; perfis operacionais
-    // continuam limitados aos vínculos existentes em user_unit_access.
-    const { data: unitData, error: unitError } = await supabase
-      .from('units')
-      .select('id, name')
-      .eq('tenant_id', profile.tenant_id)
-      .eq('status', 'active')
-      .order('name', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    const unit = unitData as unknown as UnitRecord | null;
-    if (unitError || !unit) {
-      throw new Error(
-        ['admin_general', 'operations_director'].includes(profile.role)
-          ? 'Nenhuma unidade ativa foi encontrada para este tenant.'
-          : 'Operador sem acesso a uma unidade. Solicite o vínculo ao administrador.'
-      );
-    }
-
     const unitCashSettings = await cashShiftService.listUnitSettings().catch(() => []);
     const cashShiftMode =
       unitCashSettings.find((setting) => setting.unit_id === unit.id)?.cash_shift_mode || 'per_meal';
 
-    // 3. Carregar os turnos habilitados da unidade e selecionar pela janela de horário.
+    // Carregar turnos habilitados da unidade selecionada
     const { data: unitMealData, error: unitMealError } = await supabase
       .from('unit_meal_types')
       .select('meal_type_id, start_time, end_time')
@@ -225,6 +175,25 @@ export default function TerminalPage() {
     const savedMeal = options.find((item) => item.id === savedMealId);
     const mealType = scheduledMeal || savedMeal || null;
 
+    let resolvedPrice = 0;
+    if (mealType?.id) {
+      const { data: priceRule } = await supabase
+        .from('meal_rules')
+        .select('student_price')
+        .eq('tenant_id', profile.tenant_id)
+        .eq('unit_id', unit.id)
+        .eq('meal_type_id', mealType.id)
+        .eq('enabled', true)
+        .gt('student_price', 0)
+        .order('student_price', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const row = priceRule as { student_price?: number } | null;
+      if (row && typeof row.student_price === 'number') {
+        resolvedPrice = Number(row.student_price);
+      }
+    }
+
     setContext({
       tenantId: profile.tenant_id,
       unitId: unit.id,
@@ -235,13 +204,67 @@ export default function TerminalPage() {
       operatorRole: profile.role,
       mealTypeId: mealType?.id || '',
       mealTypeName: mealType?.name || 'Selecionar turno',
-      studentPrice: 3.5,
+      studentPrice: resolvedPrice,
       cashShiftMode,
     });
+  }, [physicalTerminalId]);
+
+  // Função para carregar contexto do operador autenticado
+  const initSessionFromAuthUser = useCallback(async (userId: string) => {
+    const supabase = createBrowserClient();
+
+    // 1. Validar Perfil e Papel do Operador
+    const { data: profileData, error: profileErr } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, tenant_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const profile = profileData as unknown as ProfileRecord | null;
+
+    if (profileErr || !profile) {
+      throw new Error('Perfil de operador não encontrado.');
+    }
+
+    const allowedRoles = ['operator', 'unit_manager', 'supervisor', 'operations_director', 'admin_general'];
+    if (!allowedRoles.includes(profile.role)) {
+      throw new Error(`Perfil '${profile.role}' não possui permissão operacional neste terminal.`);
+    }
+
+    const { data: tenantData } = await supabase
+      .from('tenants')
+      .select('slug')
+      .eq('id', profile.tenant_id)
+      .maybeSingle();
+    const tenant = tenantData as unknown as TenantRecord | null;
+    if (tenant?.slug) selectTenantSlug(tenant.slug);
+
+    // 2. Localizar todas as unidades ativas permitidas pela RLS para este usuário
+    const { data: unitsData, error: unitError } = await supabase
+      .from('units')
+      .select('id, name')
+      .eq('tenant_id', profile.tenant_id)
+      .eq('status', 'active')
+      .order('name', { ascending: true });
+
+    const units = (unitsData || []) as unknown as UnitRecord[];
+    if (unitError || units.length === 0) {
+      throw new Error(
+        ['admin_general', 'operations_director'].includes(profile.role)
+          ? 'Nenhuma unidade ativa foi encontrada para este tenant.'
+          : 'Operador sem acesso a uma unidade. Solicite o vínculo ao administrador.'
+      );
+    }
+
+    setActiveProfile(profile);
+    setUnitOptions(units);
+
+    const savedUnitId = window.localStorage.getItem(`ma-refeicoes-terminal-unit:${profile.id}`);
+    const selectedUnit = units.find((u) => u.id === savedUnitId) || units[0];
+    await loadUnitTerminalContext(profile, selectedUnit);
 
     setIsAuthenticated(true);
-
-  }, [physicalTerminalId, selectTenantSlug]);
+  }, [loadUnitTerminalContext, selectTenantSlug]);
 
   // Checagem de Sessão Existente ao Inicializar
   useEffect(() => {
@@ -331,6 +354,14 @@ export default function TerminalPage() {
       setLoading(false);
     }
   };
+
+  const handleUnitChange = useCallback(async (unitId: string) => {
+    if (!activeProfile) return;
+    const selectedUnit = unitOptions.find((u) => u.id === unitId);
+    if (!selectedUnit) return;
+    window.localStorage.setItem(`ma-refeicoes-terminal-unit:${activeProfile.id}`, selectedUnit.id);
+    await loadUnitTerminalContext(activeProfile, selectedUnit);
+  }, [activeProfile, loadUnitTerminalContext, unitOptions]);
 
   const handleMealTypeChange = useCallback((mealTypeId: string) => {
     const selected = mealOptions.find((item) => item.id === mealTypeId);
@@ -471,22 +502,6 @@ export default function TerminalPage() {
               )}
             </button>
           </form>
-
-          {/* Auxílio de desenvolvimento: apenas preenchimento rápido de e-mail */}
-          {process.env.NODE_ENV !== 'production' && (
-            <div className="pt-3 border-t border-slate-800 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginEmail('operador@marefeicoes.com');
-                  setLoginPassword('');
-                }}
-                className="text-[11px] text-slate-400 hover:text-sky-300 font-mono cursor-pointer transition-colors"
-              >
-                Preencher e-mail do Operador (operador@marefeicoes.com)
-              </button>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -498,6 +513,8 @@ export default function TerminalPage() {
       tenantId={context.tenantId}
       unitId={context.unitId}
       unitName={context.unitName}
+      unitOptions={unitOptions}
+      onUnitChange={handleUnitChange}
       terminalId={context.terminalId}
       operatorId={context.operatorId}
       operatorName={context.operatorName}

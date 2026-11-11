@@ -1,0 +1,28 @@
+﻿PASS 01 PostgreSQL 17 descartavel confirmado
+PASS 02 banco descartavel confirmado
+PASS 03 data directory exclusivo confirmado
+PASS 04 porta exclusiva confirmada
+PASS 05 migrations 72, 73 e 74 compiladas em sequencia
+PASS 06 papeis testados sem superuser ou bypass RLS
+PASS 07 carga sintetica representativa criada | rows=240000
+PASS 08 admin agrega somente o proprio tenant
+PASS 09 comparativo exclui cancelados
+PASS 10 outro tenant permanece isolado
+PASS 11 supervisor ve somente unidade atribuida
+PASS 12 gerente ve somente unidade atribuida
+PASS 13 usuario institucional ve somente instituicao atribuida
+PASS 14 filtros combinados preservam consistencia
+PASS 15 unidade fora do escopo e recusada
+PASS 16 categoria de outro tenant e recusada
+PASS 17 operador e estudante sao recusados
+PASS 18 perfil inativo e recusado
+PASS 19 anonimo nao executa RPC
+PASS 20 concorrencia baseline preserva isolamento
+PASS 21 concorrencia com indice candidato preserva isolamento
+PASS 22 SLA local sequencial p95 abaixo de 1500 ms | p95=1181.51ms
+PASS 23 SLA local concorrente p95 abaixo de 2000 ms | p95=541.07ms
+PASS 24 indice candidato observado pelo PostgreSQL | scans=214
+RESULT passed=24 failed=0 total=24
+METRIC baseline_seq_p95_ms=986.85 candidate_seq_p95_ms=1181.51
+METRIC baseline_concurrent_p95_ms=1266.03 candidate_concurrent_p95_ms=541.07
+

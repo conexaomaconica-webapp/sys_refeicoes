@@ -1,0 +1,302 @@
+{
+  "stage": "7D.3",
+  "generatedAt": "2026-10-27T10:57:22.922Z",
+  "postgresMajor": 17,
+  "dataset": {
+    "totalRows": 240000,
+    "tenants": 2,
+    "institutions": 3,
+    "units": 4,
+    "currentPeriodRows": 135000,
+    "previousPeriodRows": 105000
+  },
+  "checks": {
+    "passed": 23,
+    "failed": 1,
+    "total": 24,
+    "items": [
+      {
+        "name": "PostgreSQL 17 descartavel confirmado",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "banco descartavel confirmado",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "data directory exclusivo confirmado",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "porta exclusiva confirmada",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "migrations 72, 73 e 74 compiladas em sequencia",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "papeis testados sem superuser ou bypass RLS",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "carga sintetica representativa criada",
+        "passed": true,
+        "detail": "rows=240000"
+      },
+      {
+        "name": "admin agrega somente o proprio tenant",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "comparativo exclui cancelados",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "outro tenant permanece isolado",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "supervisor ve somente unidade atribuida",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "gerente ve somente unidade atribuida",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "usuario institucional ve somente instituicao atribuida",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "filtros combinados preservam consistencia",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "unidade fora do escopo e recusada",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "categoria de outro tenant e recusada",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "operador e estudante sao recusados",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "perfil inativo e recusado",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "anonimo nao executa RPC",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "concorrencia baseline preserva isolamento",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "concorrencia com indice candidato preserva isolamento",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "SLA local sequencial p95 abaixo de 1000 ms",
+        "passed": false,
+        "detail": "p95=1054.39ms"
+      },
+      {
+        "name": "SLA local concorrente p95 abaixo de 2000 ms",
+        "passed": true,
+        "detail": "p95=567.63ms"
+      },
+      {
+        "name": "indice candidato observado pelo PostgreSQL",
+        "passed": true,
+        "detail": "scans=154"
+      }
+    ]
+  },
+  "metrics": {
+    "baseline": {
+      "sequential": {
+        "count": 20,
+        "minMs": 354.07,
+        "p50Ms": 613.7,
+        "p95Ms": 1677.61,
+        "maxMs": 3318.91,
+        "averageMs": 806.1
+      },
+      "concurrent": {
+        "count": 35,
+        "minMs": 96.58,
+        "p50Ms": 636.32,
+        "p95Ms": 853.13,
+        "maxMs": 1060.07,
+        "averageMs": 572.06,
+        "isolated": true
+      },
+      "explain": {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 391.443,
+          "Actual Total Time": 391.444,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 5778,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.034,
+        "Triggers": [],
+        "Execution Time": 391.504
+      },
+      "indexes": [
+        {
+          "name": "idx_meal_consumptions_tenant_created",
+          "scans": 6,
+          "tuplesRead": 180000
+        },
+        {
+          "name": "idx_meal_consumptions_unit_date",
+          "scans": 55,
+          "tuplesRead": 3850000
+        },
+        {
+          "name": "meal_consumptions_pkey",
+          "scans": 0,
+          "tuplesRead": 0
+        }
+      ]
+    },
+    "candidate": {
+      "sequential": {
+        "count": 20,
+        "minMs": 224.47,
+        "p50Ms": 531.02,
+        "p95Ms": 1054.39,
+        "maxMs": 1077.56,
+        "averageMs": 563.06
+      },
+      "concurrent": {
+        "count": 35,
+        "minMs": 87.04,
+        "p50Ms": 248.07,
+        "p95Ms": 567.63,
+        "maxMs": 653.74,
+        "averageMs": 294.87,
+        "isolated": true
+      },
+      "explain": {
+        "Plan": {
+          "Node Type": "Result",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0,
+          "Total Cost": 0.26,
+          "Plan Rows": 1,
+          "Plan Width": 32,
+          "Actual Startup Time": 240.305,
+          "Actual Total Time": 240.306,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 1370,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.021,
+        "Triggers": [],
+        "Execution Time": 240.323
+      },
+      "indexes": [
+        {
+          "name": "idx_meal_consumptions_tenant_created",
+          "scans": 6,
+          "tuplesRead": 180000
+        },
+        {
+          "name": "idx_meal_consumptions_unit_date",
+          "scans": 109,
+          "tuplesRead": 7630000
+        },
+        {
+          "name": "idx_stage7d_candidate_tenant_date_unit_category",
+          "scans": 154,
+          "tuplesRead": 16435000
+        },
+        {
+          "name": "meal_consumptions_pkey",
+          "scans": 0,
+          "tuplesRead": 0
+        }
+      ]
+    }
+  },
+  "cleanup": {
+    "verifiedByOrchestrator": true
+  }
+}

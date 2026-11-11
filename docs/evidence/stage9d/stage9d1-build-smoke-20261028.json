@@ -1,0 +1,58 @@
+{
+  "stage": "9D.1",
+  "scope": "local-http-smoke-with-synthetic-configuration",
+  "generatedAt": "2026-10-28T10:40:41.368Z",
+  "buildIdPresent": true,
+  "serverPid": 14388,
+  "checks": [
+    {
+      "route": "/api/health/live",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "route": "/api/health/ready",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "route": "/",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "route": "/login",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "route": "/terminal",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "route": "/conta/esqueci-senha",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "route": "/demonstracao/central-inteligencia",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "route": "/api/health/live contract",
+      "passed": true
+    },
+    {
+      "route": "/api/health/ready contract",
+      "passed": true
+    },
+    {
+      "route": "/login security headers",
+      "passed": true
+    }
+  ],
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0
+}

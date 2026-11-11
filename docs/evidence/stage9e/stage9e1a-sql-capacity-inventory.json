@@ -1,0 +1,18 @@
+{
+  "stage": "9E.1-A",
+  "collectedAt": "2026-10-28T14:12:54.464Z",
+  "source": "postgresql_metadata_readonly",
+  "authBytes": 1613824,
+  "publicBytes": 10158080,
+  "databaseBytes": 27053203,
+  "serverVersionNum": 170006,
+  "externalExtensions": [],
+  "storageBucketCount": 3,
+  "storageObjectBytes": 4420908,
+  "storageObjectCount": 18,
+  "transactionReadOnly": "on",
+  "storageMetadataBytes": 409600,
+  "operationalRowsRead": false,
+  "backupAvailabilityVerified": false,
+  "pitrVerified": false
+}

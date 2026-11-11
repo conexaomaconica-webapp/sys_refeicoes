@@ -11,6 +11,14 @@ export default (phase) => {
       (phase === PHASE_DEVELOPMENT_SERVER ? '.next-dev' : '.next'),
     reactStrictMode: true,
     poweredByHeader: false,
+    experimental: {
+      // A estação de homologação possui 4 GB de RAM. Como o hook webpack
+      // customizado desativa o worker automático do Next, habilitá-lo
+      // explicitamente permite liberar a memória da compilação antes do
+      // typecheck. A otimização é nativa do Next 15 e não ignora validações.
+      webpackBuildWorker: true,
+      webpackMemoryOptimizations: true,
+    },
     async headers() {
       return [
         {
@@ -31,6 +39,14 @@ export default (phase) => {
             {
               key: 'Referrer-Policy',
               value: 'strict-origin-when-cross-origin',
+            },
+            {
+              key: 'Permissions-Policy',
+              value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+            },
+            {
+              key: 'Strict-Transport-Security',
+              value: 'max-age=31536000; includeSubDomains',
             },
           ],
         },

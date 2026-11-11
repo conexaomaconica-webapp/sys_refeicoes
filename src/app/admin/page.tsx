@@ -1,13 +1,17 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
+  AlertTriangle,
   ArrowRight,
-  BarChart3,
   Building2,
   CreditCard,
   FileSpreadsheet,
+  Gauge,
   LayoutDashboard,
   Palette,
+  PlugZap,
+  Receipt,
+  Scale,
   Settings2,
   ShieldCheck,
   Tags,
@@ -50,8 +54,17 @@ export default async function AdminHomePage() {
   const canViewUsers = ['admin_general', 'operations_director', 'unit_manager'].includes(role);
   const canViewUnits = ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'].includes(role);
   const canViewFinance = ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'].includes(role);
+  const canReconcile = ['admin_general', 'operations_director', 'finance'].includes(role);
+  const canViewDashboard = ['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'].includes(role);
 
   const modules = [
+    {
+      title: 'Dashboard operacional',
+      description: 'Velocidade de linha, painel de picos de 15 minutos, terminais e alertas em tempo real.',
+      href: '/admin/dashboard',
+      icon: Gauge,
+      enabled: canViewDashboard,
+    },
     {
       title: 'Identidade visual',
       description: 'Logomarca, cores oficiais, tema do terminal e privacidade dos indicadores.',
@@ -108,10 +121,34 @@ export default async function AdminHomePage() {
       icon: FileSpreadsheet,
       enabled: canImportStudents,
     },
-  ];
-
-  const upcoming = [
-    { title: 'Relatórios', icon: BarChart3 },
+    {
+      title: 'Relatórios fiscais e faturamento',
+      description: 'Prestação de contas, subsídios por categoria, saldo sob custódia e exportação Excel/PDF.',
+      href: '/admin/relatorios',
+      icon: Receipt,
+      enabled: canViewFinance,
+    },
+    {
+      title: 'Conciliação e fechamento financeiro',
+      description: 'Batimento automático com gateways, auditoria do ledger, fechamento diário e tratamento de divergências.',
+      href: '/admin/conciliacao',
+      icon: Scale,
+      enabled: canReconcile,
+    },
+    {
+      title: 'Contingência e ajustes',
+      description: 'Registro formal e dupla aprovação de atendimentos em contingência operacional.',
+      href: '/admin/contingencia',
+      icon: AlertTriangle,
+      enabled: canViewFinance,
+    },
+    {
+      title: 'Integrações e APIs',
+      description: 'Gateways de pagamento (Asaas/Mercado Pago), webhooks e status de conectores.',
+      href: '/admin/integracoes',
+      icon: PlugZap,
+      enabled: isGeneralAdmin,
+    },
   ];
 
   return (
@@ -180,18 +217,6 @@ export default async function AdminHomePage() {
                 <div key={module.title} className="rounded-3xl border border-slate-200 bg-slate-100/70 p-6 opacity-60">{content}</div>
               );
             })}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-black">Próximas funcionalidades</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {upcoming.map(({ title, icon: Icon }) => (
-              <div key={title} className="flex items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 p-4 text-slate-500">
-                <Icon className="h-5 w-5" style={{ color: 'var(--admin-primary)' }} />
-                <div><p className="text-sm font-bold">{title}</p><p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Em breve</p></div>
-              </div>
-            ))}
           </div>
         </section>
       </main>

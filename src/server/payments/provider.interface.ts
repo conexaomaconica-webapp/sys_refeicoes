@@ -17,6 +17,7 @@ export interface IPaymentProvider {
    * Código identificador do provedor ('asaas', 'mercadopago', 'mock').
    */
   readonly code: string;
+  readonly environment?: 'sandbox' | 'production' | 'local';
 
   /**
    * Cria uma cobrança imediata via Pix com QR Code e Chave Copia e Cola.
@@ -41,7 +42,12 @@ export interface IPaymentProvider {
   /**
    * Valida a assinatura de autenticidade enviada no cabeçalho do webhook.
    */
-  verifyWebhookSignature(headers: Headers, rawBody: string, webhookSecret?: string): Promise<boolean>;
+  verifyWebhookSignature(
+    headers: Headers,
+    rawBody: string,
+    webhookSecret?: string,
+    context?: { dataId?: string }
+  ): Promise<boolean>;
 
   /**
    * Converte o payload bruto do webhook em um formato de evento padronizado.

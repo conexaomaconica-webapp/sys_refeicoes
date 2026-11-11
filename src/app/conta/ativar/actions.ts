@@ -11,7 +11,7 @@ export async function completeConsumerActivationAction(formData: FormData): Prom
   const phone = String(formData.get('phone') || '').trim();
   const photo = formData.get('photo');
 
-  if (password.length < 8) return { success: false, error: 'A senha deve ter pelo menos 8 caracteres.' };
+  if (password.length < 6) return { success: false, error: 'A senha deve ter pelo menos 6 caracteres.' };
   if (password !== passwordConfirmation) return { success: false, error: 'A confirmação da senha não confere.' };
   if (phone && phone.replace(/\D/g, '').length < 10) return { success: false, error: 'Informe um telefone válido.' };
 

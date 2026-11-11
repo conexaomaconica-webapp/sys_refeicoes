@@ -1,0 +1,44 @@
+{
+  "stage": "9E.1-A",
+  "executionStatus": "completed_no_recoverable_backup",
+  "authorizationScope": "remote_readonly_recovery_metadata",
+  "controlPlane": {
+    "managementApiTokenAvailable": false,
+    "backupAvailabilityVerified": true,
+    "availableBackupCount": 0,
+    "pitrVerified": true,
+    "pitrEnabled": false,
+    "retentionVerified": true,
+    "recoverableWindowAvailable": false,
+    "planVerified": false,
+    "cloneCostVerified": false
+  },
+  "postgresqlMetadata": {
+    "connectionAttempted": true,
+    "authenticated": true,
+    "queryExecuted": true,
+    "tlsVerificationEnforced": true,
+    "trustedCertificate": "Supabase Root 2021 CA",
+    "transactionReadOnly": true,
+    "rollbackCompleted": true,
+    "capacityEvidence": "stage9e1a-sql-capacity-inventory.json"
+  },
+  "remoteConnectionsPerformed": 1,
+  "mutationsPerformed": 0,
+  "operationalRowsRead": 0,
+  "backupsPerformed": 0,
+  "restoresPerformed": 0,
+  "projectsCreated": 0,
+  "secretsPersisted": 0,
+  "localQualityChecks": {
+    "controlsPassed": 20,
+    "controlsRequired": 20,
+    "lintPassed": true,
+    "typecheckPassed": true,
+    "buildExitCode": 0,
+    "buildPagesGenerated": 26,
+    "buildIdPresent": true,
+    "buildDurationSeconds": 486.1
+  },
+  "decision": "NO_GO_NO_RECOVERABLE_BACKUP"
+}

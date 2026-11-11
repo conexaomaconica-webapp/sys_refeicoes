@@ -8,6 +8,7 @@ import type {
   PixChargeResult,
 } from '@/types/payment';
 import type { IPaymentProvider } from './provider.interface';
+import { verifyAsaasWebhookToken } from './webhook-signature';
 
 export interface AsaasConfig {
   apiKey: string;
@@ -17,6 +18,7 @@ export interface AsaasConfig {
 
 export class AsaasPaymentProvider implements IPaymentProvider {
   readonly code = 'asaas';
+  readonly environment: 'sandbox' | 'production';
   private apiKey: string;
   private webhookSecret?: string;
   private baseUrl: string;
@@ -24,14 +26,20 @@ export class AsaasPaymentProvider implements IPaymentProvider {
   constructor(config: AsaasConfig) {
     this.apiKey = config.apiKey;
     this.webhookSecret = config.webhookSecret;
+    this.environment = config.isSandbox ? 'sandbox' : 'production';
     this.baseUrl = config.isSandbox
-      ? 'https://sandbox.asaas.com/v3'
+      ? 'https://api-sandbox.asaas.com/v3'
       : 'https://api.asaas.com/v3';
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    if (!this.apiKey || /^(?:mock_|configure-)/i.test(this.apiKey)) {
+      throw new Error('PAYMENT_CREDENTIAL_MISSING: credencial Asaas nao configurada.');
+    }
+
     const headers = {
       'Content-Type': 'application/json',
+      'User-Agent': 'Sistema-MA-Refeicoes/1.0',
       access_token: this.apiKey,
       ...(options.headers || {}),
     };
@@ -112,8 +120,7 @@ export class AsaasPaymentProvider implements IPaymentProvider {
   async verifyWebhookSignature(headers: Headers, _rawBody: string, secretOverride?: string): Promise<boolean> {
     const tokenHeader = headers.get('asaas-access-token');
     const secret = secretOverride || this.webhookSecret;
-    if (!secret) return true; // Em sandbox sem segredo cadastrado
-    return tokenHeader === secret;
+    return verifyAsaasWebhookToken(tokenHeader, secret);
   }
 
   parseWebhook(payload: unknown): ParsedWebhookEvent {

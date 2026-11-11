@@ -1,0 +1,21 @@
+{
+  "source": "Supabase SQL Editor",
+  "receivedAt": "2026-10-27",
+  "approved": true,
+  "migration75Recorded": false,
+  "checks": [
+    {"signature":"public.admin_list_cash_shifts(uuid,character varying,date,date)","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.enrich_cash_movement()","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.get_active_cash_shift(uuid,character varying)","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.get_terminal_shift_reports(uuid,uuid,text)","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":true,"authenticatedExpected":true},
+    {"signature":"public.handle_updated_at()","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.record_cash_movement(uuid,character varying,numeric,character varying,text)","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.refresh_cash_shift_payment_totals()","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.register_visitor_entry(uuid,uuid,text,character varying)","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.rls_auto_enable()","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.sync_imported_consumer_identity()","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.trg_prevent_profile_escalation()","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false},
+    {"signature":"public.trg_prevent_student_tampering()","exists":true,"publicExecute":false,"anonExecute":false,"authenticatedExecute":false,"authenticatedExpected":false}
+  ]
+}
+

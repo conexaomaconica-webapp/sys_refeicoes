@@ -391,7 +391,7 @@ export async function updateTenantConsumerCardBranding(
   });
 
   if (error) {
-    throw new Error(error.message || 'NÃ£o foi possÃ­vel salvar a aparÃªncia da carteirinha.');
+    throw new Error(error.message || 'Não foi possível salvar a aparência da carteirinha.');
   }
 }
 
@@ -501,7 +501,7 @@ export async function updateTenantTerminalPageBranding(
   });
 
   if (error) {
-    throw new Error(error.message || 'NÃ£o foi possÃ­vel salvar o fundo completo do terminal.');
+    throw new Error(error.message || 'Não foi possível salvar o fundo completo do terminal.');
   }
 }
 
@@ -591,10 +591,10 @@ export async function uploadTenantTerminalBackground(file: File): Promise<string
 export async function uploadTenantConsumerCardBackground(file: File): Promise<string> {
   const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
   if (!allowedTypes.has(file.type)) {
-    throw new Error('Formato nÃ£o permitido. Use PNG, JPG ou WebP.');
+    throw new Error('Formato não permitido. Use PNG, JPG ou WebP.');
   }
   if (file.size > 5 * 1024 * 1024) {
-    throw new Error('A imagem da carteirinha deve ter no mÃ¡ximo 5 MB.');
+    throw new Error('A imagem da carteirinha deve ter no máximo 5 MB.');
   }
 
   const supabase = createBrowserClient();
@@ -602,7 +602,7 @@ export async function uploadTenantConsumerCardBackground(file: File): Promise<st
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
-  if (authError || !user) throw new Error('SessÃ£o Master expirada. Entre novamente.');
+  if (authError || !user) throw new Error('Sessão Master expirada. Entre novamente.');
 
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
@@ -617,7 +617,7 @@ export async function uploadTenantConsumerCardBackground(file: File): Promise<st
     profile.status !== 'active' ||
     profile.role !== 'admin_general'
   ) {
-    throw new Error('Somente o usuÃ¡rio Master pode alterar a carteirinha.');
+    throw new Error('Somente o usuário Master pode alterar a carteirinha.');
   }
 
   const extension =
@@ -632,7 +632,7 @@ export async function uploadTenantConsumerCardBackground(file: File): Promise<st
     });
 
   if (uploadError) {
-    throw new Error(uploadError.message || 'NÃ£o foi possÃ­vel enviar o fundo da carteirinha.');
+    throw new Error(uploadError.message || 'Não foi possível enviar o fundo da carteirinha.');
   }
   const { data } = supabase.storage.from('tenant-branding').getPublicUrl(objectPath);
   return data.publicUrl;
@@ -641,10 +641,10 @@ export async function uploadTenantConsumerCardBackground(file: File): Promise<st
 export async function uploadTenantTerminalPageBackground(file: File): Promise<string> {
   const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
   if (!allowedTypes.has(file.type)) {
-    throw new Error('Formato nÃ£o permitido. Use PNG, JPG ou WebP.');
+    throw new Error('Formato não permitido. Use PNG, JPG ou WebP.');
   }
   if (file.size > 5 * 1024 * 1024) {
-    throw new Error('A imagem da pÃ¡gina do terminal deve ter no mÃ¡ximo 5 MB.');
+    throw new Error('A imagem da página do terminal deve ter no máximo 5 MB.');
   }
 
   const supabase = createBrowserClient();
@@ -652,7 +652,7 @@ export async function uploadTenantTerminalPageBackground(file: File): Promise<st
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
-  if (authError || !user) throw new Error('SessÃ£o Master expirada. Entre novamente.');
+  if (authError || !user) throw new Error('Sessão Master expirada. Entre novamente.');
 
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
@@ -666,7 +666,7 @@ export async function uploadTenantTerminalPageBackground(file: File): Promise<st
     profile.status !== 'active' ||
     profile.role !== 'admin_general'
   ) {
-    throw new Error('Somente o usuÃ¡rio Master pode alterar o fundo completo do terminal.');
+    throw new Error('Somente o usuário Master pode alterar o fundo completo do terminal.');
   }
 
   const extension =
@@ -680,7 +680,7 @@ export async function uploadTenantTerminalPageBackground(file: File): Promise<st
       contentType: file.type,
     });
   if (uploadError) {
-    throw new Error(uploadError.message || 'NÃ£o foi possÃ­vel enviar o fundo completo do terminal.');
+    throw new Error(uploadError.message || 'Não foi possível enviar o fundo completo do terminal.');
   }
   const { data } = supabase.storage.from('tenant-branding').getPublicUrl(objectPath);
   return data.publicUrl;

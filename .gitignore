@@ -45,3 +45,4 @@ next-env.d.ts
 *.dump
 *.backup
 .e2e-sprint11-*
+.stage*-*.log

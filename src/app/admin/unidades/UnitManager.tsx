@@ -1,14 +1,21 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, Clock3, Edit3, MapPin, Plus, Search, Store, X } from 'lucide-react';
+import { Building2, Clock3, Edit3, Loader2, MapPin, Plus, Search, Store, X } from 'lucide-react';
 import type {
   ManagedUnit,
+  SaveInstitutionInput,
   SaveUnitInput,
   UnitInstitutionOption,
 } from '@/services/admin-unit.service';
-import { saveUnitAction } from './actions';
+import { saveInstitutionAction, saveUnitAction } from './actions';
+import { brazilianStates } from '@/lib/brazil-locations';
+
+interface MunicipalityOption {
+  id: number;
+  name: string;
+}
 
 interface Props {
   units: ManagedUnit[];
@@ -37,6 +44,12 @@ const emptyForm = (institutions: UnitInstitutionOption[]): SaveUnitInput => ({
   status: 'active',
 });
 
+const emptyInstitutionForm: SaveInstitutionInput = {
+  name: '',
+  shortName: '',
+  document: '',
+};
+
 export function UnitManager({ units, institutions, canCreate, canManageLifecycle }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -44,9 +57,48 @@ export function UnitManager({ units, institutions, canCreate, canManageLifecycle
   const [institutionFilter, setInstitutionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [institutionModalOpen, setInstitutionModalOpen] = useState(false);
   const [editing, setEditing] = useState<ManagedUnit | null>(null);
   const [form, setForm] = useState<SaveUnitInput>(() => emptyForm(institutions));
+  const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([]);
+  const [municipalitiesLoading, setMunicipalitiesLoading] = useState(false);
+  const [municipalitiesError, setMunicipalitiesError] = useState<string | null>(null);
+  const [institutionForm, setInstitutionForm] = useState<SaveInstitutionInput>(emptyInstitutionForm);
   const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!modalOpen || !form.state) {
+      setMunicipalities([]);
+      setMunicipalitiesError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setMunicipalitiesLoading(true);
+    setMunicipalitiesError(null);
+    void fetch(`/api/localidades/municipios?uf=${encodeURIComponent(form.state)}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = await response.json() as MunicipalityOption[] | { error?: string };
+        if (!response.ok || !Array.isArray(body)) {
+          throw new Error(!Array.isArray(body) ? body.error : 'Falha ao carregar municípios.');
+        }
+        setMunicipalities(body);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setMunicipalities([]);
+        setMunicipalitiesError(
+          error instanceof Error ? error.message : 'Não foi possível carregar os municípios.'
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setMunicipalitiesLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [form.state, modalOpen]);
 
   const filteredUnits = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR');
@@ -95,6 +147,24 @@ export function UnitManager({ units, institutions, canCreate, canManageLifecycle
     });
   };
 
+  const openInstitutionCreate = () => {
+    setInstitutionForm(emptyInstitutionForm);
+    setMessage(null);
+    setInstitutionModalOpen(true);
+  };
+
+  const submitInstitution = (event: React.FormEvent) => {
+    event.preventDefault();
+    setMessage(null);
+    startTransition(async () => {
+      const result = await saveInstitutionAction(institutionForm);
+      if (!result.success) return setMessage({ kind: 'error', text: result.error });
+      setInstitutionModalOpen(false);
+      setMessage({ kind: 'success', text: result.message });
+      router.refresh();
+    });
+  };
+
   const activeCount = units.filter((unit) => unit.status === 'active').length;
   const dailyCount = units.filter((unit) => unit.cashShiftMode === 'daily').length;
 
@@ -106,10 +176,12 @@ export function UnitManager({ units, institutions, canCreate, canManageLifecycle
           <h1 className="mt-2 text-3xl font-black">Unidades</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/80">Consulte e configure os restaurantes vinculados às instituições do tenant.</p>
         </div>
-        {canCreate && <button type="button" onClick={openCreate} disabled={!institutions.some((item) => item.status === 'active')} className="flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black shadow-lg disabled:opacity-50" style={{ color: 'var(--admin-primary)' }}><Plus className="h-5 w-5" /> Nova unidade</button>}
+        {canCreate && <div className="flex flex-col gap-3 sm:flex-row"><button type="button" onClick={openInstitutionCreate} className="flex items-center justify-center gap-2 rounded-xl border border-white/40 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-lg hover:bg-white/20"><Building2 className="h-5 w-5" /> Nova instituição</button><button type="button" onClick={openCreate} disabled={!institutions.some((item) => item.status === 'active')} className="flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black shadow-lg disabled:opacity-50" style={{ color: 'var(--admin-primary)' }}><Plus className="h-5 w-5" /> Nova unidade</button></div>}
       </section>
 
       {message && <div className={`rounded-2xl border px-4 py-3 text-sm font-bold ${message.kind === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>{message.text}</div>}
+
+      {canCreate && !institutions.some((item) => item.status === 'active') && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900"><strong>Nenhuma instituição ativa.</strong> Cadastre uma instituição antes de criar a primeira unidade.</div>}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><Building2 className="h-5 w-5" style={{ color: 'var(--admin-primary)' }} /><p className="mt-2 text-2xl font-black">{units.length}</p><p className="text-xs font-bold uppercase text-slate-500">Unidades visíveis</p></div>
@@ -145,13 +217,27 @@ export function UnitManager({ units, institutions, canCreate, canManageLifecycle
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <label className="text-sm font-bold md:col-span-2">Instituição<select value={form.institutionId} onChange={(event) => setForm({ ...form, institutionId: event.target.value })} required disabled={Boolean(editing) && !canManageLifecycle} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal disabled:bg-slate-100">{institutions.map((institution) => <option key={institution.id} value={institution.id} disabled={institution.status !== 'active' && institution.id !== form.institutionId}>{institution.name}{institution.status !== 'active' ? ' — inativa' : ''}</option>)}</select></label>
               <label className="text-sm font-bold md:col-span-2">Nome da unidade<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label>
-              <label className="text-sm font-bold">Cidade<input value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} required className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label>
-              <label className="text-sm font-bold">UF<input value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value.toUpperCase().slice(0, 2) })} minLength={2} maxLength={2} required className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal uppercase" /></label>
+              <label className="text-sm font-bold">UF<select value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value, city: '' })} required className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 font-normal"><option value="">Selecione o estado</option>{brazilianStates.map((state) => <option key={state.code} value={state.code}>{state.name} ({state.code})</option>)}</select></label>
+              <label className="text-sm font-bold">Cidade<div className="relative mt-1.5"><select value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} required disabled={!form.state || municipalitiesLoading || Boolean(municipalitiesError)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 pr-10 font-normal disabled:bg-slate-100 disabled:text-slate-500"><option value="">{!form.state ? 'Selecione primeiro o estado' : municipalitiesLoading ? 'Carregando municípios...' : municipalitiesError ? 'Municípios indisponíveis' : 'Selecione a cidade'}</option>{form.city && !municipalities.some((municipality) => municipality.name === form.city) && <option value={form.city}>{form.city}</option>}{municipalities.map((municipality) => <option key={municipality.id} value={municipality.name}>{municipality.name}</option>)}</select>{municipalitiesLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-slate-400" />}</div>{municipalitiesError && <span className="mt-1 block text-xs font-semibold text-red-700">{municipalitiesError} Feche e abra o formulário para tentar novamente.</span>}</label>
               <label className="text-sm font-bold">Fuso horário<select value={form.timezone} onChange={(event) => setForm({ ...form, timezone: event.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal">{timezones.map((timezone) => <option key={timezone} value={timezone}>{timezone}</option>)}</select></label>
               {(!editing || canManageLifecycle) && <label className="text-sm font-bold">Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as 'active' | 'inactive' })} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal"><option value="active">Ativa</option><option value="inactive">Inativa</option></select></label>}
             </div>
             {editing && <div className="mt-5 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">O modo de caixa é alterado no módulo <strong>Caixas e turnos</strong>, que verifica caixas abertos antes da mudança.</div>}
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={() => setModalOpen(false)} className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-black">Cancelar</button><button disabled={isPending} className="rounded-xl px-5 py-3 text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: 'var(--admin-primary)' }}>{isPending ? 'Salvando...' : 'Salvar unidade'}</button></div>
+          </form>
+        </div>
+      )}
+
+      {institutionModalOpen && (
+        <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/65 p-4">
+          <form onSubmit={submitInstitution} className="my-6 w-full max-w-xl rounded-3xl bg-white p-5 shadow-2xl md:p-7">
+            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--admin-primary)' }}>Estrutura institucional</p><h2 className="mt-1 text-2xl font-black">Nova instituição</h2><p className="mt-2 text-sm text-slate-500">A instituição será vinculada ao tenant atual e ficará disponível no cadastro de unidades.</p></div><button type="button" onClick={() => setInstitutionModalOpen(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Fechar"><X className="h-5 w-5" /></button></div>
+            <div className="mt-6 grid gap-4">
+              <label className="text-sm font-bold">Nome da instituição<input value={institutionForm.name} onChange={(event) => setInstitutionForm({ ...institutionForm, name: event.target.value })} required className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label>
+              <label className="text-sm font-bold">Nome curto<input value={institutionForm.shortName} onChange={(event) => setInstitutionForm({ ...institutionForm, shortName: event.target.value })} placeholder="Opcional" className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label>
+              <label className="text-sm font-bold">CNPJ ou documento<input value={institutionForm.document} onChange={(event) => setInstitutionForm({ ...institutionForm, document: event.target.value })} placeholder="Opcional" className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={() => setInstitutionModalOpen(false)} className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-black">Cancelar</button><button disabled={isPending} className="rounded-xl px-5 py-3 text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: 'var(--admin-primary)' }}>{isPending ? 'Salvando...' : 'Salvar instituição'}</button></div>
           </form>
         </div>
       )}

@@ -41,6 +41,7 @@ import {
 import { CashShiftModal } from '@/components/terminal/CashShiftModal';
 import { ShiftReportsModal } from '@/components/terminal/ShiftReportsModal';
 import { cashShiftService } from '@/services/cash-shift.service';
+import { shiftReportsService } from '@/services/shift-reports.service';
 import type { CashShift } from '@/types/cash-shift';
 import {
   confirmTerminalMealPayment,
@@ -50,6 +51,7 @@ import {
   generateIdempotencyKey,
   previewTerminalMeal,
 } from '@/services/consumption.service';
+import { resolveTerminalIdentifierAction } from '@/app/terminal/actions';
 import type { ConsumeMealResult } from '@/types/consumption';
 import { terminalAudio } from '@/lib/offline/audio';
 import { requestPersistentStorage, getStorageDiagnostics } from '@/lib/offline/storage-persistence';
@@ -58,6 +60,7 @@ import {
   hasPendingUnknownTimeout,
   recordUnknownTimeout,
   getAllPendingTimeouts,
+  resolveUnknownTimeout,
 } from '@/lib/offline/timeout-lock';
 import type { OperationalState } from '@/types/offline';
 import type { ConnectivityState, ConnectivityMetrics } from '@/types/connectivity';
@@ -66,6 +69,8 @@ export interface ReceptionTerminalProps {
   tenantId: string;
   unitId: string;
   unitName?: string;
+  unitOptions?: Array<{ id: string; name: string }>;
+  onUnitChange?: (unitId: string) => void;
   terminalId?: string;
   operatorId: string;
   operatorName?: string;
@@ -90,6 +95,7 @@ interface ActiveDisplayState {
     photo_path?: string | null;
   };
   attempted_identifier?: string;
+  idempotency_key?: string;
   reason_code?: string;
   reason_message?: string;
   timestamp: string;
@@ -150,12 +156,14 @@ const isNotFoundError = (code?: string): boolean => {
 export function ReceptionTerminal({
   tenantId,
   unitId,
-  unitName = 'RU Central',
-  terminalId = 'Terminal 01',
-  operatorName = 'Operador Caixa',
-  operatorRole = 'operator_reception',
+  unitName = '',
+  unitOptions = [],
+  onUnitChange,
+  terminalId = 'TERM-01',
+  operatorName = 'Operador',
+  operatorRole = 'operator',
   mealTypeId,
-  mealTypeName = 'Almoço',
+  mealTypeName = 'Turno',
   mealOptions = [],
   onMealTypeChange,
   studentPrice = 0,
@@ -295,43 +303,6 @@ export function ReceptionTerminal({
   const effectiveOnline =
     (connectivityState === 'ONLINE' || connectivityState === 'DEGRADED') && !forceOfflineMode;
 
-  useEffect(() => {
-    if (!visitorPaymentPending) return;
-
-    let active = true;
-    setVisitorPaymentMethod(null);
-    setVisitorAmountReceived('');
-    setVisitorPaymentError(null);
-
-    if (!effectiveOnline) {
-      setVisitorPrice(studentPrice);
-      setVisitorPaymentError('Terminal offline: não há registro local nem pendência para sincronizar.');
-      return;
-    }
-
-    void getOperatorVisitorPrice({ unitId, mealTypeId }).then((result) => {
-      if (!active) return;
-      if (result.success) {
-        setVisitorPrice(result.price);
-      } else {
-        setVisitorPrice(studentPrice);
-        setVisitorPaymentError(result.message || 'Não foi possível consultar o valor da refeição.');
-      }
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [effectiveOnline, mealTypeId, studentPrice, unitId, visitorPaymentPending]);
-
-  // Métricas do Turno
-  const [liberadasCount, setLiberadasCount] = useState<number>(0);
-  const [regularesCount, setRegularesCount] = useState<number>(0);
-  const [visitantesCount, setVisitantesCount] = useState<number>(0);
-  const [bloqueadasCount, setBloqueadasCount] = useState<number>(0);
-  const [pendingTimeoutsCount, setPendingTimeoutsCount] = useState<number>(0);
-
-  // Controle de Caixa & PDV
   const [showCashModal, setShowCashModal] = useState<boolean>(false);
   const [activeCashShift, setActiveCashShift] = useState<CashShift | null>(null);
   const [cashShiftChecked, setCashShiftChecked] = useState<boolean>(false);
@@ -352,9 +323,82 @@ export function ReceptionTerminal({
     activeCashShift?.expected_cash_balance ?? activeCashShift?.system_expected_balance ?? 0
   );
 
+  useEffect(() => {
+    if (!visitorPaymentPending) return;
+
+    let active = true;
+    setVisitorPaymentMethod(null);
+    setVisitorAmountReceived('');
+    setVisitorPaymentError(null);
+
+    if (!effectiveOnline) {
+      setVisitorPrice(studentPrice);
+      setVisitorPaymentError('Terminal offline: não há registro local nem pendência para sincronizar.');
+      return;
+    }
+
+    void getOperatorVisitorPrice({ unitId, mealTypeId: displayedMealTypeId }).then((result) => {
+      if (!active) return;
+      if (result.success) {
+        setVisitorPrice(result.price);
+      } else {
+        setVisitorPrice(studentPrice);
+        setVisitorPaymentError(result.message || 'Não foi possível consultar o valor da refeição.');
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [displayedMealTypeId, effectiveOnline, studentPrice, unitId, visitorPaymentPending]);
+
+  // Métricas do Turno
+  const [liberadasCount, setLiberadasCount] = useState<number>(0);
+  const [regularesCount, setRegularesCount] = useState<number>(0);
+  const [visitantesCount, setVisitantesCount] = useState<number>(0);
+  const [bloqueadasCount, setBloqueadasCount] = useState<number>(0);
+  const [pendingTimeoutsCount, setPendingTimeoutsCount] = useState<number>(0);
+
+  // Controle de Caixa & PDV
+  useEffect(() => {
+    if (
+      cashShiftMode === 'per_meal' &&
+      activeCashShift?.meal_type_id &&
+      activeCashShift.meal_type_id !== mealTypeId
+    ) {
+      onMealTypeChange?.(activeCashShift.meal_type_id);
+    }
+  }, [activeCashShift, cashShiftMode, mealTypeId, onMealTypeChange]);
+
   // Relatórios de Refeições e Bloqueios do Turno (F7)
   const [showReportsModal, setShowReportsModal] = useState<boolean>(false);
   const [reportInitialTab, setReportInitialTab] = useState<'approved' | 'blocked'>('approved');
+
+  const loadShiftMetrics = useCallback(async () => {
+    if (!unitId || !displayedMealTypeId || !terminalId) return;
+
+    try {
+      const report = await shiftReportsService.getShiftReports(unitId, displayedMealTypeId, terminalId);
+      const servedMeals = report.approved_meals.filter((meal) =>
+        ['approved', 'financially_refunded'].includes(meal.status)
+      );
+
+      setLiberadasCount(servedMeals.length);
+      setVisitantesCount(servedMeals.filter((meal) => meal.category_code === 'visitante').length);
+      setRegularesCount(servedMeals.filter((meal) => meal.category_code !== 'visitante').length);
+      setBloqueadasCount(report.blocked_attempts.length);
+    } catch {
+      // Mantém os últimos totais conhecidos quando o relatório está indisponível.
+    }
+  }, [displayedMealTypeId, terminalId, unitId]);
+
+  useEffect(() => {
+    void loadShiftMetrics();
+  }, [loadShiftMetrics]);
+
+  useEffect(() => {
+    if (showReportsModal) void loadShiftMetrics();
+  }, [loadShiftMetrics, showReportsModal]);
 
   const loadActiveCashShift = useCallback(async () => {
     if (!unitId || !terminalId) return;
@@ -433,18 +477,43 @@ export function ReceptionTerminal({
     ].slice(0, 6));
   }, [activeDisplay]);
 
-  // 1. Manter foco absoluto no campo de scanner/digitação
+  // 1. Manter foco absoluto no campo de scanner/digitação apenas quando não há modais abertos
   const keepFocus = useCallback(() => {
-    if (!paymentPending && !visitorPaymentPending && !showCashModal && activeCashShift && !isStaleCashShift && inputRef.current) {
+    if (
+      !paymentPending &&
+      !visitorPaymentPending &&
+      !showCashModal &&
+      !showReportsModal &&
+      !showDiagnostics &&
+      !showCalculator &&
+      activeCashShift &&
+      !isStaleCashShift &&
+      inputRef.current
+    ) {
       inputRef.current.focus();
     }
-  }, [activeCashShift, isStaleCashShift, paymentPending, visitorPaymentPending, showCashModal]);
+  }, [
+    activeCashShift,
+    isStaleCashShift,
+    paymentPending,
+    visitorPaymentPending,
+    showCashModal,
+    showReportsModal,
+    showDiagnostics,
+    showCalculator,
+  ]);
 
   useEffect(() => {
     keepFocus();
     const interval = setInterval(keepFocus, 1000);
     return () => clearInterval(interval);
   }, [keepFocus]);
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
 
   useEffect(() => {
     setPendingTimeoutsCount(getAllPendingTimeouts().length);
@@ -537,20 +606,46 @@ export function ReceptionTerminal({
 
   // 6. Processamento da Matrícula / Scanner USB
   const handleProcessIdentifier = async (rawIdentifier: string) => {
-    const cleanId = rawIdentifier.trim();
-    if (!cleanId || isProcessing) return;
+    const rawTrimmed = rawIdentifier.trim();
+    if (!rawTrimmed || isProcessing) return;
     if (isStaleCashShift) {
       setShowCashModal(true);
       return;
     }
-    if (!mealTypeId) return;
+    if (!displayedMealTypeId) return;
     if (!activeCashShift) {
       setShowCashModal(true);
       return;
     }
 
-    // Proteção Anti-Rebound (Evita duplo bip acidental do mesmo código em menos de 1,5s)
+    // Proteção Anti-Rebound inicial
     const now = Date.now();
+    if (lastBipRef.current && lastBipRef.current.code === rawTrimmed && now - lastBipRef.current.timestamp < 1500) {
+      return;
+    }
+
+    // Se o código for um QR Code estático criptografado ('MAR:S:...'), decifra com segurança para a matrícula
+    let cleanId = rawTrimmed;
+    if (cleanId.startsWith('MAR:S:')) {
+      try {
+        cleanId = await resolveTerminalIdentifierAction(cleanId, tenantId);
+      } catch (err) {
+        const msg = (err as Error).message || 'QR Code inválido.';
+        const isTenantMismatch = msg.startsWith('QR_TENANT_MISMATCH:');
+        terminalAudio.playBlockedSound();
+        setInputValue('');
+        setActiveDisplay({
+          state: 'BLOCKED',
+          reason_code: isTenantMismatch ? 'QR_TENANT_MISMATCH' : 'INVALID_IDENTIFIER',
+          reason_message: msg.replace(/^(QR_TENANT_MISMATCH|QR_INVALID):\s*/, ''),
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        scheduleAutoReset();
+        return;
+      }
+    }
+
+    // Proteção Anti-Rebound com a matrícula decifrada
     if (lastBipRef.current && lastBipRef.current.code === cleanId && now - lastBipRef.current.timestamp < 1500) {
       return;
     }
@@ -565,11 +660,18 @@ export function ReceptionTerminal({
     // REGRA DE OURO (MÓDULO 10.3): BLOQUEIO DE TIMEOUT PENDENTE
     // Se o estudante possui transação remota indeterminada de hoje, bloqueia nova liberação
     // =========================================================================
-    if (hasPendingUnknownTimeout(cleanId, mealTypeId, todayDate)) {
+    if (hasPendingUnknownTimeout(cleanId, displayedMealTypeId, todayDate)) {
+      const pendingLock = getAllPendingTimeouts().find(
+        (t) =>
+          t.identifier.trim().toUpperCase() === cleanId.trim().toUpperCase() &&
+          t.mealTypeId === displayedMealTypeId &&
+          t.consumptionDate === todayDate
+      );
       terminalAudio.playTimeoutSound();
-      setBloqueadasCount((prev) => prev + 1);
       setActiveDisplay({
         state: 'REMOTE_UNKNOWN_TIMEOUT',
+        attempted_identifier: cleanId,
+        idempotency_key: pendingLock?.idempotencyKey,
         reason_code: 'TIMEOUT_LOCK_ACTIVE',
         reason_message: 'Operação anterior com resultado pendente no servidor. Bloqueio preventivo de duplicidade ativo.',
         timestamp: new Date().toLocaleTimeString(),
@@ -592,7 +694,7 @@ export function ReceptionTerminal({
         const preview = await previewTerminalMeal({
           unit_id: unitId,
           identifier: cleanId,
-          meal_type_id: mealTypeId,
+          meal_type_id: displayedMealTypeId,
           terminal_id: terminalId,
         });
 
@@ -602,9 +704,6 @@ export function ReceptionTerminal({
           }
 
           terminalAudio.playBlockedSound();
-          if (!isNotFoundError(preview.error_code)) {
-            setBloqueadasCount((prev) => prev + 1);
-          }
           setActiveDisplay({
             state: 'BLOCKED',
             student: preview.student
@@ -650,7 +749,7 @@ export function ReceptionTerminal({
         const rpcPromise = executeConsumeMeal({
           unit_id: unitId,
           identifier: cleanId,
-          meal_type_id: mealTypeId,
+          meal_type_id: displayedMealTypeId,
           terminal_id: terminalId,
           idempotency_key: idempotencyKey,
         });
@@ -661,7 +760,7 @@ export function ReceptionTerminal({
           // Timeout de rede -> Bloqueia novas passagens e classifica como REMOTE_UNKNOWN_TIMEOUT
           recordUnknownTimeout({
             identifier: cleanId,
-            mealTypeId,
+            mealTypeId: displayedMealTypeId,
             consumptionDate: todayDate,
             idempotencyKey,
             terminalId,
@@ -671,9 +770,10 @@ export function ReceptionTerminal({
           setPendingTimeoutsCount(getAllPendingTimeouts().length);
 
           terminalAudio.playTimeoutSound();
-          setBloqueadasCount((prev) => prev + 1);
           setActiveDisplay({
             state: 'REMOTE_UNKNOWN_TIMEOUT',
+            attempted_identifier: cleanId,
+            idempotency_key: idempotencyKey,
             reason_code: 'NETWORK_TIMEOUT',
             reason_message: 'Tempo limite da chamada remota excedido. Operação retida para evitar duplicação.',
             timestamp: new Date().toLocaleTimeString(),
@@ -754,7 +854,6 @@ export function ReceptionTerminal({
 
   const blockWhenBackendUnavailable = (cleanId: string) => {
     terminalAudio.playBlockedSound();
-    setBloqueadasCount((previous) => previous + 1);
     setActiveDisplay({
       state: 'BLOCKED',
       attempted_identifier: cleanId,
@@ -792,7 +891,7 @@ export function ReceptionTerminal({
     try {
       const res = await executeRegisterVisitorEntry({
         unitId,
-        mealTypeId,
+        mealTypeId: displayedMealTypeId,
         terminalId,
         paymentMethod: visitorPaymentMethod,
         amountReceived: visitorPaymentMethod === 'cash' ? visitorCashReceived : undefined,
@@ -886,7 +985,7 @@ export function ReceptionTerminal({
     const result = await confirmTerminalMealPayment({
       unit_id: unitId,
       identifier: paymentPending.identifier,
-      meal_type_id: mealTypeId,
+      meal_type_id: displayedMealTypeId,
       terminal_id: terminalId,
       idempotency_key: paymentPending.idempotencyKey,
       payment_method: paymentMethod,
@@ -952,8 +1051,6 @@ export function ReceptionTerminal({
         isDark
           ? activeDisplay?.state === 'ONLINE_CONFIRMED'
             ? 'bg-emerald-950/40 text-emerald-100'
-            : activeDisplay?.state === 'OFFLINE_CONTINGENCY_LOGGED'
-            ? 'bg-amber-950/40 text-amber-100'
             : activeDisplay?.state === 'REMOTE_UNKNOWN_TIMEOUT'
             ? 'bg-orange-950/40 text-orange-100'
             : activeDisplay?.state === 'BLOCKED'
@@ -974,7 +1071,25 @@ export function ReceptionTerminal({
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-black tracking-wider" style={{ color: branding.terminal_primary_color }}>{branding.app_name}</h1>
             <div className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-mono ${isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-              <span>{unitName} · {terminalId} ·</span>
+              {unitOptions.length > 1 && onUnitChange ? (
+                <select
+                  value={unitId}
+                  disabled={Boolean(activeCashShift)}
+                  onClick={(event) => event.stopPropagation()}
+                  onChange={(event) => onUnitChange(event.target.value)}
+                  className={`max-w-44 rounded border px-1 py-0.5 font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-80 ${isDark ? 'border-slate-600 bg-slate-800 text-white' : 'border-slate-300 bg-white text-slate-800'}`}
+                  title={activeCashShift ? 'Feche o caixa atual antes de trocar de unidade.' : 'Selecionar unidade operacional'}
+                >
+                  {unitOptions.map((unitOption) => (
+                    <option key={unitOption.id} value={unitOption.id}>
+                      {unitOption.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span>{unitName}</span>
+              )}
+              <span>· {terminalId} ·</span>
               <select
                 value={displayedMealTypeId}
                 disabled={Boolean(activeCashShift) && cashShiftMode === 'per_meal'}
@@ -1298,81 +1413,6 @@ export function ReceptionTerminal({
               </div>
             </form>
 
-            {/* Sugestões Rápidas de Homologação */}
-            <div className="hidden w-full pt-2 border-t border-slate-800/80">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">
-                Atalhos rápidos para teste de homologação:
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInputValue('RA900001');
-                    handleProcessIdentifier('RA900001');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-mono cursor-pointer transition-all"
-                  title="Bolsista Integral (R$ 0,00)"
-                >
-                  RA900001 (Bolsista)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInputValue('RA900002');
-                    handleProcessIdentifier('RA900002');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-xs font-mono cursor-pointer transition-all"
-                  title="Comensal Pagante com Saldo R$ 50"
-                >
-                  RA900002 (Saldo R$50)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInputValue('VISITANTE01');
-                    handleProcessIdentifier('VISITANTE01');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-mono cursor-pointer transition-all"
-                  title="Visitante (Multi-refeição sem trava de duplicidade - Valor integral)"
-                >
-                  VISITANTE01 (Multi-Refeição)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInputValue('RA100001');
-                    handleProcessIdentifier('RA100001');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-xs font-mono cursor-pointer transition-all"
-                  title="Já Consumiu Hoje"
-                >
-                  RA100001 (Duplicado)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInputValue('RA101451');
-                    handleProcessIdentifier('RA101451');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-mono cursor-pointer transition-all"
-                  title="Saldo Insuficiente R$ 1,00"
-                >
-                  RA101451 (Sem Saldo)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInputValue('RA101481');
-                    handleProcessIdentifier('RA101481');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-mono cursor-pointer transition-all"
-                  title="Matrícula Suspensa"
-                >
-                  RA101481 (Suspenso)
-                </button>
-              </div>
-            </div>
-
             <div className={`flex items-center gap-2 text-xs font-mono ${centralTextIsLight ? 'text-slate-200' : 'text-slate-600'}`}>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span>Leitor USB / Teclado pronto para recepção contínua</span>
@@ -1416,29 +1456,6 @@ export function ReceptionTerminal({
           </div>
         )}
 
-        {/* ESTADO C: LIBERADO EM CONTINGÊNCIA OFFLINE (AMARELO / ÂMBAR) */}
-        {activeDisplay?.state === 'OFFLINE_CONTINGENCY_LOGGED' && (
-          <div className="terminal-status-card terminal-status-warning w-full p-8 md:p-12 rounded-3xl bg-amber-900/60 border-2 border-amber-400 shadow-[0_0_80px_rgba(245,158,11,0.3)] flex flex-col items-center space-y-6 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-amber-500/20 text-amber-300 font-black text-sm tracking-widest border border-amber-400/40 uppercase">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
-              <span>LIBERADO EM CONTINGÊNCIA (OFFLINE)</span>
-            </div>
-
-            <div className="flex flex-col items-center space-y-2">
-              <h2 className="text-3xl md:text-5xl font-black text-white">
-                {activeDisplay.student?.name_display}
-              </h2>
-              <p className="text-xl font-mono text-amber-200 font-bold">
-                Identificação: {activeDisplay.student?.registration_number}
-              </p>
-            </div>
-
-            <p className="text-xs text-amber-300 bg-black/40 px-3 py-1.5 rounded-lg border border-amber-500/30">
-              ⚠️ Registro provisório salvo na fila criptografada local. Reconciliação central pendente.
-            </p>
-          </div>
-        )}
-
         {/* ESTADO D: TIMEOUT DE REDE (LARANJA ALERTA) */}
         {activeDisplay?.state === 'REMOTE_UNKNOWN_TIMEOUT' && (
           <div className="terminal-status-card terminal-status-timeout w-full p-8 md:p-12 rounded-3xl bg-orange-950/70 border-2 border-orange-500 shadow-[0_0_80px_rgba(249,115,22,0.3)] flex flex-col items-center space-y-6 animate-in zoom-in-95 duration-150">
@@ -1452,8 +1469,23 @@ export function ReceptionTerminal({
             </h2>
 
             <p className="text-sm text-orange-200 bg-black/50 px-4 py-2 rounded-xl border border-orange-500/40">
-              Trava de segurança ativa: não realize uma segunda liberação sem confirmação.
+              Trava de segurança ativa: confira nos Relatórios (F7) antes de liberar novamente.
             </p>
+
+            {activeDisplay.idempotency_key && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  resolveUnknownTimeout(activeDisplay.idempotency_key!, 'resolved_not_applied');
+                  setPendingTimeoutsCount(getAllPendingTimeouts().length);
+                  clearActiveDisplay();
+                }}
+                className="rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-black text-xs px-4 py-2.5 shadow-lg transition cursor-pointer"
+              >
+                Confirmar que não foi debitado no F7 e desbloquear
+              </button>
+            )}
           </div>
         )}
 
@@ -1650,7 +1682,7 @@ export function ReceptionTerminal({
               setShowReportsModal(true);
             }}
             className="p-1.5 -m-1.5 rounded-xl hover:bg-rose-500/10 transition cursor-pointer text-center sm:text-left group"
-            title="Clique para ver o relatório de bloqueios e motivos"
+            title="Bloqueios persistidos no relatório do turno"
           >
             <div className="flex items-center gap-1.5">
               <span className="text-2xl md:text-3xl font-black text-red-400 group-hover:scale-105 transition-transform">
@@ -1732,7 +1764,7 @@ export function ReceptionTerminal({
       </footer>
 
       {showCalculator && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Calculadora">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center overflow-y-auto bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Calculadora">
           <div onClick={(event) => event.stopPropagation()} className={`w-full max-w-sm rounded-t-3xl border p-4 shadow-2xl sm:rounded-3xl ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2 font-black"><Calculator className="h-5 w-5" />Calculadora</div>
@@ -1761,7 +1793,7 @@ export function ReceptionTerminal({
       {showDiagnostics && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
         >
           <div className={`${!isDark ? 'terminal-light-surface' : ''} bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-slate-100 space-y-5`}>
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -1872,7 +1904,7 @@ export function ReceptionTerminal({
 
       {paymentPending && paymentPending.preview.student && (
         <div
-          className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-sm"
           onClick={(event) => event.stopPropagation()}
         >
           <div className={`w-full max-w-2xl rounded-3xl border p-6 shadow-2xl md:p-8 ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
@@ -1942,7 +1974,7 @@ export function ReceptionTerminal({
       )}
 
       {visitorPaymentPending && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-sm">
           <div className={`w-full max-w-lg rounded-3xl border p-6 shadow-2xl ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
             <h2 className="text-center text-xl font-black">Pagamento do visitante</h2>
             <p className="mt-2 text-center text-sm text-slate-400">Selecione a forma efetivamente recebida antes de liberar.</p>
@@ -2047,7 +2079,7 @@ export function ReceptionTerminal({
         }}
         unitId={unitId}
         terminalId={terminalId}
-        mealTypeId={mealTypeId}
+        mealTypeId={displayedMealTypeId}
         mealTypeName={displayedMealTypeName}
         mealOptions={mealOptions}
         onMealTypeChange={onMealTypeChange}
@@ -2068,10 +2100,10 @@ export function ReceptionTerminal({
         onClose={() => setShowReportsModal(false)}
         initialTab={reportInitialTab}
         unitId={unitId}
-        mealTypeId={mealTypeId}
+        mealTypeId={displayedMealTypeId}
         terminalId={terminalId}
         unitName={unitName}
-        mealTypeName={mealTypeName}
+        mealTypeName={displayedMealTypeName}
         theme={terminalTheme}
       />
     </div>

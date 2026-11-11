@@ -13,7 +13,6 @@ import type {
   OpenCashShiftParams,
   CloseCashShiftParams,
   RecordMovementParams,
-  PaymentMethod,
   CashShiftMode,
   UnitCashShiftSetting,
   CashPartialSettlement,
@@ -133,6 +132,24 @@ export const cashShiftService = {
     };
   },
 
+  /**
+   * Busca as movimentações registradas de um caixa específico (aberto ou histórico fechado)
+   */
+  async getShiftMovements(cashShiftId: string): Promise<CashMovement[]> {
+    const supabase = createBrowserClient();
+    const { data, error } = await supabase
+      .from('cash_movements')
+      .select('id, cash_shift_id, type, amount, payment_method, description, meal_consumption_id, operator_id, created_at')
+      .eq('cash_shift_id', cashShiftId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message || 'Erro ao carregar movimentações do caixa.');
+    }
+
+    return (data || []) as CashMovement[];
+  },
+
   async recordPartialSettlement(params: {
     cashShiftId: string;
     mealTypeId: string;
@@ -206,30 +223,6 @@ export const cashShiftService = {
       difference_amount: Number(response.difference_amount ?? shift.difference_amount ?? 0),
       status: shift.status,
     };
-  },
-
-  /**
-   * Registra a entrada e cobrança avulsa de um visitante na portaria
-   */
-  async registerVisitor(
-    unitId: string,
-    mealTypeId: string,
-    terminalId: string,
-    paymentMethod: PaymentMethod = 'cash'
-  ): Promise<VisitorEntryResult> {
-    const supabase = getRpcClient();
-    const { data, error } = await supabase.rpc('register_operator_visitor_entry', {
-      p_unit_id: unitId,
-      p_meal_type_id: mealTypeId,
-      p_terminal_id: terminalId,
-      p_payment_method: paymentMethod,
-    });
-
-    if (error) {
-      throw new Error(error.message || 'Erro ao registrar entrada de visitante.');
-    }
-
-    return data as VisitorEntryResult;
   },
 
   /**

@@ -91,14 +91,13 @@ export default function AdminCaixaPage() {
     loadData();
   }, [loadData]);
 
-  // Carrega movimentações de um caixa selecionado
+  // Carrega movimentações do caixa específico selecionado (histórico ou ativo)
   const handleOpenDetails = async (shift: CashShift) => {
     setSelectedShift(shift);
     setLoadingMovements(true);
     try {
-      const res = await cashShiftService.getActiveShift(shift.unit_id, shift.terminal_id);
-      // Se for o mesmo caixa, aproveita ou busca as movimentações
-      setShiftMovements(res.movements || []);
+      const movements = await cashShiftService.getShiftMovements(shift.id);
+      setShiftMovements(movements);
     } catch {
       setShiftMovements([]);
     } finally {

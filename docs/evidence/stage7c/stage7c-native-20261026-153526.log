@@ -1,0 +1,33 @@
+﻿PASS 01 Schema offline possui as sete colunas reconciliadas
+PASS 02 Default e constraint offline aceitam received
+PASS 03 Policies offline convergiram para definicao unica
+PASS 04 RPCs offline permanecem revogadas
+PASS 05 Admin ve offline somente do proprio tenant
+PASS 06 Diretor ve offline somente do proprio tenant
+PASS 07 Supervisor ve offline somente da unidade atribuida
+PASS 08 Gerente ve offline somente da unidade atribuida
+PASS 09 Operador ve offline somente da unidade atribuida
+PASS 10 Usuario institucional nao ve offline
+PASS 11 Consumidor nao ve offline
+PASS 12 Usuario inativo nao ve offline
+PASS 13 Admin do outro tenant nao cruza offline
+PASS 14 Anonimo nao ve offline
+PASS 15 Admin ve carteiras do proprio tenant
+PASS 16 Financeiro ve carteiras do proprio tenant
+PASS 17 Supervisor permanece fail-closed em carteiras
+PASS 18 Gerente permanece fail-closed em carteiras
+PASS 19 Supervisor permanece fail-closed em pagamentos
+PASS 20 Supervisor permanece fail-closed em recargas
+PASS 21 Gerente permanece fail-closed em pagamentos
+PASS 22 Gerente permanece fail-closed em recargas
+PASS 23 Usuario inativo nao ve dados financeiros
+PASS 24 Admin do outro tenant ve somente sua carteira
+PASS 25 Usuario institucional ve estudantes vinculados
+PASS 26 Consumidor ve somente o proprio cadastro
+PASS 27 Supervisor sem vinculo institucional permanece fail-closed
+PASS 28 Gerente sem vinculo institucional permanece fail-closed
+PASS 29 Admin ve caixas somente do proprio tenant
+PASS 30 Admin do outro tenant nao cruza caixas
+PASS 31 Caixa e movimentos respeitam unidade, status e tenant | [1,1,0,1]
+RESULT passed=31 failed=0 total=31
+

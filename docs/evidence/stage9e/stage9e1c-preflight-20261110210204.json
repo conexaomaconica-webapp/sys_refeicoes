@@ -1,0 +1,100 @@
+{
+  "stage": "9E.1-C-PREFLIGHT",
+  "checkedAt": "2026-11-10T21:02:04.881Z",
+  "runId": "20261028152457",
+  "encryption": "AES-256-GCM",
+  "keyCustody": {
+    "keyAvailableOutsideBackupRoot": true,
+    "keyFormatValid256Bit": true,
+    "keyExposedInLogs": false
+  },
+  "integrity": {
+    "databasePlainBytes": 1624752,
+    "rolesPlainBytes": 6384,
+    "storageIndexPlainBytes": 10762,
+    "storageObjectsVerified": 18,
+    "storageObjectsExpected": 18,
+    "storagePlainBytes": 4420908,
+    "allEncryptedArtifactsValid": true
+  },
+  "tocSummary": {
+    "tocEntriesTotal": 1494,
+    "schemasReferenced": [
+      "ACL",
+      "CONSTRAINT",
+      "DATA",
+      "OWNED",
+      "SECURITY",
+      "SET",
+      "TABLE",
+      "TRIGGER",
+      "auth",
+      "backup_pre_homologacao_20261019",
+      "extensions",
+      "graphql_public",
+      "pg_catalog",
+      "pgbouncer",
+      "public",
+      "realtime",
+      "storage",
+      "supabase_migrations",
+      "vault"
+    ],
+    "extensionsReferenced": [
+      "btree_gist",
+      "pg_stat_statements",
+      "pgcrypto",
+      "supabase_vault",
+      "uuid-ossp"
+    ],
+    "objectTypeCounts": {
+      "SCHEMA": 10,
+      "ACL": 439,
+      "COMMENT": 104,
+      "EXTENSION": 5,
+      "TYPE": 24,
+      "FUNCTION": 137,
+      "TABLE": 192,
+      "SEQUENCE": 5,
+      "DEFAULT": 25,
+      "CONSTRAINT": 116,
+      "CHECK": 1,
+      "INDEX": 160,
+      "TRIGGER": 32,
+      "FK": 127,
+      "ROW": 56,
+      "POLICY": 50,
+      "PUBLICATION": 4,
+      "EVENT": 7
+    }
+  },
+  "environment": {
+    "volumes": [
+      {
+        "drive": "C:\\",
+        "totalGB": 118.15,
+        "freeGB": 1.74
+      }
+    ],
+    "secondaryVolumePresent": false,
+    "localPgTools": {
+      "version": "17.11-5",
+      "pgRestorePresent": true,
+      "initdbPresent": true,
+      "postgresPresent": true,
+      "sharePostgresBkiPresent": false
+    },
+    "estimatedLocalRestoreTransientMB": 830,
+    "minSafeLocalFreeGB": 2.5,
+    "spaceAdequateForLocalRestore": false
+  },
+  "remoteAccessAttempted": false,
+  "restoresPerformed": 0,
+  "plaintextWrittenToDisk": 0,
+  "decision": "NO_GO_INSUFFICIENT_DISK_AND_ISOLATED_TARGET",
+  "blockers": [
+    "DISCO_C_INSUFICIENTE: apenas 1.74 GB livres em C:\\ (mínimo seguro recomendado: 2.50 GB) e nenhum volume secundário disponível.",
+    "BINARIOS_INCOMPLETOS: C:\\MARefeicoes-Backups\\.tools não contém share/postgres.bki (initdb exige novo download/extração ~644 MB temporários).",
+    "FIDELIDADE_PLATAFORMA: PostgreSQL 17 local genérico não reproduz Supabase Auth/Storage/Realtime gerenciados (G1 completo exige novo projeto Supabase isolado ou volume dedicado)."
+  ]
+}

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { saveConsumerAccessServer } from '@/services/consumer-access.service';
 import { createStudentServer, updateStudentServer } from '@/services/admin-student.service';
 import { getStudentManagementAccessServer } from '@/services/student-management-access.service';
+import { resolveAppOrigin } from '@/lib/app-origin';
 import type { StudentAcademicStatus } from '@/types/student';
 
 export interface CommensalFormInput {
@@ -20,11 +21,16 @@ export interface CommensalFormInput {
   status: StudentAcademicStatus;
 }
 
-type ActionResult = { success: true; message: string } | { success: false; error: string };
+type ActionResult =
+  | { success: true; message: string; temporaryCredential?: { email: string; password: string } }
+  | { success: false; error: string };
 
 export interface ConsumerAccessFormInput {
   studentId: string;
   email: string;
+  password?: string;
+  mustChangePassword?: boolean;
+  provisioningMethod?: 'invite' | 'password';
   status: 'active' | 'inactive';
   sendRecoveryEmail?: boolean;
 }
@@ -94,14 +100,13 @@ export async function saveConsumerAccessAction(
 
     const requester = await getRequester();
     const requestHeaders = await headers();
-    const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const originHeader = requestHeaders.get('origin');
-    const host = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host');
-    const protocol = requestHeaders.get('x-forwarded-proto') || 'https';
-    const origin = new URL(configuredUrl || originHeader || (host ? `${protocol}://${host}` : 'http://localhost:3000')).origin;
+    const origin = resolveAppOrigin(requestHeaders, process.env.NEXT_PUBLIC_APP_URL);
     const result = await saveConsumerAccessServer(requester.userId, {
       studentId: input.studentId,
       email: input.email,
+      password: input.password?.trim() || undefined,
+      mustChangePassword: input.mustChangePassword,
+      provisioningMethod: input.provisioningMethod,
       status: input.status,
       sendRecoveryEmail: input.sendRecoveryEmail,
       redirectTo: `${origin}/auth/callback?next=/conta/${input.sendRecoveryEmail ? 'redefinir-senha' : 'ativar'}`,
@@ -112,11 +117,19 @@ export async function saveConsumerAccessAction(
     }
 
     revalidatePath('/admin/comensais');
+    const tempPassword = result.access.temporaryPassword;
     return {
       success: true,
       message: result.warning || (result.access.created
-        ? 'Acesso do consumidor criado com sucesso.'
-        : 'Acesso do consumidor atualizado com sucesso.'),
+        ? tempPassword
+          ? 'Acesso do consumidor criado com a senha informada.'
+          : 'Acesso do consumidor criado e convite enviado.'
+        : tempPassword
+          ? 'Acesso e senha do consumidor atualizados com sucesso.'
+          : 'Acesso do consumidor atualizado com sucesso.'),
+      temporaryCredential: tempPassword
+        ? { email: input.email.trim().toLocaleLowerCase('pt-BR'), password: tempPassword }
+        : undefined,
     };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Erro inesperado ao salvar o acesso.' };

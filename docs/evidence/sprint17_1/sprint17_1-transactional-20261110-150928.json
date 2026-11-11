@@ -1,0 +1,187 @@
+{
+  "sprint": "17.1",
+  "generatedAt": "2026-11-10T18:10:02.961Z",
+  "server": {
+    "versionNum": 170011,
+    "addr": "127.0.0.1",
+    "listenAddresses": "127.0.0.1",
+    "port": 55441
+  },
+  "summary": {
+    "passed": 33,
+    "failed": 1,
+    "total": 34
+  },
+  "checks": [
+    {
+      "name": "PostgreSQL 17 descartável confirmado",
+      "passed": true,
+      "detail": "v170011"
+    },
+    {
+      "name": "Data directory exclusivo descartável confirmado",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Listener restrito a loopback",
+      "passed": true,
+      "detail": "127.0.0.1:55441"
+    },
+    {
+      "name": "Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cadeia de migrations 77 -> 78 -> 79 -> 80 -> 81 compilada sobre baseline",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C1.1 Financeiro Tenant B bloqueado no relatório de Tenant A",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C1.2 Gerente A1 bloqueado na Unidade A2 no relatório financeiro",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C1.3a Storage bucket contingency-evidence isola SELECT por tenant_id",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C1.3b Storage bucket contingency-evidence bloqueia INSERT cruzado em Tenant B",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C2.1 Gerente submete contingência com meal_rules/meal_types válidos",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C2.2 Gerente bloqueado ao tentar autoaprovar via UPDATE direto (WITH CHECK)",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C2.3 Gerente bloqueado na RPC review_contingency_batch",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C2.4 Segregação de funções impede diretor de aprovar próprio lote",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C2.5 Diretor aprova lote de gerente (10 refeições = R$ 95,00 subsídio)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C2.6 Lote aprovado torna-se imutável pela trigger prevent_contingency_tampering",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C3.1 authenticated bloqueado em UPDATE de wallet_transactions",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C3.2 Trigger bloqueia DELETE em wallet_transactions até para proprietário",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C3.3 Trigger BEFORE TRUNCATE bloqueia TRUNCATE em wallet_transactions",
+      "passed": false,
+      "detail": "esperado /LEDGER_IMMUTABLE/, recebido: cannot truncate a table referenced in a foreign key constraint"
+    },
+    {
+      "name": "C3.4 Caminho legítimo append-only de lançamento no ledger funciona",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C4.1 Batimento patrimonial 1:1 equilibrado (96.00 = 100.00 - 4.00)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C4.2 audit_wallet_custody_integrity detecta deriva patrimonial (+10.00)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C5.1/C6.1 Relatório fiscal segrega receita (4.00), subsídio (104.50), recargas (100.00), custódia (96.00) e taxa JSON (2.50)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C6.2 Filtro por instituição A2 exclui consumos, contingência e recargas da instituição A1",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C7.1 Conciliação detecta todos os 5 tipos de divergência e re-execução é idempotente sem mutar ledger",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C8.1 Todas as 6 RPCs críticas têm SECURITY DEFINER, search_path=\"\" e zero EXECUTE para PUBLIC/anon",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C9.1 Papel anon bloqueado por ACL nas RPCs",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C9.2 Usuário inativo bloqueado em audit_wallet_custody_integrity",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C9.3 Supervisor sem unidade é bloqueado fail-closed",
+      "passed": true,
+      "detail": "42501"
+    },
+    {
+      "name": "C9.4 Operador de terminal é excluído de operational_dashboard_signals",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C10.1 RPC get_realtime_operational_dashboard executa sem erro de sc.is_integral para gerente da unidade",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C10.2 Publicação supabase_realtime contém apenas operational_dashboard_signals (sem meal_consumptions/blocked_attempts)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C10.3 Rollback recusa apagar tabelas da Sprint 16 quando há registros gravados",
+      "passed": true,
+      "detail": "P0001"
+    },
+    {
+      "name": "C10.4 Rollback reverso 81->80->79 preserva 100% dos dados anteriores e restaura supabase_realtime pré-81",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "C10.5 Reaplicação 79 -> 80 -> 81 após rollback concluída com sucesso",
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}

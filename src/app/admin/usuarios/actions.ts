@@ -8,6 +8,7 @@ import {
   resendInternalAccessServer,
   updateAdminUser,
 } from '@/services/admin-user.service';
+import { resolveAppOrigin } from '@/lib/app-origin';
 import type { ProfileStatus, UserRole } from '@/types/auth';
 
 export interface UserFormInput {
@@ -15,13 +16,22 @@ export interface UserFormInput {
   fullName: string;
   email: string;
   phone: string;
+  password?: string;
+  mustChangePassword?: boolean;
   role: UserRole;
   status: ProfileStatus;
   unitIds: string[];
   institutionIds: string[];
+  provisioningMethod: 'manual_password' | 'temporary_password' | 'invite';
 }
 
-type ActionResult = { success: true; message: string } | { success: false; error: string };
+type ActionResult =
+  | {
+      success: true;
+      message: string;
+      temporaryCredential?: { email: string; password: string };
+    }
+  | { success: false; error: string };
 
 async function getContext() {
   const supabase = await createClient();
@@ -36,13 +46,7 @@ async function getContext() {
   if (!requesterProfile) throw new Error('Perfil administrativo não encontrado.');
 
   const requestHeaders = await headers();
-  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
-  const originHeader = requestHeaders.get('origin');
-  const host = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host');
-  const protocol = requestHeaders.get('x-forwarded-proto') || 'https';
-  const origin = new URL(
-    configuredUrl || originHeader || (host ? `${protocol}://${host}` : 'http://localhost:3000')
-  ).origin;
+  const origin = resolveAppOrigin(requestHeaders, process.env.NEXT_PUBLIC_APP_URL);
   return {
     requestingUserId: user.id,
     tenantId: requesterProfile.tenant_id,
@@ -63,23 +67,41 @@ export async function saveUserAction(input: UserFormInput): Promise<ActionResult
           status: input.status,
           unitIds: input.unitIds,
           institutionIds: input.institutionIds,
+          newPassword: input.password?.trim() || undefined,
         })
       : await createAdminUser({
           ...context,
           email: input.email,
           fullName: input.fullName,
           phone: input.phone,
+          password: input.password?.trim() || undefined,
+          mustChangePassword: input.mustChangePassword,
           role: input.role,
           status: input.status,
           unitIds: input.unitIds,
           institutionIds: input.institutionIds,
+          provisioningMethod: input.provisioningMethod,
         });
     if (!result.success) return { success: false, error: result.error || 'Não foi possível salvar o usuário.' };
 
+    const temporaryPassword = !input.id &&
+      'temporaryPassword' in result &&
+      typeof result.temporaryPassword === 'string'
+        ? result.temporaryPassword
+        : undefined;
     revalidatePath('/admin/usuarios');
     return {
       success: true,
-      message: input.id ? 'Usuário atualizado com sucesso.' : 'Convite enviado e usuário criado com sucesso.',
+      message: input.id
+        ? 'Usuário atualizado com sucesso.'
+        : temporaryPassword
+          ? input.provisioningMethod === 'manual_password'
+            ? 'Usuário cadastrado com sucesso com a senha informada.'
+            : 'Usuário criado com senha temporária.'
+          : 'Convite enviado e usuário criado com sucesso.',
+      temporaryCredential: temporaryPassword
+        ? { email: input.email.trim().toLocaleLowerCase('pt-BR'), password: temporaryPassword }
+        : undefined,
     };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Erro inesperado ao salvar usuário.' };

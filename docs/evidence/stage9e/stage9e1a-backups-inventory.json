@@ -1,0 +1,27 @@
+{
+  "stage": "9E.1-A",
+  "collectedAt": "2026-10-28T14:33:31.629Z",
+  "source": "supabase_management_api_backups_read",
+  "request": {
+    "method": "GET",
+    "mutationsPerformed": 0
+  },
+  "region": "sa-east-1",
+  "walgEnabled": true,
+  "pitrEnabled": false,
+  "backups": {
+    "count": 0,
+    "completed": 0,
+    "physical": 0,
+    "oldestTimestamp": null,
+    "newestTimestamp": null,
+    "statuses": []
+  },
+  "physicalWindow": {
+    "earliest": null,
+    "latest": null
+  },
+  "tokenPersisted": false,
+  "backupIdsPersisted": false,
+  "projectRefPersisted": false
+}

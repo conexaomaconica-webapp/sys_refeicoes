@@ -78,11 +78,15 @@ SPRINT 9  ──▶ Motor de Consumo Atômico (consume_meal)          [CRÍTICA 
 SPRINT 10 ──▶ Terminal de Recepção e Contingência Offline      [CRÍTICA - P0]
 SPRINT 11 ──▶ Importação Parcial Tolerante e Relatório de Erros [ALTA]
 SPRINT 12 ──▶ PWA do Consumidor (Aluno Parcial e Integral)     [IMPLEMENTADA LOCALMENTE]
-SPRINT 13 ──▶ Regularização Retroativa Auditável               [ALTA]
-SPRINT 14 ──▶ Dashboards Operacionais e Monitoramento de Picos
-SPRINT 15 ──▶ Relatórios Fiscais, Subsídios e Faturamento      [ALTA]
-SPRINT 16 ──▶ Integração de Gateway Real e Conciliação         [DESACOPLÁVEL]
-SPRINT 17 ──▶ Auditoria Contábil, Segurança e Hardening        [CRÍTICA - P0]
+SPRINT 13 ──▶ Regularização Retroativa Auditável               [ALTA] [CONCLUÍDO]
+SPRINT 14 ──▶ Dashboards Operacionais e Monitoramento de Picos [CONCLUÍDO]
+SPRINT 14.1 ─▶ Hardening e Homologação do Dashboard            [CONCLUÍDO LOCALMENTE]
+SPRINT 15 ──▶ Relatórios Fiscais, Subsídios e Faturamento      [ALTA] [CONCLUÍDO LOCALMENTE]
+SPRINT 15.1 ─▶ Hardening Financeiro (Fonte Canônica Fail-Closed) [CONCLUÍDO LOCALMENTE]
+SPRINT 15.2 ─▶ Homologação Contábil e Regras Fiscais           [CONCLUÍDO LOCALMENTE]
+SPRINT 16 ──▶ Conciliação Financeira Automática e Fechamento   [CONCLUÍDO LOCALMENTE]
+SPRINT 17 ──▶ Auditoria Contábil, Segurança e Hardening        [CRÍTICA - P0] [CONCLUÍDO LOCALMENTE]
+SPRINT 17.1 ─▶ Homologação Transacional PostgreSQL 17.11       [CONCLUÍDO - 35/35 PASS]
 SPRINT 18 ──▶ Performance, Carga e Estresse (3.000+ ref/dia)   [CRÍTICA - P0]
 SPRINT 19 ──▶ Operação Piloto em Unidade Real                  [CRÍTICA - P0]
 SPRINT 20 ──▶ Ajustes, Correções e Refinamentos Pós-Piloto
@@ -350,9 +354,32 @@ Fornecer visibilidade em tempo real para gerentes de unidade e diretoria de oper
 - **Consumo por Categoria:** Proporção em tempo real entre Integrais e Parciais.
 
 ### Critérios de Aceite
-- [ ] Atualização em tempo real via canais seguros Supabase Realtime.
-- [ ] Filtro por tenant, instituição, unidade e tipo de refeição.
-- [ ] Alertas visuais quando um terminal ultrapassar 2 minutos sem registros em horário de pico.
+- [x] Atualização em tempo real via canais seguros Supabase Realtime (meal_consumptions e blocked_attempts).
+- [x] Filtro por tenant, instituição, unidade e tipo de refeição.
+- [x] Alertas visuais quando um terminal ultrapassar 2 minutos sem registros em horário de pico (is_idle_alert).
+- [x] Migration `20261109000078_create_realtime_operational_dashboard.sql` com RPC `get_realtime_operational_dashboard`.
+- [x] Rota `/admin/dashboard` e componente `OperationalDashboard.tsx` validados (6/6 em `validate-sprint14-dashboard.cjs`).
+- [x] Build de produção Next.js 15 compilado com sucesso (29/29 rotas) e zero erros de tipo/lint.
+
+---
+
+## SPRINT 14.1 — Hardening e Homologação do Dashboard Operacional [CONCLUÍDO LOCALMENTE]
+
+### Objetivo
+Blindagem de segurança, integridade matemática, resiliência de conexão e contenção de vazamentos no Dashboard Operacional antes da conexão a dados reais de produção.
+
+### Frentes Homologadas
+1. **Segurança e RLS:** Validação estrita de `auth.uid()`, perfil ativo, e escopo de unidade via `has_unit_access(p_unit_id)` diretamente no banco.
+2. **Realtime Seguro:** Payload estritamente operacional (sem dados pessoais sensíveis) e canal com subscrição filtrada por `unit_id`.
+3. **Proteção Anti-Sobrecarga:** Debounce de 1.500ms no frontend para contenção de rajadas durante horários de pico.
+4. **Resiliência e Continuidade:** Tratamento de estados WebSocket com fallback suave para polling a cada 30 segundos e indicador visual diferenciando "Ao Vivo" de "Modo Resiliente".
+5. **Consistência Matemática:** Verificação de fechamento exato entre totais, parciais, integrais e blocos de 15 minutos via `date_bin`.
+
+### Critérios de Aceite
+- [x] Documento mestre de homologação registrado em `docs/SPRINT_14_1_HARDENING_HOMOLOGATION.md`.
+- [x] Suíte automatizada de homologação executada com 23/23 testes aprovados (`scripts/homologate-sprint14-dashboard.cjs`).
+- [x] Typecheck TypeScript estático aprovado com 0 erros (`tsc --noEmit`).
+- [x] Linting e contratos aprovados sem violações.
 
 ---
 
@@ -376,8 +403,13 @@ Os relatórios e demonstrativos devem distinguir com precisão:
 - Exportação em Excel (.xlsx) e CSV com memória de cálculo aberta para auditoria fiscal da instituição contratante.
 
 ### Critérios de Aceite
-- [ ] Fechamento contábil bate exatamente com a soma dos lançamentos do livro-razão (`wallet_transactions`) e consumos (`meal_consumptions`).
-- [ ] Relatórios em PDF e Excel gerados com velocidade e paginação correta.
+- [x] Fechamento contábil bate exatamente com a soma dos lançamentos do livro-razão (`wallet_transactions`), consumos (`meal_consumptions`) e lotes de contingência (`contingency_meal_batches`).
+- [x] Relatórios em PDF e Excel gerados com velocidade, paginação correta e proteção contra formula injection (`sanitizeCellForExport`).
+- [x] Segregação estrita entre Receita Realizada dos Comensais e Passivo de Custódia (Recargas).
+- [x] Documento técnico e contábil registrado em `docs/SPRINT_15_FINANCIAL_REPORTING.md`.
+- [x] Migration `20261109000079_create_financial_reporting_rpcs.sql` preparada localmente (mantida em NO-GO para execução remota).
+- [x] Suítes `validate-sprint15-reporting.cjs` (7/7) e `homologate-sprint15-financial.cjs` (10/10) aprovadas com 100% de sucesso.
+- [x] Build de produção Next.js 15 gerando 31/31 páginas e zero erros de tipo/lint.
 
 ---
 
@@ -532,3 +564,68 @@ Gate de saída: lint, typecheck, validação estática, build finalizado, smoke 
 
 A liberação operacional depende da migration `000067`, do segredo
 `CONSUMER_IDENTITY_HMAC_KEY` e da allowlist/template de e-mail do Supabase Auth.
+
+---
+
+# Sprint 15, 15.1 e 15.2 — Relatórios Fiscais, Subsídios, Hardening e Homologação Contábil (09/11/2026)
+
+Concluídas localmente em ambiente Mock/Sandbox, mantendo **NO-GO** de produção até homologação transacional remota.
+
+### Entregas e Hardening:
+- **Migration 79:** RPC analítica `get_consolidated_financial_report` (`SECURITY DEFINER`, `search_path = public, pg_temp`, restrições por tenant e `has_unit_access`).
+- **Sprint 15.1 (Hardening Financeiro):**
+  - Eliminação completa do fallback analítico (`buildAnalyticalReportFallback`). A RPC canônica é a única fonte de apuração.
+  - Comportamento fail-closed estrito (`FALHA_CONTABIL_FAIL_CLOSED`).
+  - Escopo de unidade obrigatório (`UNIT_SCOPE_REQUIRED`) para `unit_manager` e `supervisor`.
+  - Passivo de custódia e saldo em carteira protegidos contra visualização indevida por operadores locais.
+- **Sprint 15.2 (Homologação Contábil):**
+  - Segregação rigorosa: Recargas e saldos em carteira são passivo circulante de custódia, não receita imediata.
+  - Receita realizada reconhecida exclusivamente no débito da refeição na catraca (`student_price`).
+  - Subsídios contratuais apurados por categoria (parcial e integral) e somados aos lotes aprovados de contingência.
+  - Proibição absoluta de comensais fictícios: refeições de contingência (Sprint 13) agregadas por lote (`contingency_meal_batches`).
+  - Exportação multi-abas (XLSX) e PDF/impressão com sanitização contra *CSV/Excel Formula Injection*.
+- **Validação Automatizada:**
+  - `validate-sprint15-reporting.cjs` (7/7 PASS)
+  - `homologate-sprint15-financial.cjs` (10/10 PASS)
+  - `homologate-sprint15-hardening.cjs` (7/7 PASS)
+
+---
+
+# Sprint 16 — Conciliação Financeira Automática e Fechamento Diário (09/11/2026)
+
+Concluída localmente em ambiente Mock/Sandbox, mantendo **NO-GO** de produção até homologação transacional remota.
+
+### Entregas e Hardening:
+- **Migration 80:** Criação de `financial_reconciliation_batches`, `financial_reconciliation_divergences`, `financial_daily_closings` e RPC `run_financial_reconciliation_audit` (`SECURITY DEFINER`, `search_path = public, pg_temp`, RLS ativa).
+- **Motor de Conciliação e Fechamento:**
+  - Confronto de cobranças confirmadas em `payments` contra créditos em `wallet_transactions` (Livro-Razão Imutável).
+  - Classificação de divergências por severidade: `missing_ledger_credit`, `orphan_ledger_credit`, `amount_mismatch`, `cancelled_with_credit`, `delayed_webhook`, `refund_mismatch`.
+  - Proibição estrita de lançamentos compensatórios automáticos no ledger sem aprovação e justificativa contábil auditada.
+  - Fechamento diário com segregação matemática entre custódia (Pix + Cartão + Dinheiro) e receita realizada no consumo.
+- **Área Administrativa e Exportação:**
+  - Nova rota `/admin/conciliacao` com cards de KPI, abas de lotes, tabela de divergências com modal de parecer e fechamentos diários.
+  - Exportação multi-abas `/api/admin/conciliacao/export` (.xlsx) com proteção contra *Formula Injection*.
+- **Validação Automatizada:**
+  - `validate-sprint16.cjs` (7/7 PASS)
+  - `homologate-sprint16-reconciliation.cjs` (10/10 PASS)
+
+---
+
+# Sprint 17 — Auditoria Contábil Final, Segurança P0 e Hardening de RLS (10/11/2026)
+
+Concluída localmente em ambiente controlado (sem conexão remota, mantendo **NO-GO** de produção até homologação transacional em PostgreSQL real).
+
+### Principais Achados e Correções:
+- **Migration 81 (`20261110000081_sprint17_p0_security_and_accounting_hardening.sql`):**
+  - Bloqueio P0 de autoaprovação e adulteração pós-deliberação em `contingency_meal_batches` (`WITH CHECK` + trigger `trg_prevent_contingency_tampering`).
+  - Remoção P0 de `meal_consumptions` e `blocked_attempts` da publicação `supabase_realtime`, substituídos pela tabela `operational_dashboard_signals` sem PII nem valores financeiros.
+  - Trigger `trg_wallet_transactions_immutable` garantindo imutabilidade *append-only* do livro-razão em nível de banco.
+  - RPC `audit_wallet_custody_integrity` comprovando batimento 1:1 entre `wallets.balance` e soma líquida do ledger.
+  - Isolamento por `tenant_id` no bucket `contingency-evidence` e padronização de `search_path = ''` + `REVOKE FROM PUBLIC, anon`.
+- **Correções nas Migrations Locais 79 & 80:**
+  - Migration 79 corrigida para utilizar status canônico `'confirmed'` (em vez de `'completed'`), remover coluna inexistente `provider_fee` e filtrar contingência/recargas por instituição.
+  - Migration 80 e Fechamento Diário ajustados para distinguir recebimentos brutos por meio (`Pix + Cartão + Dinheiro`) do saldo efetivo de custódia devido aos comensais.
+- **Relatório Completo:** [`docs/SPRINT_17_SECURITY_FINANCIAL_AUDIT.md`](file:///c:/Sys_MArefeicoes/docs/SPRINT_17_SECURITY_FINANCIAL_AUDIT.md) (`homologate-sprint17-security.cjs`: 20/20 PASS).
+
+
+

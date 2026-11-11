@@ -89,7 +89,7 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
   >('summary');
 
   // Formulário Abertura
-  const [openInitialFloat, setOpenInitialFloat] = useState<string>('100.00');
+  const [openInitialFloat, setOpenInitialFloat] = useState<string>('');
 
   // Formulário Suprimento / Sangria
   const [movementAmount, setMovementAmount] = useState<string>('');
@@ -140,6 +140,7 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
       setClosingReview(null);
       setCountedAmount('');
       setClosingNotes('');
+      setOpenInitialFloat('');
       setTab(requestCloseShift || staleShift ? 'close' : 'summary');
       fetchActiveShift();
     }
@@ -156,9 +157,12 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
       return;
     }
 
-    const floatNum = parseFloat(openInitialFloat.replace(',', '.'));
-    if (isNaN(floatNum) || floatNum < 0) {
-      setErrorMsg('Informe um valor de fundo de troco válido.');
+    const normalizedFloat = openInitialFloat.trim();
+    const floatNum = parseFloat(normalizedFloat.replace(',', '.'));
+    if (!normalizedFloat || isNaN(floatNum) || floatNum < 0) {
+      setErrorMsg(
+        'Informe o fundo de troco apurado fisicamente na gaveta (informe 0,00 se iniciar sem troco).'
+      );
       return;
     }
 
@@ -432,7 +436,7 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
           >
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>
-              Para encerrar a sessÃ£o do operador, confira e feche o caixa deste terminal.
+              Para encerrar a sessão do operador, confira e feche o caixa deste terminal.
             </span>
           </div>
         )}

@@ -380,6 +380,13 @@ Perfis internos e alunos utilizarão Supabase Auth.
 
 Não armazenar senha diretamente em tabelas próprias.
 
+O Master pode provisionar um usuário interno por convite ou por senha temporária
+aleatória criada no serviço server-side. No segundo fluxo, a identidade é criada
+já confirmada no Supabase Auth, `profiles.must_change_password` permanece verdadeiro
+e o middleware restringe a sessão a `/conta/ativar` até a escolha da senha
+pessoal. A credencial temporária é devolvida uma única vez ao navegador do
+Master e não é gravada no perfil, em logs ou no armazenamento local.
+
 Tabela de perfil conceitual:
 
 ```text

@@ -120,7 +120,10 @@ export async function initiateRechargeServer(input: InitiateRechargeInput): Prom
     p_external_payment_id: externalPaymentId,
     p_pix_qr_code: pixQrCode,
     p_pix_copy_paste: pixCopyPaste,
-    p_raw_response: (rawResponse as unknown as Json) ?? null,
+    p_raw_response: ({
+      gateway_environment: provider.environment || null,
+      gateway_response: rawResponse ?? null,
+    } as unknown as Json),
   });
 
   if (orderError || !orderData) {
@@ -156,20 +159,57 @@ export async function processWebhookServer(
   providerCode: PaymentProviderCode,
   headers: Headers,
   rawBody: string,
-  payload: unknown
+  payload: unknown,
+  context?: { dataId?: string; tenantId?: string; environment?: 'sandbox' | 'production' }
 ): Promise<{ success: boolean; message: string }> {
-  const provider = PaymentProviderFactory.createProvider(providerCode);
+  const provider = providerCode === 'asaas' && context?.tenantId
+    ? await PaymentProviderFactory.getAsaasProviderForTenant(context.tenantId, context.environment)
+    : PaymentProviderFactory.createProvider(providerCode);
 
   // 1. Validar autenticidade / assinatura do webhook
-  const isAuthentic = await provider.verifyWebhookSignature(headers, rawBody);
+  const isAuthentic = await provider.verifyWebhookSignature(
+    headers,
+    rawBody,
+    undefined,
+    context
+  );
   if (!isAuthentic) {
     return { success: false, message: 'Assinatura inválida no webhook.' };
   }
 
   // 2. Extrair dados padronizados do evento
   const event = provider.parseWebhook(payload);
-  if (!event.isValid || !event.isConfirmed) {
+  if (!event.isValid) {
+    return { success: true, message: `Evento ${event.eventType} ignorado (payload inválido).` };
+  }
+
+  // Uma notificação do Mercado Pago informa mudança no pagamento, mas não
+  // comprova aprovação. O status canônico é consultado antes de creditar.
+  const isConfirmed = providerCode === 'mercadopago'
+    ? (await provider.getPaymentStatus(event.externalPaymentId)).status === 'confirmed'
+    : event.isConfirmed;
+
+  if (!isConfirmed) {
     return { success: true, message: `Evento ${event.eventType} ignorado (não é confirmação de pagamento).` };
+  }
+
+  // Impede que um evento de Sandbox confirme uma cobrança originada em
+  // Produção (ou o inverso), inclusive durante troca do ambiente ativo.
+  if (providerCode === 'asaas') {
+    if (!context?.environment) {
+      return { success: false, message: 'Ambiente Asaas não informado.' };
+    }
+    const adminClient = getAdminClient();
+    const { data: paymentOrigin, error: originError } = await adminClient
+      .from('payments')
+      .select('raw_response,payment_providers!inner(code)')
+      .eq('external_payment_id', event.externalPaymentId)
+      .eq('payment_providers.code', 'asaas')
+      .maybeSingle();
+    const raw = paymentOrigin?.raw_response as Record<string, unknown> | null;
+    if (originError || !paymentOrigin || raw?.gateway_environment !== context.environment) {
+      return { success: false, message: 'Evento recusado por incompatibilidade de ambiente.' };
+    }
   }
 
   // 3. Invocar a RPC atômica confirm_payment_recharge no banco

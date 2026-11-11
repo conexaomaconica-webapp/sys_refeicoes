@@ -1,0 +1,17 @@
+{
+  "stage": "9E.2",
+  "executionStatus": "not_executed",
+  "authorization": { "status": "required", "reference": null },
+  "environment": { "kind": "sandbox-pending", "isolated": null, "containsRealData": false },
+  "startedAt": null,
+  "completedAt": null,
+  "results": { "passed": 0, "failed": 0, "notTested": 14, "totalRequired": 14 },
+  "metrics": { "confirmedCredits": null, "ledgerEntries": null, "duplicateCredits": null, "balanceDifference": null },
+  "providersTested": [],
+  "externalActionsPerformed": false,
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "evidence": [],
+  "residualRisks": [],
+  "decision": "NO_GO_NOT_EXECUTED"
+}

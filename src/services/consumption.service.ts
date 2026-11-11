@@ -1,4 +1,5 @@
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
+import { resolveTerminalIdentifierAction } from '@/app/terminal/actions';
 import type {
   ConsumeMealInput,
   ConsumeMealResult,
@@ -93,8 +94,22 @@ export async function executeConsumeMeal(
 }
 
 export async function previewTerminalMeal(input: ConsumeMealInput): Promise<ConsumeMealResult> {
-  const cleanId = input.identifier?.trim();
+  let cleanId = input.identifier?.trim();
   if (!cleanId) return { success: false, error_code: 'INVALID_IDENTIFIER', message: 'Identificação não informada.' };
+  if (cleanId.startsWith('MAR:S:')) {
+    try {
+      cleanId = await resolveTerminalIdentifierAction(cleanId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'QR Code inválido.';
+      if (msg.startsWith('QR_TENANT_MISMATCH:') || msg.startsWith('QR_INVALID:')) {
+        return {
+          success: false,
+          error_code: msg.startsWith('QR_TENANT_MISMATCH:') ? 'ACCESS_DENIED_UNIT' : 'INVALID_IDENTIFIER',
+          message: msg.replace(/^(QR_TENANT_MISMATCH|QR_INVALID):\s*/, ''),
+        };
+      }
+    }
+  }
   try {
     const supabase = createBrowserClient();
     const { data, error } = await (supabase as unknown as {
@@ -115,12 +130,20 @@ export async function confirmTerminalMealPayment(
   input: ConfirmTerminalMealPaymentInput
 ): Promise<ConsumeMealResult> {
   try {
+    let cleanId = input.identifier.trim();
+    if (cleanId.startsWith('MAR:S:')) {
+      try {
+        cleanId = await resolveTerminalIdentifierAction(cleanId);
+      } catch {
+        // continua com cleanId original se falhar
+      }
+    }
     const supabase = createBrowserClient();
     const { data, error } = await (supabase as unknown as {
       rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
     }).rpc('confirm_operator_terminal_payment', {
       p_unit_id: input.unit_id,
-      p_identifier: input.identifier.trim(),
+      p_identifier: cleanId,
       p_meal_type_id: input.meal_type_id || '',
       p_terminal_id: input.terminal_id || 'TERM-01',
       p_idempotency_key: input.idempotency_key || generateIdempotencyKey(input.unit_id, input.terminal_id),

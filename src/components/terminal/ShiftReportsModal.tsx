@@ -21,6 +21,7 @@ import {
 import { useBrand } from '@/components/branding/brand-context';
 import { PrintDocument } from '@/components/printing/PrintDocument';
 import { openPrintDialog } from '@/lib/print-document';
+import { sanitizeCellForExport } from '@/lib/security/formula-sanitizer';
 
 interface ShiftReportsModalProps {
   isOpen: boolean;
@@ -111,24 +112,44 @@ export const ShiftReportsModal: React.FC<ShiftReportsModalProps> = ({
     });
   }, [blockedAttempts, searchTerm]);
 
-  // Exportar CSV simples
+  // Exportar CSV com UTF-8 BOM e sanitização contra CSV Formula Injection
   const handleExportCSV = () => {
+    const csvCell = (value: unknown) => {
+      const safe = sanitizeCellForExport(value ?? '');
+      return `"${String(safe).replace(/"/g, '""')}"`;
+    };
+
     let csvContent = '';
     if (tab === 'approved') {
       csvContent = 'Data,Horario,Nome,Matricula,Categoria,ValorPago,Status\n';
       filteredApproved.forEach((m) => {
         const dt = new Date(m.consumed_at);
-        csvContent += `"${dt.toLocaleDateString('pt-BR')}","${dt.toLocaleTimeString('pt-BR')}","${m.full_name}","${m.registration_number}","${m.category_name}","R$ ${Number(m.student_price).toFixed(2)}","${m.status}"\n`;
+        csvContent += [
+          csvCell(dt.toLocaleDateString('pt-BR')),
+          csvCell(dt.toLocaleTimeString('pt-BR')),
+          csvCell(m.full_name),
+          csvCell(m.registration_number),
+          csvCell(m.category_name),
+          csvCell(`R$ ${Number(m.student_price).toFixed(2)}`),
+          csvCell(m.status),
+        ].join(',') + '\n';
       });
     } else {
       csvContent = 'Data,Horario,Nome,Matricula,MotivoBloqueio,CodigoErro\n';
       filteredBlocked.forEach((b) => {
         const dt = new Date(b.attempted_at);
-        csvContent += `"${dt.toLocaleDateString('pt-BR')}","${dt.toLocaleTimeString('pt-BR')}","${b.full_name || 'N/A'}","${b.registration_number}","${b.reason_message}","${b.reason_code}"\n`;
+        csvContent += [
+          csvCell(dt.toLocaleDateString('pt-BR')),
+          csvCell(dt.toLocaleTimeString('pt-BR')),
+          csvCell(b.full_name || 'N/A'),
+          csvCell(b.registration_number),
+          csvCell(b.reason_message),
+          csvCell(b.reason_code),
+        ].join(',') + '\n';
       });
     }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -136,6 +157,7 @@ export const ShiftReportsModal: React.FC<ShiftReportsModalProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handlePrint = () => {

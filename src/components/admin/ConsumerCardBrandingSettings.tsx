@@ -108,7 +108,7 @@ export function ConsumerCardBrandingSettings() {
       setForm(updated);
       setFile(null);
       await refreshBranding();
-      setMessage('AparÃªncia da carteirinha salva.');
+      setMessage('Apararência do cartão virtual salvo.');
     } catch (saveError) {
       setError((saveError as Error).message);
     } finally {
@@ -150,7 +150,7 @@ export function ConsumerCardBrandingSettings() {
             <CreditCard className="h-5 w-5 text-red-700" /> Carteirinha virtual
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Escolha cor ou imagem. Nome, foto, QR, status e saldo continuam dinÃ¢micos.
+            Escolha cor ou imagem. Nome, foto, QR, status e saldo continuam dinâmicos.
           </p>
         </div>
         <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">
@@ -167,8 +167,8 @@ export function ConsumerCardBrandingSettings() {
                 type="button"
                 onClick={() => setForm({ ...form, consumer_card_background_mode: mode })}
                 className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-bold ${form.consumer_card_background_mode === mode
-                    ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-100'
-                    : 'border-slate-200'
+                  ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-100'
+                  : 'border-slate-200'
                   }`}
               >
                 {mode === 'color' ? <Palette className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
@@ -210,7 +210,7 @@ export function ConsumerCardBrandingSettings() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <strong className="block text-sm">Enviar fundo da carteirinha</strong>
-                  <small className="block text-slate-500">PNG, JPG ou WebP, atÃ© 5 MB.</small>
+                  <small className="block text-slate-500">PNG, JPG ou WebP, até 5 MB.</small>
                   {file && <small className="block truncate font-bold text-emerald-700">{file.name}</small>}
                 </span>
                 <input
@@ -222,7 +222,7 @@ export function ConsumerCardBrandingSettings() {
                     setError(null);
                     if (selected && selected.size > 5 * 1024 * 1024) {
                       setFile(null);
-                      setError('A imagem da carteirinha deve ter no mÃ¡ximo 5 MB.');
+                      setError('A imagem da carteirinha deve ter no máximo 5 MB.');
                       return;
                     }
                     setFile(selected);

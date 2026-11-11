@@ -1,0 +1,37 @@
+{
+  "stage": "8B-smoke",
+  "date": "2026-10-27",
+  "status": "acl_smoke_passed",
+  "remoteChecks": [
+    {
+      "name": "anonymous_execute_denied",
+      "passed": true,
+      "httpStatus": 401,
+      "postgresCode": "42501",
+      "operationalDataRead": false
+    },
+    {
+      "name": "authenticated_allowed_unit",
+      "passed": true,
+      "method": "manual_ui",
+      "result": "approved_meals_rendered"
+    },
+    {
+      "name": "terminal_report_ui",
+      "passed": true,
+      "method": "manual_ui",
+      "result": "F7_report_opened_and_rendered"
+    }
+  ],
+  "pendingChecks": [
+    "authenticated_denied_unit"
+  ],
+  "notes": [
+    "No administrative or service-role credential was used.",
+    "A pre-existing hardcoded test credential was not used.",
+    "The local development server did not become ready and was terminated without residual listeners or Node processes.",
+    "The authenticated UI smoke was executed manually by the user against the allowed production unit.",
+    "The blocked-attempt list was empty because no persisted blocked attempt existed in the preceding 24 hours.",
+    "Unknown identifiers are intentionally treated as input/not-found errors and do not increment or persist the blocked-attempt metric."
+  ]
+}

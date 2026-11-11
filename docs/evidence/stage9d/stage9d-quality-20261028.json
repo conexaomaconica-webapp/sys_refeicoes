@@ -1,0 +1,23 @@
+{
+  "stage": "9D",
+  "scope": "local-quality-gate",
+  "date": "2026-10-28",
+  "lint": {
+    "passed": true,
+    "command": "pnpm run lint"
+  },
+  "typecheck": {
+    "passed": true,
+    "command": "pnpm run typecheck"
+  },
+  "build": {
+    "compiled": true,
+    "formalExitPassed": false,
+    "buildIdGenerated": false,
+    "lastAttemptTimeoutSeconds": 900,
+    "lastObservedPhase": "Checking validity of types",
+    "verdict": "BLOCKING_FOR_PUBLICATION"
+  },
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0
+}

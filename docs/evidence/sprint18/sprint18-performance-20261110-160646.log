@@ -1,0 +1,34 @@
+﻿PASS 01 PostgreSQL 17 descartável confirmado | v170011
+PASS 02 Data directory exclusivo descartável confirmado
+PASS 03 Listener restrito a loopback | 127.0.0.1:55442
+PASS 04 Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS
+PASS 05 Cadeia de migrations 36 -> 31 -> 72 -> 77 -> 78 -> 79 -> 80 -> 81 -> 82 compilada
+PASS 06 Massa sintética multi-tenant criada (5.254 comensais e carteiras) | 6109.96ms
+PASS 07 Fase 18.2: 1.800 refeições operacionais (950 almoço + 850 jantar) processadas com 0 erros | approved=1800, lunchP95=53.04ms, dinnerP95=71.81ms
+PASS 08 Fase 18.2: Latência p95 dentro da meta inicial (<= 400ms) | lunchP95=53.04ms, dinnerP95=71.81ms
+PASS 09 Fase 18.2: Dashboard operacional tempo real p95 <= 400ms após 1.800 refeições | p95=41.5ms
+PASS 10 Fase 18.3: 3.000 operações de estresse executadas integralmente sem perda | approved=3000
+PASS 11 Fase 18.3: Recuperação pós-pico restabelece latência p95 nominal | baselineP95=872.29ms, peakP95=763.36ms (rps=40.02), recoveryP95=49.07ms
+FATAL SPRINT 18 PG17: error: function public.get_consolidated_financial_report(date, date, unknown, unknown, unknown) does not exist
+    at C:\Sys_MArefeicoes\node_modules\.pnpm\pg@8.23.1\node_modules\pg\lib\client.js:694:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async execAsRole (C:\Sys_MArefeicoes\scripts\homologate-sprint18-performance.cjs:95:17)
+    at async main (C:\Sys_MArefeicoes\scripts\homologate-sprint18-performance.cjs:591:31) {
+  length: 271,
+  severity: 'ERROR',
+  code: '42883',
+  detail: undefined,
+  hint: 'No function matches the given name and argument types. You might need to add explicit type casts.',
+  position: '8',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_func.c',
+  line: '636',
+  routine: 'ParseFuncOrColumn'
+}

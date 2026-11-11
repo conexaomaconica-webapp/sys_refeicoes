@@ -1080,10 +1080,10 @@ Criar testes para garantir:
 
 Usuários internos devem ser criados por usuário autorizado.
 
-Fluxo sugerido:
+Fluxos permitidos para usuários internos:
 
 ```text
-admin cria convite
+Master escolhe convite ou senha temporária
 ↓
 define perfil
 ↓
@@ -1091,12 +1091,16 @@ define tenant
 ↓
 define instituição/unidades
 ↓
-usuário aceita convite
+convite: usuário aceita o link
+senha temporária: usuário entra com a credencial exibida uma única vez
 ↓
-conta é ativada
+usuário define uma senha pessoal obrigatória
 ```
 
-Evitar criação automática com privilégios elevados.
+A senha temporária deve ser aleatória, gerada no servidor, nunca derivada de
+dados pessoais e nunca persistida em tabelas da aplicação. Somente o Master
+ativo pode utilizar esse provisionamento. Evitar criação automática com
+privilégios elevados.
 
 ---
 

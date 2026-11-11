@@ -1,0 +1,60 @@
+{
+  "contractVersion": 1,
+  "postgresMajor": 17,
+  "pendingMigrationVersions": ["20261026000072", "20261026000073", "20261027000074"],
+  "requiredRelations": [
+    "public.offline_contingency_events",
+    "public.institutions",
+    "public.profiles",
+    "public.user_institution_access",
+    "public.user_unit_access",
+    "public.students",
+    "public.wallets",
+    "public.wallet_transactions",
+    "public.payments",
+    "public.recharges",
+    "public.cash_shifts",
+    "public.cash_movements",
+    "public.units",
+    "public.meal_consumptions",
+    "public.student_categories"
+  ],
+  "rlsRequired": [
+    "public.offline_contingency_events",
+    "public.students",
+    "public.wallets",
+    "public.wallet_transactions",
+    "public.payments",
+    "public.recharges",
+    "public.cash_shifts",
+    "public.cash_movements",
+    "public.meal_consumptions"
+  ],
+  "requiredColumns": {
+    "public.offline_contingency_events": ["id", "tenant_id", "unit_id", "status"],
+    "public.institutions": ["id", "tenant_id"],
+    "public.profiles": ["id", "tenant_id", "role", "status"],
+    "public.user_institution_access": ["user_id", "tenant_id", "institution_id"],
+    "public.user_unit_access": ["user_id", "tenant_id", "unit_id"],
+    "public.students": ["tenant_id", "user_id", "institution_id"],
+    "public.wallets": ["tenant_id"],
+    "public.wallet_transactions": ["tenant_id"],
+    "public.payments": ["tenant_id"],
+    "public.recharges": ["tenant_id"],
+    "public.cash_shifts": ["id", "tenant_id", "unit_id"],
+    "public.cash_movements": ["cash_shift_id"],
+    "public.units": ["id", "tenant_id", "institution_id", "name"],
+    "public.meal_consumptions": ["tenant_id", "unit_id", "category_id", "consumption_date", "status"],
+    "public.student_categories": ["id", "tenant_id", "name"]
+  },
+  "requiredFunctionPrefixes": [
+    "public.get_auth_tenant_id(",
+    "public.get_auth_user_status(",
+    "public.get_auth_user_role(",
+    "public.has_unit_access(",
+    "public.can_manage_students_at_institution(",
+    "public.reconcile_offline_consumptions(",
+    "public.get_terminal_shift_snapshot("
+  ],
+  "targetFunctionPrefix": "public.get_operational_intelligence_v1("
+}

@@ -1,0 +1,44 @@
+{
+  "stage": "9E.2",
+  "executionStatus": "completed",
+  "authorization": {
+    "status": "authorized",
+    "reference": "Autorização do usuário para seguir à Etapa 9E.2 em 2026-10-28"
+  },
+  "environment": {
+    "kind": "local-preflight",
+    "isolated": true,
+    "containsRealData": false
+  },
+  "startedAt": "2026-10-28T00:00:00-03:00",
+  "completedAt": "2026-10-28T00:00:00-03:00",
+  "results": {
+    "passed": 0,
+    "failed": 0,
+    "notTested": 14,
+    "totalRequired": 14
+  },
+  "metrics": {
+    "localPreflightControlsPassed": 14,
+    "localPreflightControlsTotal": 14,
+    "confirmedCredits": 0,
+    "ledgerEntries": 0,
+    "duplicateCredits": 0,
+    "balanceDifference": 0
+  },
+  "providersTested": [],
+  "externalActionsPerformed": false,
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "evidence": [
+    "preflight local sem exposição de segredos",
+    "fallbacks de credenciais fictícias removidos",
+    "provedor mock bloqueado na fábrica em produção"
+  ],
+  "residualRisks": [
+    "credenciais oficiais de sandbox ainda não configuradas",
+    "PAY-01 a PAY-14 ainda não executados",
+    "restauração 9E.1-C não homologada por decisão do responsável"
+  ],
+  "decision": "NO_GO"
+}

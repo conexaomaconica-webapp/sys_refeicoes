@@ -1,0 +1,24 @@
+{
+  "stage": "9E",
+  "scope": "local-preparation-only",
+  "date": "2026-10-28",
+  "validation": {
+    "runbookControls": "48/48",
+    "evidenceContractControls": "45/45",
+    "total": "93/93",
+    "lintPassed": true,
+    "typecheckPassed": true,
+    "buildExitCode": 0,
+    "staticPagesGenerated": "26/26",
+    "buildIdPresent": true
+  },
+  "subStagesPrepared": ["9E.1", "9E.2", "9E.3", "9E.4", "9E.5"],
+  "externalHomologationsExecuted": 0,
+  "remoteConnectionsPerformed": 0,
+  "backupOrRestoreOperationsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "deploymentsPerformed": 0,
+  "commitsCreated": 0,
+  "decision": "GO_LOCAL_PREPARATION_ONLY",
+  "publication": "NO_GO"
+}

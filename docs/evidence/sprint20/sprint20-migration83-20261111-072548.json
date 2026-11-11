@@ -1,0 +1,148 @@
+{
+  "passed": 27,
+  "failed": 0,
+  "total": 27,
+  "serverMeta": {
+    "versionNum": 170011,
+    "addr": "127.0.0.1",
+    "port": 55443
+  },
+  "executedAt": "2026-11-11T10:27:50.828Z",
+  "results": [
+    {
+      "name": "PostgreSQL 17 descartável confirmado",
+      "passed": true,
+      "detail": "v170011"
+    },
+    {
+      "name": "Data directory descartável exclusivo confirmado",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Listener restrito a loopback",
+      "passed": true,
+      "detail": "127.0.0.1:55443"
+    },
+    {
+      "name": "Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cadeia de migrations 77 -> 81 -> 83 aplicada sobre baseline",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Papel anon é bloqueado em close_financial_daily_period",
+      "passed": true,
+      "detail": "permission denied for function close_financial_daily_period"
+    },
+    {
+      "name": "Chamada authenticated sem JWT sub é rejeitada",
+      "passed": true,
+      "detail": "AUTH_REQUIRED: Autenticação obrigatória para fechar período financeiro."
+    },
+    {
+      "name": "Perfil financeiro inativo é bloqueado",
+      "passed": true,
+      "detail": "ACTIVE_PROFILE_REQUIRED: Perfil ativo não encontrado ou inativo."
+    },
+    {
+      "name": "Operador não autorizado é bloqueado (PERMISSION_DENIED)",
+      "passed": true,
+      "detail": "PERMISSION_DENIED: Papel operator não autorizado a consolidar fechamento diário."
+    },
+    {
+      "name": "Financeiro do Tenant B não pode fechar período do Tenant A",
+      "passed": true,
+      "detail": "TENANT_MISMATCH: Acesso negado para consolidar fechamento de outro tenant."
+    },
+    {
+      "name": "Unidade de outro tenant é bloqueada (UNIT_TENANT_MISMATCH)",
+      "passed": true,
+      "detail": "UNIT_TENANT_MISMATCH: Unidade informada não pertence ao tenant autenticado."
+    },
+    {
+      "name": "Tentativa de fechamento em data futura é bloqueada",
+      "passed": true,
+      "detail": "INVALID_CLOSING_DATE: Não é permitido fechar data futura (2026-11-12)."
+    },
+    {
+      "name": "Justificativa curta (<5 caracteres) é bloqueada",
+      "passed": true,
+      "detail": "JUSTIFICATION_REQUIRED: Informe justificativa ou observação de conferência (mínimo 5 caracteres)."
+    },
+    {
+      "name": "Fechamento da Unidade A1 persistido com status equilibrado",
+      "passed": true,
+      "detail": "id=ae093cc4-06a8-442c-adc9-16e3cb5aaddd"
+    },
+    {
+      "name": "Fechamento duplicado para mesma data e unidade é bloqueado",
+      "passed": true,
+      "detail": "DAILY_CLOSING_ALREADY_EXISTS: O fechamento de 2026-11-10 já foi persistido para este escopo."
+    },
+    {
+      "name": "Fechamento consolidado (unit_id NULL) persistido",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Índice único parcial bloqueia duplicidade consolidada (unit_id IS NULL)",
+      "passed": true,
+      "detail": "DAILY_CLOSING_ALREADY_EXISTS: O fechamento de 2026-11-10 já foi persistido para este escopo."
+    },
+    {
+      "name": "Consulta histórica retorna ambos os fechamentos do Tenant A",
+      "passed": true,
+      "detail": "rows=2"
+    },
+    {
+      "name": "Fechamento da Unidade A1 segrega corretamente recebimentos, custódia, receita realizada e subsídios",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Fechamento consolidado soma corretamente múltiplas unidades sem inflar custódia",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "RLS multi-tenant oculta fechamentos do Tenant A para Tenant B",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "RLS bloqueia leitura de financial_daily_closings para papel operator",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Concorrência simultânea garante exatamente 1 gravação e erro determinístico DAILY_CLOSING_ALREADY_EXISTS na segunda",
+      "passed": true,
+      "detail": "fulfilled=1, rows=1"
+    },
+    {
+      "name": "Fechamentos diários preservam integralmente carteiras e wallet_transactions sem ajustes ocultos",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Authenticated bloqueado de alterar financial_daily_closings",
+      "passed": true,
+      "detail": "permission denied for table financial_daily_closings"
+    },
+    {
+      "name": "Trigger de imutabilidade bloqueia UPDATE até para owner/service_role",
+      "passed": true,
+      "detail": "IMMUTABLE_DAILY_CLOSING: Registros de financial_daily_closings são imutáveis e não permitem UPDATE."
+    },
+    {
+      "name": "Trigger de imutabilidade bloqueia DELETE até para owner/service_role",
+      "passed": true,
+      "detail": "IMMUTABLE_DAILY_CLOSING: Registros de financial_daily_closings são imutáveis e não permitem DELETE."
+    }
+  ]
+}

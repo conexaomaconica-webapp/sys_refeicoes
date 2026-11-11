@@ -1,0 +1,59 @@
+{
+  "stage": "9E.1-B",
+  "executionStatus": "backup_created_and_verified",
+  "runId": "20261028152457",
+  "sourcePlan": "free",
+  "encryption": "AES-256-GCM",
+  "postgresTools": {
+    "version": "17.11",
+    "archiveBytes": 381531864,
+    "archiveSha256Verified": true,
+    "archiveRemovedAfterExtraction": true,
+    "portableBinariesRetained": true
+  },
+  "database": {
+    "plainBytes": 1624752,
+    "encryptedBytes": 1624788,
+    "pgRestoreListExitCode": 0
+  },
+  "roles": {
+    "plainBytes": 6384,
+    "encryptedBytes": 6420,
+    "passwordsIncluded": false
+  },
+  "storage": {
+    "bucketCount": 3,
+    "objectCount": 18,
+    "objectsVerified": 18,
+    "plainBytes": 4420908
+  },
+  "artifacts": {
+    "fileCount": 23,
+    "totalBytes": 6064833,
+    "plaintextDataFiles": 0,
+    "keyStoredOutsideBackupRoot": true,
+    "keyAclRestricted": true
+  },
+  "cleanup": {
+    "removedOnlyDownloadedArchive": true,
+    "removedBytes": 381531864,
+    "backupPreserved": true,
+    "keyPreserved": true
+  },
+  "sourceMutations": 0,
+  "backupsCreated": 1,
+  "restoresPerformed": 0,
+  "remoteMigrationsExecuted": 0,
+  "secretsPersistedInEvidence": 0,
+  "localQualityChecks": {
+    "controlsPassed": 20,
+    "controlsRequired": 20,
+    "lintPassed": true,
+    "typecheckPassed": true,
+    "buildExitCode": 0,
+    "buildPagesGenerated": 26,
+    "buildIdPresent": true,
+    "buildDurationSeconds": 587
+  },
+  "decision": "GO_BACKUP_NO_GO_RESTORE"
+}

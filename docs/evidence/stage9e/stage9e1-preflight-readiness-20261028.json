@@ -1,0 +1,49 @@
+{
+  "stage": "9E.1-preflight",
+  "executionStatus": "preflight_completed",
+  "authorizationScope": "local_prerequisites_and_isolated_destination_design_only",
+  "source": {
+    "kind": "official_supabase_project",
+    "protectedFromWrites": true,
+    "remoteAccessPerformed": false
+  },
+  "destination": {
+    "kind": "new_isolated_supabase_recovery_project",
+    "provisioned": false,
+    "containsRealData": null,
+    "operationalTrafficAllowed": false
+  },
+  "prerequisites": {
+    "sourceIdentified": true,
+    "destinationApproved": false,
+    "backupAvailabilityVerified": false,
+    "pitrVerified": false,
+    "storageCopyVerified": false,
+    "externalEffectsContained": false,
+    "responsiblePartiesNamed": false,
+    "budgetApproved": false
+  },
+  "localDiagnostics": {
+    "globalPostgresqlToolsAvailable": false,
+    "observedFreeDiskGiB": 3.44,
+    "filesDeleted": 0,
+    "dependenciesInstalled": 0
+  },
+  "qualityChecks": {
+    "preflightControlsPassed": 20,
+    "preflightControlsRequired": 20,
+    "lintPassed": true,
+    "typecheckPassed": true,
+    "buildExitCode": 0,
+    "buildPagesGenerated": 26,
+    "buildIdPresent": true,
+    "buildDurationSeconds": 484
+  },
+  "externalActionsPerformed": false,
+  "remoteConnectionsPerformed": 0,
+  "backupOperationsPerformed": 0,
+  "restoreOperationsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0,
+  "decision": "NO_GO_BACKUP_AND_RESTORE",
+  "nextGate": "9E.1-A_readonly_recovery_metadata_inventory"
+}

@@ -10,6 +10,7 @@ export interface ConsumerStudent {
   email: string | null;
   phone: string | null;
   photoPath: string | null;
+  qrPayload?: string;
   status: string;
   institutionName: string;
   category: {

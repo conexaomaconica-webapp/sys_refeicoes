@@ -1,0 +1,482 @@
+{
+  "sprint": "18",
+  "executedAt": "2026-11-10T19:27:53.125Z",
+  "serverMeta": {
+    "versionNum": 170011,
+    "addr": "127.0.0.1",
+    "listenAddresses": "127.0.0.1",
+    "port": 55442
+  },
+  "summary": {
+    "passed": 21,
+    "failed": 0,
+    "total": 21
+  },
+  "telemetry": {
+    "host": {
+      "platform": "win32",
+      "release": "10.0.26200",
+      "arch": "x64",
+      "nodeVersion": "v22.23.3",
+      "cpuModel": "Intel(R) Celeron(R) 6305 @ 1.80GHz",
+      "cpuCores": 2,
+      "cpuSpeedMhz": 1805,
+      "totalMemGB": 3.73,
+      "freeMemBeforeGB": 0.62,
+      "freeMemAfterGB": 0.42
+    },
+    "phases": {
+      "operational1800": {
+        "lunch": {
+          "summary": {
+            "count": 950,
+            "minMs": 3.39,
+            "p50Ms": 17.3,
+            "p95Ms": 47.26,
+            "p99Ms": 97.54,
+            "maxMs": 1525.45,
+            "averageMs": 22.96,
+            "rps": 173.69,
+            "elapsedMs": 5469.58
+          },
+          "outcomes": {
+            "approved": 950
+          }
+        },
+        "dinner": {
+          "summary": {
+            "count": 850,
+            "minMs": 2.85,
+            "p50Ms": 12.16,
+            "p95Ms": 35.14,
+            "p99Ms": 48.78,
+            "maxMs": 72.57,
+            "averageMs": 14.77,
+            "rps": 270.76,
+            "elapsedMs": 3139.28
+          },
+          "outcomes": {
+            "approved": 850
+          }
+        },
+        "totalApproved": 1800
+      },
+      "midLoadReads": {
+        "realtimeDashboard": {
+          "count": 10,
+          "minMs": 20.96,
+          "p50Ms": 23.42,
+          "p95Ms": 40.81,
+          "p99Ms": 40.81,
+          "maxMs": 40.81,
+          "averageMs": 24.64,
+          "rps": 0,
+          "elapsedMs": 0
+        },
+        "terminalShiftReports": {
+          "count": 10,
+          "minMs": 24.67,
+          "p50Ms": 26.31,
+          "p95Ms": 40.97,
+          "p99Ms": 40.97,
+          "maxMs": 40.97,
+          "averageMs": 29.06,
+          "rps": 0,
+          "elapsedMs": 0
+        }
+      },
+      "stress3000": {
+        "wave1_10rps": {
+          "targetRps": 10,
+          "maxConcurrency": 8,
+          "summary": {
+            "count": 300,
+            "minMs": 4.05,
+            "p50Ms": 6.02,
+            "p95Ms": 23.78,
+            "p99Ms": 102.4,
+            "maxMs": 166.68,
+            "averageMs": 10.54,
+            "rps": 10.03,
+            "elapsedMs": 29904.13
+          },
+          "outcomes": {
+            "approved": 300
+          }
+        },
+        "wave2_25rps": {
+          "targetRps": 25,
+          "maxConcurrency": 12,
+          "summary": {
+            "count": 900,
+            "minMs": 2.77,
+            "p50Ms": 5.51,
+            "p95Ms": 50.16,
+            "p99Ms": 1440.8,
+            "maxMs": 4465.73,
+            "averageMs": 58.73,
+            "rps": 25.02,
+            "elapsedMs": 35967.84
+          },
+          "outcomes": {
+            "approved": 900
+          }
+        },
+        "wave3_40rps_peak": {
+          "targetRps": 40,
+          "maxConcurrency": 16,
+          "summary": {
+            "count": 1500,
+            "minMs": 2.65,
+            "p50Ms": 5,
+            "p95Ms": 65.82,
+            "p99Ms": 199.62,
+            "maxMs": 1052.01,
+            "averageMs": 14.68,
+            "rps": 40.02,
+            "elapsedMs": 37478.56
+          },
+          "outcomes": {
+            "approved": 1500
+          }
+        },
+        "wave4_recovery_10rps": {
+          "targetRps": 10,
+          "maxConcurrency": 8,
+          "summary": {
+            "count": 300,
+            "minMs": 2.82,
+            "p50Ms": 4.31,
+            "p95Ms": 13.42,
+            "p99Ms": 112.05,
+            "maxMs": 124.31,
+            "averageMs": 7.21,
+            "rps": 10.03,
+            "elapsedMs": 29923.26
+          },
+          "outcomes": {
+            "approved": 300
+          }
+        },
+        "totalStressApproved": 3000
+      },
+      "postStressFinancialReport": {
+        "count": 5,
+        "minMs": 27.5,
+        "p50Ms": 31.84,
+        "p95Ms": 51.13,
+        "p99Ms": 51.13,
+        "maxMs": 51.13,
+        "averageMs": 35.17,
+        "rps": 0,
+        "elapsedMs": 0
+      },
+      "stress": {
+        "wave1_10rps": {
+          "targetRps": 10,
+          "maxConcurrency": 8,
+          "summary": {
+            "count": 300,
+            "minMs": 4.05,
+            "p50Ms": 6.02,
+            "p95Ms": 23.78,
+            "p99Ms": 102.4,
+            "maxMs": 166.68,
+            "averageMs": 10.54,
+            "rps": 10.03,
+            "elapsedMs": 29904.13
+          },
+          "outcomes": {
+            "approved": 300
+          }
+        },
+        "wave2_25rps": {
+          "targetRps": 25,
+          "maxConcurrency": 12,
+          "summary": {
+            "count": 900,
+            "minMs": 2.77,
+            "p50Ms": 5.51,
+            "p95Ms": 50.16,
+            "p99Ms": 1440.8,
+            "maxMs": 4465.73,
+            "averageMs": 58.73,
+            "rps": 25.02,
+            "elapsedMs": 35967.84
+          },
+          "outcomes": {
+            "approved": 900
+          }
+        },
+        "wave3_40rps_peak": {
+          "targetRps": 40,
+          "maxConcurrency": 16,
+          "summary": {
+            "count": 1500,
+            "minMs": 2.65,
+            "p50Ms": 5,
+            "p95Ms": 65.82,
+            "p99Ms": 199.62,
+            "maxMs": 1052.01,
+            "averageMs": 14.68,
+            "rps": 40.02,
+            "elapsedMs": 37478.56
+          },
+          "outcomes": {
+            "approved": 1500
+          }
+        },
+        "wave4_recovery_10rps": {
+          "targetRps": 10,
+          "maxConcurrency": 8,
+          "summary": {
+            "count": 300,
+            "minMs": 2.82,
+            "p50Ms": 4.31,
+            "p95Ms": 13.42,
+            "p99Ms": 112.05,
+            "maxMs": 124.31,
+            "averageMs": 7.21,
+            "rps": 10.03,
+            "elapsedMs": 29923.26
+          },
+          "outcomes": {
+            "approved": 300
+          }
+        },
+        "totalStressApproved": 3000
+      }
+    },
+    "indexes": [
+      {
+        "relname": "cash_shifts",
+        "indexrelname": "idx_cash_shifts_open_operator_terminal",
+        "idx_scan": "9594",
+        "idx_tup_read": "9594"
+      },
+      {
+        "relname": "cash_shifts",
+        "indexrelname": "cash_shifts_pkey",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "cash_shifts",
+        "indexrelname": "idx_cash_shifts_tenant_unit_status",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "meal_consumptions",
+        "indexrelname": "idx_meal_consumptions_active_daily",
+        "idx_scan": "3561",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "meal_consumptions",
+        "indexrelname": "uq_meal_consumptions_idempotency",
+        "idx_scan": "2976",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "meal_consumptions",
+        "indexrelname": "idx_meal_consumptions_tenant_created",
+        "idx_scan": "586",
+        "idx_tup_read": "827801"
+      },
+      {
+        "relname": "meal_consumptions",
+        "indexrelname": "idx_meal_consumptions_unit_date_meal_status",
+        "idx_scan": "50",
+        "idx_tup_read": "45000"
+      },
+      {
+        "relname": "meal_consumptions",
+        "indexrelname": "idx_meal_consumptions_dashboard_fast",
+        "idx_scan": "10",
+        "idx_tup_read": "9000"
+      },
+      {
+        "relname": "meal_consumptions",
+        "indexrelname": "meal_consumptions_pkey",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "meal_consumptions",
+        "indexrelname": "idx_meal_consumptions_unit_date",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "operational_dashboard_signals",
+        "indexrelname": "idx_ops_signals_unit_emitted",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "operational_dashboard_signals",
+        "indexrelname": "idx_ops_signals_emitted_at",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "operational_dashboard_signals",
+        "indexrelname": "operational_dashboard_signals_pkey",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "wallets",
+        "indexrelname": "wallets_id_tenant_id_key",
+        "idx_scan": "11650",
+        "idx_tup_read": "11925"
+      },
+      {
+        "relname": "wallets",
+        "indexrelname": "idx_wallets_student_tenant",
+        "idx_scan": "3199",
+        "idx_tup_read": "3200"
+      },
+      {
+        "relname": "wallets",
+        "indexrelname": "wallets_pkey",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      },
+      {
+        "relname": "wallets",
+        "indexrelname": "wallets_student_id_tenant_id_key",
+        "idx_scan": "0",
+        "idx_tup_read": "0"
+      }
+    ],
+    "audit": {
+      "custody": {
+        "tenant_id": "a0000000-0000-4000-8000-000000000001",
+        "audited_at": "2026-11-10T16:27:53.034814-03:00",
+        "custody_drift": 0,
+        "ledger_net_sum": 1026182.5,
+        "is_patrimony_balanced": true,
+        "negative_wallets_count": 0,
+        "wallets_custody_balance": 1026182.5,
+        "inconsistent_wallets_count": 0
+      },
+      "walletLedgerMismatches": 0,
+      "negativeWallets": 0,
+      "operationalSignalsEmitted": 4822
+    },
+    "nodeProcessMemoryMB": {
+      "rss": 65.84,
+      "heapUsed": 8.15,
+      "external": 1.86
+    }
+  },
+  "assertions": [
+    {
+      "name": "PostgreSQL 17 descartável confirmado",
+      "passed": true,
+      "detail": "v170011"
+    },
+    {
+      "name": "Data directory exclusivo descartável confirmado",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Listener restrito a loopback",
+      "passed": true,
+      "detail": "127.0.0.1:55442"
+    },
+    {
+      "name": "Papéis authenticated e anon sem SUPERUSER ou BYPASSRLS",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cadeia de migrations 36 -> 31 -> 72 -> 77 -> 78 -> 79 -> 80 -> 81 -> 82 compilada",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Massa sintética multi-tenant criada (5.254 comensais e carteiras)",
+      "passed": true,
+      "detail": "3504.32ms"
+    },
+    {
+      "name": "Fase 18.2: 1.800 refeições operacionais (950 almoço + 850 jantar) processadas com 0 erros",
+      "passed": true,
+      "detail": "approved=1800, lunchP95=47.26ms, dinnerP95=35.14ms"
+    },
+    {
+      "name": "Fase 18.2: Latência p95 dentro da meta inicial (<= 400ms)",
+      "passed": true,
+      "detail": "lunchP95=47.26ms, dinnerP95=35.14ms"
+    },
+    {
+      "name": "Fase 18.2: Dashboard operacional tempo real p95 <= 400ms após 1.800 refeições",
+      "passed": true,
+      "detail": "p95=40.81ms"
+    },
+    {
+      "name": "Fase 18.3: 3.000 operações de estresse executadas integralmente sem perda",
+      "passed": true,
+      "detail": "approved=3000"
+    },
+    {
+      "name": "Fase 18.3: Recuperação pós-pico restabelece latência p95 nominal",
+      "passed": true,
+      "detail": "baselineP95=23.78ms, peakP95=65.82ms (rps=40.02), recoveryP95=13.42ms"
+    },
+    {
+      "name": "Fase 18.3: Relatório financeiro consolidado p95 <= 1000ms pós-4.800 consumos",
+      "passed": true,
+      "detail": "p95=51.13ms"
+    },
+    {
+      "name": "Fase 18.4.1: Concorrência de 12 bips na mesma matrícula aprova exatamente 1 e bloqueia 11 sem débito duplo",
+      "passed": true,
+      "detail": "outcomes={\"approved\":1,\"CONCURRENT_CONSUMPTION_CONFLICT\":3,\"ALREADY_CONSUMED_TODAY\":8}, balance=195.50"
+    },
+    {
+      "name": "Fase 18.4.2: Replay idempotente retorna o consumo original sem novo débito",
+      "passed": true,
+      "detail": "consumption_id=46790091-a50b-429f-9089-49b6ded78f33, balance=195.50"
+    },
+    {
+      "name": "Fase 18.4.3: Saldo insuficiente sob concorrência mantém saldo R$ 0,50 sem negativar",
+      "passed": true,
+      "detail": "outcomes={\"CONCURRENT_CONSUMPTION_CONFLICT\":5,\"INSUFFICIENT_FUNDS\":1}, balance=0.50"
+    },
+    {
+      "name": "Fase 18.4.4a: RPC legada reconcile_offline_consumptions segue revogada para authenticated (42501)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Fase 18.4.4b: Eventos offline fora de ordem e repetidos reconciliados sem débito duplo",
+      "passed": true,
+      "detail": "results=[{\"k\":\"OFF-KEY-002\",\"st\":\"conflict_duplicate\"},{\"k\":\"OFF-KEY-001\",\"st\":\"confirmed_regular\"},{\"k\":\"OFF-KEY-001\",\"st\":\"confirmed_regular\",\"replay\":true}]"
+    },
+    {
+      "name": "Fase 18.4.5: Isolamento multi-tenant e de unidade preserva bloqueio pós-carga",
+      "passed": true,
+      "detail": "crossUnit=CASH_SHIFT_REQUIRED, crossStudent=STUDENT_NOT_FOUND"
+    },
+    {
+      "name": "Fase 18.4.6: Consistência 1:1 carteira/ledger e 0 saldos negativos em 5.254 carteiras após 4.800+ consumos",
+      "passed": true,
+      "detail": "mismatches=0, patrimonyBalanced=true, signals=4822"
+    },
+    {
+      "name": "Fase 18.4.7: Sinais realtime sem PII emitidos sob carga sem bloquear operação do terminal",
+      "passed": true,
+      "detail": "signals=4822"
+    },
+    {
+      "name": "Índice Sprint 18 idx_cash_shifts_open_operator_terminal utilizado em carga real",
+      "passed": true,
+      "detail": "scans=9594"
+    }
+  ]
+}

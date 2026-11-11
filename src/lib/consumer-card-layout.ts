@@ -24,18 +24,18 @@ export const CONSUMER_CARD_LAYOUT_ELEMENTS: ConsumerCardLayoutElement[] = [
 ];
 
 export const DEFAULT_CONSUMER_CARD_LAYOUT: ConsumerCardLayout = {
-  logo: { x: 22, y: 7 },
-  title: { x: 76, y: 9 },
-  qr: { x: 50, y: 35 },
-  photo: { x: 20, y: 67 },
-  name: { x: 61, y: 65 },
-  status: { x: 61, y: 74 },
-  balance: { x: 50, y: 84 },
+  logo: { x: 50, y: 10 },
+  title: { x: 50, y: 14 },
+  qr: { x: 50, y: 39 },
+  photo: { x: 20, y: 65 },
+  name: { x: 58, y: 64 },
+  status: { x: 58, y: 72 },
+  balance: { x: 50, y: 86 },
 };
 
 export const DEFAULT_CONSUMER_CARD_ELEMENTS: ConsumerCardElementPreferences = {
-  logo: { visible: true, zoom: 100 },
-  title: { visible: true, zoom: 100 },
+  logo: { visible: true, zoom: 130 },
+  title: { visible: false, zoom: 100 },
   qr: { visible: true, zoom: 100 },
   photo: { visible: true, zoom: 100 },
   name: { visible: true, zoom: 100 },

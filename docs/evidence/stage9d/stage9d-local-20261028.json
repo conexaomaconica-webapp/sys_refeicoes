@@ -1,0 +1,138 @@
+{
+  "stage": "9D",
+  "scope": "local-only-synthetic-no-remote-access",
+  "generatedAt": "2026-10-28T10:30:56.106Z",
+  "verdict": "GO_LOCAL_WITH_EXTERNAL_GATES_PENDING",
+  "suites": [
+    {
+      "name": "webhook-signatures",
+      "script": "scripts/test-stage9d-webhook-signatures.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      }
+    },
+    {
+      "name": "stage9d-controls",
+      "script": "scripts/validate-stage9d.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 32,
+        "failed": 0,
+        "total": 32
+      }
+    },
+    {
+      "name": "authentication-login-branding",
+      "script": "scripts/validate-login-branding.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 19,
+        "failed": 0,
+        "total": 19
+      }
+    },
+    {
+      "name": "authentication-consumer-access",
+      "script": "scripts/validate-consumer-access-management.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 12,
+        "failed": 0,
+        "total": 12
+      }
+    },
+    {
+      "name": "authentication-first-access",
+      "script": "scripts/validate-consumer-first-access.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 15,
+        "failed": 0,
+        "total": 15
+      }
+    },
+    {
+      "name": "terminal-and-cash-regression",
+      "script": "scripts/validate-post-sprint10-stabilization.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 63,
+        "failed": 0,
+        "total": 63
+      }
+    },
+    {
+      "name": "import-base",
+      "script": "scripts/validate-sprint4.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 52,
+        "failed": 0,
+        "total": 52
+      }
+    },
+    {
+      "name": "import-tolerant",
+      "script": "scripts/validate-sprint11.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 37,
+        "failed": 0,
+        "total": 37
+      }
+    },
+    {
+      "name": "consumer-wallet-pwa",
+      "script": "scripts/validate-sprint12.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 16,
+        "failed": 0,
+        "total": 16
+      }
+    },
+    {
+      "name": "rls-static-regression",
+      "script": "scripts/validate-stage7-security.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 31,
+        "failed": 0,
+        "total": 31
+      }
+    },
+    {
+      "name": "health-and-release-controls",
+      "script": "scripts/validate-stage9c.cjs",
+      "passed": true,
+      "exitCode": 0,
+      "counts": {
+        "passed": 28,
+        "failed": 0,
+        "total": 28
+      }
+    }
+  ],
+  "pendingExternalGates": [
+    "real-payment-provider-sandbox",
+    "restore-drill-in-isolated-infrastructure",
+    "hosted-application-rollback-drill",
+    "negative-isolation-between-two-real-units",
+    "manual-browser-and-physical-terminal-acceptance"
+  ],
+  "remoteConnectionsPerformed": 0,
+  "realFinancialTransactionsPerformed": 0
+}

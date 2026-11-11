@@ -1,0 +1,39 @@
+{
+  "stage": "8C.3",
+  "executedAt": "2026-10-27",
+  "candidate": "local-production-build",
+  "approved": true,
+  "checks": {
+    "lint": "passed",
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "generatedPages": 26,
+    "stage6": "17/17",
+    "stage7StaticRls": "31/31",
+    "stage7cPreparation": "16/16",
+    "stage7cNativeRunner": "20/20",
+    "stage7dContracts": "36/36",
+    "stage7dPerformance": "29/29",
+    "stage7dReadiness": "24/24",
+    "stage8aCredential": "33/33",
+    "stage8aHardening": "20/20",
+    "stage8aReadiness": "18/18",
+    "sprint4": "52/52",
+    "sprint11": "37/37",
+    "sprint12": "16/16",
+    "loginBranding": "19/19",
+    "consumerBranding": "28/28",
+    "consumerAccess": "12/12",
+    "consumerFirstAccess": "15/15",
+    "postSprint10Stabilization": "63/63"
+  },
+  "httpSmoke": [
+    { "path": "/", "status": 200, "securityHeaders": true },
+    { "path": "/login", "status": 200, "securityHeaders": true },
+    { "path": "/demonstracao/central-inteligencia", "status": 200, "securityHeaders": true }
+  ],
+  "externalDeployment": {
+    "executed": false,
+    "reason": "Nenhum provedor, workflow de CI/CD ou destino de hospedagem esta configurado no repositorio."
+  }
+}

@@ -1624,6 +1624,19 @@ deve ser considerada inválida até revisão formal.
 - Desativar o acesso altera o status do perfil, preservando cadastro, carteira,
   consumos e livro-razão.
 
+## Provisionamento de usuários internos com senha temporária
+
+- O recurso é exclusivo do `admin_general` ativo e revalida papel e tenant no
+  servidor antes de usar a API administrativa do Supabase Auth.
+- A senha é gerada com aleatoriedade criptográfica, não deriva de CPF,
+  matrícula, telefone ou nome e não é persistida em tabelas próprias.
+- A credencial retorna uma única vez à sessão do Master e deve ser entregue por
+  canal seguro; não pode entrar em logs, evidências ou armazenamento local.
+- A identidade nasce com `must_change_password = true`; o middleware permite
+  somente `/conta/ativar` até a definição da senha pessoal.
+- O fluxo não altera as regras do consumidor, cujo primeiro acesso continua
+  baseado em convite e cuja senha nunca é escolhida pelo gestor.
+
 ## Segurança do primeiro acesso
 
 - Senhas provisórias derivadas de CPF ou matrícula são proibidas.

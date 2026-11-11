@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { randomInt } from 'node:crypto';
 import { getAdminClient } from '@/lib/supabase/admin';
 import type { ProfileStatus, UserRole } from '@/types/auth';
 
@@ -40,6 +41,8 @@ export interface UserManagementData {
   institutions: UserAccessOption[];
   canManage: boolean;
   requesterId: string;
+  requesterRole: UserRole;
+  allowedRoles: UserRole[];
 }
 
 export interface CreateAdminUserParams {
@@ -48,11 +51,14 @@ export interface CreateAdminUserParams {
   email: string;
   fullName: string;
   phone?: string;
+  password?: string;
+  mustChangePassword?: boolean;
   role: UserRole;
   status?: ProfileStatus;
   unitIds?: string[];
   institutionIds?: string[];
   redirectTo: string;
+  provisioningMethod: 'manual_password' | 'temporary_password' | 'invite';
 }
 
 export interface UpdateAdminUserParams {
@@ -65,36 +71,122 @@ export interface UpdateAdminUserParams {
   status: ProfileStatus;
   unitIds?: string[];
   institutionIds?: string[];
+  newPassword?: string;
 }
 
 interface RequesterProfile {
+  id: string;
   tenant_id: string;
   role: UserRole;
   status: ProfileStatus;
+  unitIds: string[];
+}
+
+export interface CreateAdminUserResult {
+  success: boolean;
+  error?: string;
+  temporaryPassword?: string;
+  provisioningMethod?: 'manual_password' | 'temporary_password' | 'invite';
+}
+
+export const CAN_MANAGE_ROLES: UserRole[] = ['admin_general', 'operations_director', 'unit_manager'];
+
+export function getAllowedRolesForRequester(role: UserRole): UserRole[] {
+  if (role === 'admin_general') {
+    return [
+      'admin_general',
+      'operations_director',
+      'finance',
+      'supervisor',
+      'unit_manager',
+      'operator',
+      'institution_user',
+    ];
+  }
+  if (role === 'operations_director') {
+    return [
+      'operations_director',
+      'finance',
+      'supervisor',
+      'unit_manager',
+      'operator',
+      'institution_user',
+    ];
+  }
+  if (role === 'unit_manager') {
+    return ['operator'];
+  }
+  return [];
 }
 
 async function getRequester(requestingUserId: string): Promise<RequesterProfile | null> {
   const adminClient = getAdminClient();
-  const { data } = await adminClient
-    .from('profiles')
-    .select('tenant_id,role,status')
-    .eq('id', requestingUserId)
-    .maybeSingle();
-  return data as RequesterProfile | null;
+  const [{ data: profile }, { data: unitAccesses }] = await Promise.all([
+    adminClient
+      .from('profiles')
+      .select('tenant_id,role,status')
+      .eq('id', requestingUserId)
+      .maybeSingle(),
+    adminClient
+      .from('user_unit_access')
+      .select('unit_id')
+      .eq('user_id', requestingUserId),
+  ]);
+
+  if (!profile) return null;
+  return {
+    id: requestingUserId,
+    tenant_id: profile.tenant_id,
+    role: profile.role as UserRole,
+    status: profile.status as ProfileStatus,
+    unitIds: (unitAccesses || []).map((access: { unit_id: string }) => access.unit_id),
+  };
 }
 
-async function validateManager(requestingUserId: string, tenantId: string) {
+async function validateManager(requestingUserId: string, tenantId: string): Promise<RequesterProfile | null> {
   const requester = await getRequester(requestingUserId);
-  return Boolean(
+  if (
     requester &&
     requester.tenant_id === tenantId &&
-    requester.role === 'admin_general' &&
+    CAN_MANAGE_ROLES.includes(requester.role) &&
     requester.status === 'active'
-  );
+  ) {
+    return requester;
+  }
+  return null;
 }
 
 function uniqueIds(ids: string[] = []) {
   return [...new Set(ids.filter(Boolean))];
+}
+
+function generateTemporaryPassword(): string {
+  const lowercase = 'abcdefghjkmnpqrstuvwxyz';
+  const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const numbers = '23456789';
+  const symbols = '!@#$';
+
+  const pick = (chars: string) => chars[randomInt(chars.length)];
+
+  // Garante 1 maiúscula, 1 minúscula, 1 número e 1 símbolo
+  const chars = [
+    pick(uppercase),
+    pick(lowercase),
+    pick(numbers),
+    pick(symbols),
+  ];
+
+  const pool = lowercase + uppercase + numbers;
+  while (chars.length < 8) {
+    chars.push(pick(pool));
+  }
+
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join('');
 }
 
 function validateRoleAndScopes(role: UserRole, unitIds: string[], institutionIds: string[]) {
@@ -200,13 +292,13 @@ export async function getUserManagementDataServer(
   let visibleUnits = unitsResult.data || [];
   let visibleInstitutions = institutionsResult.data || [];
   if (requester.role === 'unit_manager') {
-    const requesterUnitIds = new Set(unitsByUser.get(requestingUserId) || []);
+    const requesterUnitIds = new Set(requester.unitIds);
     const institutionIds = new Set(
       visibleUnits.filter((unit) => requesterUnitIds.has(unit.id)).map((unit) => unit.institution_id)
     );
     visibleProfiles = visibleProfiles.filter((profile) =>
       profile.id === requestingUserId ||
-      (unitsByUser.get(profile.id) || []).some((unitId) => requesterUnitIds.has(unitId))
+      (profile.role === 'operator' && (unitsByUser.get(profile.id) || []).some((unitId) => requesterUnitIds.has(unitId)))
     );
     visibleUnits = visibleUnits.filter((unit) => requesterUnitIds.has(unit.id));
     visibleInstitutions = visibleInstitutions.filter((institution) => institutionIds.has(institution.id));
@@ -228,17 +320,25 @@ export async function getUserManagementDataServer(
       })),
       units: visibleUnits.map((unit) => ({ id: unit.id, name: unit.name, institutionId: unit.institution_id })),
       institutions: visibleInstitutions.map((institution) => ({ id: institution.id, name: institution.name })),
-      canManage: requester.role === 'admin_general',
+      canManage: CAN_MANAGE_ROLES.includes(requester.role),
       requesterId: requestingUserId,
+      requesterRole: requester.role,
+      allowedRoles: getAllowedRolesForRequester(requester.role),
     },
   };
 }
 
 export async function createAdminUser(
   params: CreateAdminUserParams
-): Promise<{ success: boolean; error?: string; warning?: string }> {
-  if (!(await validateManager(params.requestingUserId, params.tenantId))) {
-    return { success: false, error: 'Apenas o Master ativo pode convidar usuários.' };
+): Promise<CreateAdminUserResult> {
+  const requester = await validateManager(params.requestingUserId, params.tenantId);
+  if (!requester) {
+    return { success: false, error: 'Apenas Master, Diretor Operacional ou Gerente de Unidade ativos podem criar usuários.' };
+  }
+
+  const allowedRoles = getAllowedRolesForRequester(requester.role);
+  if (!allowedRoles.includes(params.role)) {
+    return { success: false, error: `Seu perfil (${requester.role}) não possui permissão para cadastrar o perfil selecionado.` };
   }
 
   const email = params.email.trim().toLocaleLowerCase('pt-BR');
@@ -247,6 +347,19 @@ export async function createAdminUser(
   const institutionIds = uniqueIds(params.institutionIds);
   if (!fullName) return { success: false, error: 'Informe o nome completo.' };
   if (!/^\S+@\S+\.\S+$/.test(email)) return { success: false, error: 'Informe um e-mail válido.' };
+
+  if (requester.role === 'unit_manager') {
+    if (params.role !== 'operator') {
+      return { success: false, error: 'Gerentes de unidade só podem cadastrar operadores.' };
+    }
+    if (unitIds.length === 0 || unitIds.some((id) => !requester.unitIds.includes(id))) {
+      return { success: false, error: 'Selecione ao menos uma unidade sob sua gestão.' };
+    }
+    if (institutionIds.length > 0) {
+      return { success: false, error: 'Gerentes de unidade não podem atribuir instituições.' };
+    }
+  }
+
   const scopeError = validateRoleAndScopes(params.role, unitIds, institutionIds);
   if (scopeError) return { success: false, error: scopeError };
   if (!(await validateScopeIds(params.tenantId, unitIds, institutionIds))) {
@@ -254,14 +367,63 @@ export async function createAdminUser(
   }
 
   const adminClient = getAdminClient();
-  const { data: authData, error: authError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: params.redirectTo,
-  });
-  if (authError || !authData.user) {
-    return { success: false, error: `Não foi possível enviar o convite: ${authError?.message || 'usuário não retornado'}` };
+  let createdPassword: string | undefined;
+
+  if (params.provisioningMethod === 'invite') {
+    const { data: authData, error: authError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+      redirectTo: params.redirectTo,
+    });
+    if (authError || !authData.user) {
+      return { success: false, error: `Não foi possível enviar o convite: ${authError?.message || 'usuário não retornado'}` };
+    }
+    return finishCreateUser(authData.user.id, params, fullName, email, unitIds, institutionIds);
   }
 
-  const userId = authData.user.id;
+  if (params.provisioningMethod === 'manual_password') {
+    const pwd = params.password?.trim() || '';
+    if (pwd.length < 6) {
+      return { success: false, error: 'A senha informada deve ter no mínimo 6 caracteres.' };
+    }
+    createdPassword = pwd;
+  } else {
+    // temporary_password
+    createdPassword = generateTemporaryPassword();
+  }
+
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+    email,
+    password: createdPassword,
+    email_confirm: true,
+    user_metadata: { full_name: fullName },
+  });
+
+  if (authError || !authData.user) {
+    return { success: false, error: `Não foi possível criar o usuário no sistema: ${authError?.message || 'usuário não retornado'}` };
+  }
+
+  const profileResult = await finishCreateUser(authData.user.id, params, fullName, email, unitIds, institutionIds);
+  if (!profileResult.success) {
+    return profileResult;
+  }
+
+  return {
+    success: true,
+    temporaryPassword: createdPassword,
+    provisioningMethod: params.provisioningMethod,
+  };
+}
+
+async function finishCreateUser(
+  userId: string,
+  params: CreateAdminUserParams,
+  fullName: string,
+  email: string,
+  unitIds: string[],
+  institutionIds: string[]
+): Promise<CreateAdminUserResult> {
+  const adminClient = getAdminClient();
+  const mustChangePassword = params.mustChangePassword !== undefined ? params.mustChangePassword : true;
+
   const { error: profileError } = await adminClient.from('profiles').insert({
     id: userId,
     tenant_id: params.tenantId,
@@ -270,8 +432,9 @@ export async function createAdminUser(
     phone: params.phone?.trim() || null,
     role: params.role,
     status: params.status || 'active',
-    must_change_password: true,
+    must_change_password: mustChangePassword,
   });
+
   if (profileError) {
     await adminClient.auth.admin.deleteUser(userId);
     return { success: false, error: `Não foi possível criar o perfil: ${profileError.message}` };
@@ -282,41 +445,70 @@ export async function createAdminUser(
     await adminClient.auth.admin.deleteUser(userId);
     return { success: false, error: `Não foi possível atribuir os acessos: ${accessError}` };
   }
+
   return { success: true };
 }
 
 export async function updateAdminUser(
   params: UpdateAdminUserParams
 ): Promise<{ success: boolean; error?: string }> {
-  if (!(await validateManager(params.requestingUserId, params.tenantId))) {
-    return { success: false, error: 'Apenas o Master ativo pode alterar usuários.' };
+  const requester = await validateManager(params.requestingUserId, params.tenantId);
+  if (!requester) {
+    return { success: false, error: 'Você não possui permissão para alterar usuários.' };
   }
+
   if (params.targetUserId === params.requestingUserId && params.status !== 'active') {
     return { success: false, error: 'Você não pode desativar ou suspender o próprio acesso.' };
   }
-  if (params.targetUserId === params.requestingUserId && params.role !== 'admin_general') {
-    return { success: false, error: 'Você não pode remover o próprio perfil Master.' };
+  if (params.targetUserId === params.requestingUserId && params.role !== requester.role) {
+    return { success: false, error: 'Você não pode alterar o próprio perfil de acesso.' };
   }
 
   const fullName = params.fullName.trim();
   const unitIds = uniqueIds(params.unitIds);
   const institutionIds = uniqueIds(params.institutionIds);
   if (!fullName) return { success: false, error: 'Informe o nome completo.' };
+
+  const adminClient = getAdminClient();
+  const { data: target } = await adminClient
+    .from('profiles')
+    .select('id,role,status')
+    .eq('id', params.targetUserId)
+    .eq('tenant_id', params.tenantId)
+    .neq('role', 'student')
+    .maybeSingle();
+
+  if (!target) return { success: false, error: 'Usuário interno não encontrado neste tenant.' };
+
+  if (requester.role === 'unit_manager') {
+    if (target.role !== 'operator' || params.role !== 'operator') {
+      return { success: false, error: 'Gerentes de unidade só podem gerenciar operadores.' };
+    }
+    const { data: targetUnits } = await adminClient
+      .from('user_unit_access')
+      .select('unit_id')
+      .eq('user_id', params.targetUserId);
+    const existingUnitIds = (targetUnits || []).map((u: { unit_id: string }) => u.unit_id);
+    const hasCommonUnit = existingUnitIds.some((id) => requester.unitIds.includes(id));
+    if (!hasCommonUnit && target.id !== requester.id) {
+      return { success: false, error: 'Este operador não pertence às suas unidades gerenciadas.' };
+    }
+    if (unitIds.length === 0 || unitIds.some((id) => !requester.unitIds.includes(id))) {
+      return { success: false, error: 'Selecione apenas unidades sob sua gestão.' };
+    }
+  }
+
+  if (requester.role === 'operations_director') {
+    if (target.role === 'admin_general' || params.role === 'admin_general') {
+      return { success: false, error: 'Diretores operacionais não podem alterar perfis Master.' };
+    }
+  }
+
   const scopeError = validateRoleAndScopes(params.role, unitIds, institutionIds);
   if (scopeError) return { success: false, error: scopeError };
   if (!(await validateScopeIds(params.tenantId, unitIds, institutionIds))) {
     return { success: false, error: 'Um dos escopos selecionados não pertence ao tenant.' };
   }
-
-  const adminClient = getAdminClient();
-  const { data: target } = await adminClient
-    .from('profiles')
-    .select('id')
-    .eq('id', params.targetUserId)
-    .eq('tenant_id', params.tenantId)
-    .neq('role', 'student')
-    .maybeSingle();
-  if (!target) return { success: false, error: 'Usuário interno não encontrado neste tenant.' };
 
   const { error: profileError } = await adminClient
     .from('profiles')
@@ -328,10 +520,21 @@ export async function updateAdminUser(
     })
     .eq('id', params.targetUserId)
     .eq('tenant_id', params.tenantId);
+
   if (profileError) return { success: false, error: profileError.message };
 
   const accessError = await replaceScopes(params.tenantId, params.targetUserId, unitIds, institutionIds);
   if (accessError) return { success: false, error: `Perfil salvo, mas os escopos falharam: ${accessError}` };
+
+  if (params.newPassword && params.newPassword.trim().length >= 6) {
+    const { error: pwdError } = await adminClient.auth.admin.updateUserById(params.targetUserId, {
+      password: params.newPassword.trim(),
+    });
+    if (pwdError) {
+      return { success: false, error: `Dados atualizados, mas falhou ao redefinir a senha: ${pwdError.message}` };
+    }
+  }
+
   return { success: true };
 }
 
@@ -341,19 +544,28 @@ export async function resendInternalAccessServer(
   targetUserId: string,
   redirectTo: string
 ): Promise<{ success: boolean; error?: string }> {
-  if (!(await validateManager(requestingUserId, tenantId))) {
-    return { success: false, error: 'Apenas o Master ativo pode reenviar o acesso.' };
+  const requester = await validateManager(requestingUserId, tenantId);
+  if (!requester) {
+    return { success: false, error: 'Você não possui permissão para reenviar o acesso.' };
   }
+
   const adminClient = getAdminClient();
   const { data: profile } = await adminClient
     .from('profiles')
-    .select('email,status,must_change_password')
+    .select('email,role,status,must_change_password')
     .eq('id', targetUserId)
     .eq('tenant_id', tenantId)
     .neq('role', 'student')
     .maybeSingle();
+
   if (!profile?.email) return { success: false, error: 'Usuário sem e-mail cadastrado.' };
   if (profile.status !== 'active') return { success: false, error: 'Ative o usuário antes de reenviar o acesso.' };
+
+  if (requester.role === 'unit_manager') {
+    if (profile.role !== 'operator') {
+      return { success: false, error: 'Gerentes de unidade só podem reenviar acesso para operadores.' };
+    }
+  }
 
   const destination = profile.must_change_password
     ? redirectTo

@@ -9,6 +9,7 @@ import {
   type MealTypeOption,
 } from '@/services/categories.service';
 import type { StudentCategory } from '@/types/student';
+import { MealScheduleTab } from './MealScheduleTab';
 import {
   Layers,
   Plus,
@@ -24,6 +25,7 @@ import {
   Search,
   ShieldCheck,
   RefreshCw,
+  Clock3,
 } from 'lucide-react';
 
 const formatDecimalBR = (value: number | null | undefined) =>
@@ -35,6 +37,7 @@ const formatDecimalBR = (value: number | null | undefined) =>
 const normalizeDecimalInput = (value: string) => value.replace('.', ',').replace(/[^\d,]/g, '');
 
 export default function AdminCategoriesPage() {
+  const [activeTab, setActiveTab] = useState<'categories' | 'schedules'>('categories');
   const [categories, setCategories] = useState<StudentCategory[]>([]);
   const [mealTypes, setMealTypes] = useState<MealTypeOption[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -159,7 +162,7 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {activeTab === 'categories' && <div className="flex items-center gap-3">
           <button
             onClick={loadData}
             disabled={loading}
@@ -175,7 +178,7 @@ export default function AdminCategoriesPage() {
             <Plus className="w-4 h-4" />
             <span>Nova Categoria</span>
           </button>
-        </div>
+        </div>}
       </header>
 
       {/* FEEDBACK BANNER */}
@@ -196,6 +199,24 @@ export default function AdminCategoriesPage() {
 
       {/* 2. CONTEÚDO PRINCIPAL */}
       <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
+        <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setActiveTab('categories')}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition ${activeTab === 'categories' ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            <Layers className="h-4 w-4" /> Categorias de comensais
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('schedules')}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition ${activeTab === 'schedules' ? 'bg-rose-700 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            <Clock3 className="h-4 w-4" /> Refeições e turnos
+          </button>
+        </div>
+
+        {activeTab === 'categories' ? <>
         {/* KPI CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
@@ -384,10 +405,11 @@ export default function AdminCategoriesPage() {
             </table>
           </div>
         </div>
+        </> : <MealScheduleTab />}
       </main>
 
       {/* 3. MODAL DE CADASTRO E EDIÇÃO DE CATEGORIA */}
-      {isModalOpen && editingCategory && (
+      {activeTab === 'categories' && isModalOpen && editingCategory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="terminal-light-surface bg-white border border-slate-300 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl text-slate-900 space-y-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
