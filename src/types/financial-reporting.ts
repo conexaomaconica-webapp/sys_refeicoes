@@ -36,14 +36,21 @@ export interface ContingencyFinancialBatch {
 export interface FinancialReportSummary {
   regular_meals_served: number;
   contingency_meals_served: number;
+  contingency_identified_meals?: number;
+  contingency_aggregated_meals?: number;
+  unallocated_pending_meals_total?: number;
   total_meals_delivered: number;
 
   gross_meal_amount: number;
   contingency_gross_amount: number;
+  contingency_identified_gross?: number;
+  contingency_aggregated_gross?: number;
   total_gross_invoicing: number;
 
   regular_subsidy_amount: number;
   contingency_subsidy_amount: number;
+  contingency_identified_subsidy?: number;
+  contingency_aggregated_subsidy?: number;
   total_institutional_subsidy: number;
 
   student_paid_amount: number;

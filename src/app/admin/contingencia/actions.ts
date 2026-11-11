@@ -80,24 +80,34 @@ export async function loadBatchItemsAction(batchId: string): Promise<{
   }
 }
 
-export async function searchStudentsForContingencyAction(query: string): Promise<
-  Array<{ id: string; fullName: string; registrationNumber: string; categoryName: string }>
+export async function searchStudentsForContingencyAction(
+  query: string,
+  categoryId?: string
+): Promise<
+  Array<{ id: string; fullName: string; registrationNumber: string; categoryId: string; categoryName: string }>
 > {
   const clean = query.trim();
   if (clean.length < 2) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let req = supabase
     .from('students')
     .select(`
       id,
       full_name,
       registration_number,
+      category_id,
       student_categories(name)
     `)
     .or(`full_name.ilike.%${clean}%,registration_number.ilike.%${clean}%`)
     .eq('status', 'active')
     .limit(10);
+
+  if (categoryId) {
+    req = req.eq('category_id', categoryId);
+  }
+
+  const { data, error } = await req;
 
   if (error || !data) return [];
 
@@ -105,11 +115,13 @@ export async function searchStudentsForContingencyAction(query: string): Promise
     id: string;
     full_name: string;
     registration_number: string;
+    category_id: string;
     student_categories?: { name?: string } | null;
   }) => ({
     id: s.id,
     fullName: s.full_name,
     registrationNumber: s.registration_number,
+    categoryId: s.category_id,
     categoryName: s.student_categories?.name || 'Geral',
   }));
 }

@@ -596,19 +596,34 @@ export function FinancialReportingDashboard({
             </div>
           )}
 
-          {/* ABA 3: CONTINGÊNCIA AUDITADA (SPRINT 13) */}
+          {/* ABA 3: CONTINGÊNCIA AUDITADA (SPRINT 13 + SPRINT 20.13) */}
           {activeTab === 'contingency' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-sm font-black text-slate-900">
-                    Refeições Servidas em Regime de Contingência
+                    Refeições Servidas em Regime de Contingência e Ajustes
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Lotes auditáveis da Sprint 13 aprovados pela diretoria (apuração sem comensais fictícios)
+                    Segregação entre regularizações individuais comprovadas, regularizações agregadas e pendências mensais sem alocação por data.
                   </p>
                 </div>
+                <div className="flex flex-wrap gap-2 text-xs font-bold">
+                  <span className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-blue-900">
+                    Individuais (Tipo A): {(summary.contingency_identified_meals ?? 0).toLocaleString('pt-BR')} un
+                  </span>
+                  <span className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-900">
+                    Agregadas (B/C): {(summary.contingency_aggregated_meals ?? summary.contingency_meals_served).toLocaleString('pt-BR')} un
+                  </span>
+                </div>
               </div>
+
+              {(summary.unallocated_pending_meals_total ?? 0) > 0 && (
+                <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3.5 text-xs font-semibold text-amber-950">
+                  <strong>Informativo (Não Faturado):</strong> Existem{' '}
+                  <strong>{summary.unallocated_pending_meals_total}</strong> refeição(ões) em campanhas mensais ainda pendentes de apuração por data. Esse saldo não compõe o faturamento bruto nem o subsídio devido até conciliação documental.
+                </div>
+              )}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">

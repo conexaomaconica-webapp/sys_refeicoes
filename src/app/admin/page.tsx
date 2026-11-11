@@ -7,6 +7,7 @@ import {
   CreditCard,
   FileSpreadsheet,
   Gauge,
+  Layers,
   LayoutDashboard,
   Palette,
   PlugZap,
@@ -134,6 +135,13 @@ export default async function AdminHomePage() {
       href: '/admin/conciliacao',
       icon: Scale,
       enabled: canReconcile,
+    },
+    {
+      title: 'Ajustes e regularizações',
+      description: 'Retroativo por data específica e ajuste inteligente mensal com análise de lacunas.',
+      href: '/admin/ajustes-refeicoes',
+      icon: Layers,
+      enabled: canViewFinance,
     },
     {
       title: 'Contingência e ajustes',

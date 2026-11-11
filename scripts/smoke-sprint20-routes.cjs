@@ -124,6 +124,7 @@ async function main() {
       { route: '/admin/caixa', expectedRedirectPart: '/login' },
       { route: '/admin/conciliacao', expectedRedirectPart: '/login' },
       { route: '/admin/relatorios', expectedRedirectPart: '/login' },
+      { route: '/admin/ajustes-refeicoes', expectedRedirectPart: '/login' },
       { route: '/admin/contingencia', expectedRedirectPart: '/login' },
       { route: '/consumer', expectedRedirectPart: '/conta/login' },
       { route: '/conta/redefinir-senha', expectedRedirectPart: '/login' },
@@ -144,7 +145,8 @@ async function main() {
       console.log(`  [PASS] GUARD ${item.route} -> HTTP ${res.status} (${location})`);
     }
 
-    console.log(`\nSPRINT 20 SERVER SMOKE CHECKS: ${passed}/15 PASS (0 failures)`);
+    const total = publicRoutes.length + protectedRoutes.length;
+    console.log(`\nSPRINT 20 SERVER SMOKE CHECKS: ${passed}/${total} PASS (0 failures)`);
   } finally {
     await stopServer();
   }
