@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Building2,
   CreditCard,
+  DatabaseBackup,
   FileSpreadsheet,
   Gauge,
   Layers,
@@ -155,6 +156,13 @@ export default async function AdminHomePage() {
       description: 'Gateways de pagamento (Asaas/Mercado Pago), webhooks e status de conectores.',
       href: '/admin/integracoes',
       icon: PlugZap,
+      enabled: isGeneralAdmin,
+    },
+    {
+      title: 'Backup de dados',
+      description: 'Exportação periódica dos dados do tenant com checksum SHA-256 e histórico local.',
+      href: '/admin/backup',
+      icon: DatabaseBackup,
       enabled: isGeneralAdmin,
     },
   ];

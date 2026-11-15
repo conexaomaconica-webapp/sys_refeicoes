@@ -229,7 +229,8 @@ export function ReconciliationDashboard({ initialData }: Props) {
           <button
             onClick={handleRunAudit}
             disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition"
+            style={{ backgroundColor: 'var(--admin-primary, #b91c1c)' }}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:opacity-50 transition"
           >
             <RefreshCw className={`h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
             Executar Auditoria
@@ -402,9 +403,14 @@ export function ReconciliationDashboard({ initialData }: Props) {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('overview')}
+            style={
+              activeTab === 'overview'
+                ? { borderColor: 'var(--admin-primary, #b91c1c)', color: 'var(--admin-primary, #b91c1c)' }
+                : undefined
+            }
             className={`whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-sm flex items-center gap-2 ${
               activeTab === 'overview'
-                ? 'border-blue-600 text-blue-600'
+                ? ''
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -414,9 +420,14 @@ export function ReconciliationDashboard({ initialData }: Props) {
 
           <button
             onClick={() => setActiveTab('divergences')}
+            style={
+              activeTab === 'divergences'
+                ? { borderColor: 'var(--admin-primary, #b91c1c)', color: 'var(--admin-primary, #b91c1c)' }
+                : undefined
+            }
             className={`whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-sm flex items-center gap-2 ${
               activeTab === 'divergences'
-                ? 'border-blue-600 text-blue-600'
+                ? ''
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -426,9 +437,14 @@ export function ReconciliationDashboard({ initialData }: Props) {
 
           <button
             onClick={() => setActiveTab('closings')}
+            style={
+              activeTab === 'closings'
+                ? { borderColor: 'var(--admin-primary, #b91c1c)', color: 'var(--admin-primary, #b91c1c)' }
+                : undefined
+            }
             className={`whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-sm flex items-center gap-2 ${
               activeTab === 'closings'
-                ? 'border-blue-600 text-blue-600'
+                ? ''
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -438,9 +454,14 @@ export function ReconciliationDashboard({ initialData }: Props) {
 
           <button
             onClick={() => setActiveTab('audit')}
+            style={
+              activeTab === 'audit'
+                ? { borderColor: 'var(--admin-primary, #b91c1c)', color: 'var(--admin-primary, #b91c1c)' }
+                : undefined
+            }
             className={`whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-sm flex items-center gap-2 ${
               activeTab === 'audit'
-                ? 'border-blue-600 text-blue-600'
+                ? ''
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -850,7 +871,8 @@ export function ReconciliationDashboard({ initialData }: Props) {
                 type="button"
                 onClick={handleConfirmResolution}
                 disabled={isResolving}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+                style={{ backgroundColor: 'var(--admin-primary, #b91c1c)' }}
+                className="rounded-xl px-4 py-2 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
               >
                 {isResolving ? 'Salvando...' : 'Salvar Resolução'}
               </button>

@@ -2,6 +2,9 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { PaginationControls } from '@/components/ui/PaginationControls';
+import { parseCurrencyString } from '@/lib/currency';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -56,6 +59,8 @@ export function FinanceManager({ wallets, transactions, payments, recharges, can
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>('wallets');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [adjustmentWallet, setAdjustmentWallet] = useState<FinanceWalletItem | null>(null);
   const [adjustmentType, setAdjustmentType] = useState<'credit' | 'debit'>('credit');
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
@@ -78,6 +83,23 @@ export function FinanceManager({ wallets, transactions, payments, recharges, can
   const visibleRecharges = useMemo(() => recharges.filter((item) => !normalizedSearch ||
     item.studentName.toLocaleLowerCase('pt-BR').includes(normalizedSearch)), [normalizedSearch, recharges]);
 
+  const activeItemsCount =
+    tab === 'wallets'
+      ? visibleWallets.length
+      : tab === 'transactions'
+        ? visibleTransactions.length
+        : tab === 'payments'
+          ? visiblePayments.length
+          : visibleRecharges.length;
+  const totalPages = Math.max(1, Math.ceil(activeItemsCount / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pageEnd = currentPage * pageSize;
+  const pagedWallets = visibleWallets.slice(pageStart, pageEnd);
+  const pagedTransactions = visibleTransactions.slice(pageStart, pageEnd);
+  const pagedPayments = visiblePayments.slice(pageStart, pageEnd);
+  const pagedRecharges = visibleRecharges.slice(pageStart, pageEnd);
+
   const closeAdjustment = () => {
     setAdjustmentWallet(null);
     setAdjustmentAmount('');
@@ -87,7 +109,7 @@ export function FinanceManager({ wallets, transactions, payments, recharges, can
   const submitAdjustment = (event: React.FormEvent) => {
     event.preventDefault();
     if (!adjustmentWallet) return;
-    const parsedAmount = Number(adjustmentAmount.replace(',', '.'));
+    const parsedAmount = parseCurrencyString(adjustmentAmount);
     setMessage(null);
     startTransition(async () => {
       const result = await createManualAdjustmentAction({
@@ -153,20 +175,29 @@ export function FinanceManager({ wallets, transactions, payments, recharges, can
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 p-4 md:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex gap-2 overflow-x-auto">{tabs.map((item) => <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-black ${tab === item.id ? 'text-white' : 'bg-slate-100 text-slate-600'}`} style={tab === item.id ? { backgroundColor: 'var(--admin-primary)' } : undefined}>{item.label}</button>)}</div>
-            <label className="relative min-w-64"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar comensal ou referência" className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-3 text-sm" /></label>
+            <div className="flex gap-2 overflow-x-auto">{tabs.map((item) => <button key={item.id} type="button" onClick={() => { setTab(item.id); setPage(1); }} className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-black ${tab === item.id ? 'text-white' : 'bg-slate-100 text-slate-600'}`} style={tab === item.id ? { backgroundColor: 'var(--admin-primary)' } : undefined}>{item.label}</button>)}</div>
+            <label className="relative min-w-64"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar comensal ou referência" className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-3 text-sm" /></label>
           </div>
         </div>
 
         <div className="overflow-x-auto p-4 md:p-5">
-          {tab === 'wallets' && <WalletTable items={visibleWallets} canManage={canManage} onAdjust={setAdjustmentWallet} />}
-          {tab === 'transactions' && <TransactionTable items={visibleTransactions} onReverse={setReversal} />}
-          {tab === 'payments' && <PaymentTable items={visiblePayments} canManage={canManage} pending={isPending} onReconcile={reconcile} />}
-          {tab === 'recharges' && <RechargeTable items={visibleRecharges} />}
+          {tab === 'wallets' && <WalletTable items={pagedWallets} canManage={canManage} onAdjust={setAdjustmentWallet} />}
+          {tab === 'transactions' && <TransactionTable items={pagedTransactions} onReverse={setReversal} />}
+          {tab === 'payments' && <PaymentTable items={pagedPayments} canManage={canManage} pending={isPending} onReconcile={reconcile} />}
+          {tab === 'recharges' && <RechargeTable items={pagedRecharges} />}
+          <PaginationControls
+            className="mt-4"
+            totalItems={activeItemsCount}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="registro(s)"
+          />
         </div>
       </section>
 
-      {adjustmentWallet && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/65 p-4"><form onSubmit={submitAdjustment} className="my-auto w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><ModalHeader title="Ajuste de carteira" onClose={closeAdjustment} /><p className="mt-3 text-sm text-slate-500">{adjustmentWallet.studentName} · saldo {currency.format(adjustmentWallet.balance)}</p><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" onClick={() => setAdjustmentType('credit')} className={`rounded-xl border p-3 text-sm font-black ${adjustmentType === 'credit' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-300'}`}><ArrowUpCircle className="mx-auto mb-1 h-5 w-5" /> Crédito</button><button type="button" onClick={() => setAdjustmentType('debit')} className={`rounded-xl border p-3 text-sm font-black ${adjustmentType === 'debit' ? 'border-red-500 bg-red-50 text-red-800' : 'border-slate-300'}`}><ArrowDownCircle className="mx-auto mb-1 h-5 w-5" /> Débito</button></div><label className="mt-4 block text-sm font-bold">Valor<input value={adjustmentAmount} onChange={(event) => setAdjustmentAmount(event.target.value)} inputMode="decimal" placeholder="0,00" required className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label><label className="mt-4 block text-sm font-bold">Justificativa<textarea value={adjustmentReason} onChange={(event) => setAdjustmentReason(event.target.value)} minLength={5} required rows={3} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label><ModalActions pending={isPending} onCancel={closeAdjustment} label="Registrar ajuste" /></form></div>}
+      {adjustmentWallet && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/65 p-4"><form onSubmit={submitAdjustment} className="my-auto w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><ModalHeader title="Ajuste de carteira" onClose={closeAdjustment} /><p className="mt-3 text-sm text-slate-500">{adjustmentWallet.studentName} · saldo {currency.format(adjustmentWallet.balance)}</p><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" onClick={() => setAdjustmentType('credit')} className={`rounded-xl border p-3 text-sm font-black ${adjustmentType === 'credit' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-300'}`}><ArrowUpCircle className="mx-auto mb-1 h-5 w-5" /> Crédito</button><button type="button" onClick={() => setAdjustmentType('debit')} className={`rounded-xl border p-3 text-sm font-black ${adjustmentType === 'debit' ? 'border-red-500 bg-red-50 text-red-800' : 'border-slate-300'}`}><ArrowDownCircle className="mx-auto mb-1 h-5 w-5" /> Débito</button></div><label className="mt-4 block text-sm font-bold">Valor<CurrencyInput value={adjustmentAmount} onValueChange={setAdjustmentAmount} required className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-bold" /></label><label className="mt-4 block text-sm font-bold">Justificativa<textarea value={adjustmentReason} onChange={(event) => setAdjustmentReason(event.target.value)} minLength={5} required rows={3} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label><ModalActions pending={isPending} onCancel={closeAdjustment} label="Registrar ajuste" /></form></div>}
       {reversal && <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/65 p-4"><form onSubmit={submitReversal} className="my-auto w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><ModalHeader title="Estornar lançamento" onClose={() => setReversal(null)} /><p className="mt-3 text-sm text-slate-500">{reversal.studentName} · {transactionLabels[reversal.type]} · {currency.format(reversal.amount)}</p><div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">O histórico original não será apagado. Um lançamento compensatório será criado no livro-razão.</div><label className="mt-4 block text-sm font-bold">Motivo do estorno<textarea value={reversalReason} onChange={(event) => setReversalReason(event.target.value)} minLength={5} required rows={3} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-3 font-normal" /></label><ModalActions pending={isPending} onCancel={() => setReversal(null)} label="Confirmar estorno" /></form></div>}
     </main>
   );

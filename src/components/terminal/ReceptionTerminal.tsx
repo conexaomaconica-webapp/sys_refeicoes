@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { formatBRL, parseCurrencyString } from '@/lib/currency';
 import {
   Wifi,
   WifiOff,
@@ -1944,18 +1946,17 @@ export function ReceptionTerminal({
             </div>
 
             <div className={`grid gap-3 rounded-2xl p-5 sm:grid-cols-3 ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>
-              <div><p className="text-xs font-bold uppercase opacity-55">Valor da refeição</p><p className="mt-1 text-2xl font-black">R$ {Number(paymentPending.preview.financial?.student_price || 0).toFixed(2)}</p></div>
+              <div><p className="text-xs font-bold uppercase opacity-55">Valor da refeição</p><p className="mt-1 text-2xl font-black">{formatBRL(Number(paymentPending.preview.financial?.student_price || 0))}</p></div>
               <label><span className="text-xs font-bold uppercase opacity-55">Valor recebido</span>
-                <input
+                <CurrencyInput
                   value={paymentMethod === 'cash' ? amountReceived : Number(paymentPending.preview.financial?.student_price || 0).toFixed(2)}
-                  onChange={(event) => setAmountReceived(event.target.value)}
+                  onValueChange={setAmountReceived}
                   disabled={paymentMethod !== 'cash'}
-                  inputMode="decimal"
                   autoFocus
                   className={`mt-1 w-full rounded-xl border px-3 py-2 text-xl font-black outline-none disabled:opacity-60 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-300 bg-white'}`}
                 />
               </label>
-              <div className="rounded-xl p-3" style={{ backgroundColor: branding.terminal_accent_color, color: '#3F2F00' }}><p className="text-xs font-bold uppercase opacity-70">Troco a devolver</p><p className="mt-1 text-2xl font-black">R$ {Math.max(0, Number((amountReceived || '0').replace(',', '.')) - Number(paymentPending.preview.financial?.student_price || 0)).toFixed(2)}</p></div>
+              <div className="rounded-xl p-3" style={{ backgroundColor: branding.terminal_accent_color, color: '#3F2F00' }}><p className="text-xs font-bold uppercase opacity-70">Troco a devolver</p><p className="mt-1 text-2xl font-black">{formatBRL(Math.max(0, parseCurrencyString(amountReceived) - Number(paymentPending.preview.financial?.student_price || 0)))}</p></div>
             </div>
 
             {paymentError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{paymentError}</p>}
@@ -2014,14 +2015,13 @@ export function ReceptionTerminal({
               <div className={`mt-4 grid gap-3 rounded-2xl p-4 sm:grid-cols-3 ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>
                 <div>
                   <p className="text-xs font-bold uppercase opacity-55">Valor da refeição</p>
-                  <p className="mt-1 text-xl font-black">R$ {visitorPrice.toFixed(2)}</p>
+                  <p className="mt-1 text-xl font-black">{formatBRL(visitorPrice)}</p>
                 </div>
                 <label>
                   <span className="text-xs font-bold uppercase opacity-55">Dinheiro recebido</span>
-                  <input
+                  <CurrencyInput
                     value={visitorAmountReceived}
-                    onChange={(event) => setVisitorAmountReceived(event.target.value)}
-                    inputMode="decimal"
+                    onValueChange={setVisitorAmountReceived}
                     autoFocus
                     className={`mt-1 w-full rounded-xl border px-3 py-2 text-lg font-black outline-none ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-300 bg-white'}`}
                   />
@@ -2029,17 +2029,16 @@ export function ReceptionTerminal({
                 <div className="rounded-xl bg-[#F4C430] p-3 text-[#241A00]">
                   <p className="text-xs font-bold uppercase opacity-70">Troco</p>
                   <p className="mt-1 text-xl font-black">
-                    R$ {Math.max(0, Number((visitorAmountReceived || '0').replace(',', '.')) - visitorPrice).toFixed(2)}
+                    {formatBRL(Math.max(0, parseCurrencyString(visitorAmountReceived) - visitorPrice))}
                   </p>
                 </div>
                 <button
                   type="button"
                   disabled={
                     isProcessing ||
-                    !Number.isFinite(Number(visitorAmountReceived.replace(',', '.'))) ||
-                    Number(visitorAmountReceived.replace(',', '.')) < visitorPrice
+                    parseCurrencyString(visitorAmountReceived) < visitorPrice
                   }
-                  onClick={() => void handleRegisterVisitorDirect('cash', Number(visitorAmountReceived.replace(',', '.')))}
+                  onClick={() => void handleRegisterVisitorDirect('cash', parseCurrencyString(visitorAmountReceived))}
                   className="rounded-xl bg-[#C5161D] px-4 py-3 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-40 sm:col-span-3"
                 >
                   Confirmar dinheiro e liberar

@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { formatBRL } from '@/lib/currency';
 import {
   Bell,
   BookOpen,
@@ -765,7 +767,7 @@ export function ConsumerDashboard({ initialData }: ConsumerDashboardProps) {
                     <button
                       key={amount}
                       type="button"
-                      onClick={() => setRechargeAmount(String(amount))}
+                      onClick={() => setRechargeAmount(amount.toFixed(2))}
                       className={`rounded-xl border py-2.5 text-sm font-bold transition ${
                         Number(rechargeAmount) === amount
                           ? 'text-white shadow-sm'
@@ -779,7 +781,7 @@ export function ConsumerDashboard({ initialData }: ConsumerDashboardProps) {
                           : undefined
                       }
                     >
-                      R$ {amount}
+                      {formatBRL(amount)}
                     </button>
                   ))}
                 </div>
@@ -790,13 +792,9 @@ export function ConsumerDashboard({ initialData }: ConsumerDashboardProps) {
                 >
                   Outro valor
                 </label>
-                <input
-                  type="number"
-                  min="5"
-                  max="500"
-                  step="0.01"
+                <CurrencyInput
                   value={rechargeAmount}
-                  onChange={(event) => setRechargeAmount(event.target.value)}
+                  onValueChange={setRechargeAmount}
                   className={`mt-2 w-full rounded-xl border px-4 py-3 text-lg font-bold outline-none transition ${
                     isDark
                       ? 'border-slate-700 bg-slate-950 text-white focus:border-red-500'

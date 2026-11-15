@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import {
   adminListCategories,
   adminSaveCategory,
@@ -10,6 +9,8 @@ import {
 } from '@/services/categories.service';
 import type { StudentCategory } from '@/types/student';
 import { MealScheduleTab } from './MealScheduleTab';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { formatBRL, parseCurrencyString } from '@/lib/currency';
 import {
   Layers,
   Plus,
@@ -20,21 +21,12 @@ import {
   Wallet,
   Repeat,
   UtensilsCrossed,
-  ArrowLeft,
   Users,
   Search,
   ShieldCheck,
   RefreshCw,
   Clock3,
 } from 'lucide-react';
-
-const formatDecimalBR = (value: number | null | undefined) =>
-  Number(value ?? 0).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-const normalizeDecimalInput = (value: string) => value.replace('.', ',').replace(/[^\d,]/g, '');
 
 export default function AdminCategoriesPage() {
   const [activeTab, setActiveTab] = useState<'categories' | 'schedules'>('categories');
@@ -49,7 +41,6 @@ export default function AdminCategoriesPage() {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<Partial<StudentCategory> | null>(null);
   const [percentageInput, setPercentageInput] = useState<string>('100');
-  const [fixedPriceInput, setFixedPriceInput] = useState<string>('3,50');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -78,7 +69,6 @@ export default function AdminCategoriesPage() {
 
   const handleOpenCreateModal = () => {
     setPercentageInput('100');
-    setFixedPriceInput('3,50');
     setEditingCategory({
       code: '',
       name: '',
@@ -97,7 +87,6 @@ export default function AdminCategoriesPage() {
 
   const handleOpenEditModal = (cat: StudentCategory) => {
     setPercentageInput(String(cat.charge_percentage ?? 100));
-    setFixedPriceInput(formatDecimalBR(cat.fixed_price ?? 3.5));
     setEditingCategory({
       ...cat,
       allowed_meal_types: cat.allowed_meal_types || null,
@@ -136,50 +125,42 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="theme-light-page min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* 1. TOPO DE NAVEGAÇÃO E BRANDING */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
-            title="Voltar ao painel administrativo"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div className="p-2.5 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
-            <Layers className="w-6 h-6" />
-          </div>
+      <div className="mx-auto w-full max-w-7xl px-4 pt-6 md:px-8 md:pt-8">
+        <section
+          className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8"
+          style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
+        >
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              Gestão de Categorias de Comensais
-              <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-mono border border-sky-400/30">
-                Admin
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
+              Regras tarifárias e turnos
+            </p>
+            <h1 className="mt-2 text-3xl font-black">Categorias e Valores</h1>
+            <p className="mt-2 max-w-2xl text-sm text-white/80">
               Configure regras de subsídio, porcentagem, valor fixo, recarga e refeições liberadas.
             </p>
           </div>
-        </div>
 
-        {activeTab === 'categories' && <div className="flex items-center gap-3">
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Atualizar</span>
-          </button>
-          <button
-            onClick={handleOpenCreateModal}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-sky-500/20 transition-all flex items-center gap-2 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nova Categoria</span>
-          </button>
-        </div>}
-      </header>
+          {activeTab === 'categories' && (
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 cursor-pointer"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>Atualizar</span>
+              </button>
+              <button
+                onClick={handleOpenCreateModal}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nova Categoria</span>
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* FEEDBACK BANNER */}
       {feedback && (
@@ -332,7 +313,7 @@ export default function AdminCategoriesPage() {
                           </div>
                         ) : (
                           <span className="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 font-mono font-bold text-xs border border-sky-500/30">
-                            R$ {formatDecimalBR(cat.fixed_price)} Fixo
+                            {formatBRL(cat.fixed_price)} Fixo
                           </span>
                         )}
                       </td>
@@ -517,7 +498,6 @@ export default function AdminCategoriesPage() {
                     type="button"
                     onClick={() => {
                       const fixedPrice = editingCategory.fixed_price ?? 3.5;
-                      setFixedPriceInput(formatDecimalBR(fixedPrice));
                       setEditingCategory({ ...editingCategory, pricing_type: 'fixed', fixed_price: fixedPrice });
                     }}
                     className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
@@ -583,31 +563,17 @@ export default function AdminCategoriesPage() {
                 ) : (
                   <div className="space-y-1.5 pt-1">
                     <label className="font-semibold text-slate-300">Valor Fixo da Refeição (R$)</label>
-                    <div className="relative w-40">
-                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono font-bold text-slate-400">
-                        R$
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={fixedPriceInput}
-                        onChange={(e) => {
-                          const normalized = normalizeDecimalInput(e.target.value);
-                          if (!/^\d*(,\d{0,2})?$/.test(normalized)) return;
-
-                          setFixedPriceInput(normalized);
-                          const parsed = Number(normalized.replace(',', '.'));
+                    <div className="w-44">
+                      <CurrencyInput
+                        value={Number(editingCategory.fixed_price ?? 0).toFixed(2)}
+                        onValueChange={(nextValue) => {
                           setEditingCategory({
                             ...editingCategory,
-                            fixed_price: Number.isFinite(parsed) ? parsed : 0,
+                            fixed_price: parseCurrencyString(nextValue),
                           });
                         }}
-                        onBlur={() => {
-                          const value = Number(editingCategory.fixed_price ?? 0);
-                          setFixedPriceInput(formatDecimalBR(value));
-                        }}
                         aria-label="Valor fixo da refeição em reais"
-                        className="w-full px-3.5 py-2 pl-10 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 font-mono text-right font-bold"
+                        className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 font-mono text-right font-bold"
                       />
                     </div>
                   </div>

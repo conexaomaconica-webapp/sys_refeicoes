@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Copy, Edit3, Eye, EyeOff, KeyRound, Plus, Search, Sparkles, UserCheck, Users, UserX, X } from 'lucide-react';
+import { PaginationControls } from '@/components/ui/PaginationControls';
 import {
   saveCommensalAction,
   saveConsumerAccessAction,
@@ -96,6 +97,7 @@ export function CommensalManager({ students, categories, institutions }: Props) 
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [institutionFilter, setInstitutionFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [form, setForm] = useState<CommensalFormInput>(() => emptyForm(institutions, categories));
   const [modalOpen, setModalOpen] = useState(false);
   const [accessModalOpen, setAccessModalOpen] = useState(false);
@@ -128,7 +130,6 @@ export function CommensalManager({ students, categories, institutions }: Props) 
     });
   }, [categoryFilter, institutionFilter, search, statusFilter, students]);
 
-  const pageSize = 20;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const visibleStudents = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -278,10 +279,15 @@ export function CommensalManager({ students, categories, institutions }: Props) 
           {!visibleStudents.length && <div className="py-12 text-center text-sm text-slate-500">Nenhum comensal encontrado com os filtros informados.</div>}
         </div>
 
-        <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm sm:flex-row">
-          <span className="text-slate-500">{filtered.length} resultado(s) · página {currentPage} de {totalPages}</span>
-          <div className="flex gap-2"><button type="button" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-lg border px-3 py-2 font-bold disabled:opacity-40">Anterior</button><button type="button" disabled={currentPage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="rounded-lg border px-3 py-2 font-bold disabled:opacity-40">Próxima</button></div>
-        </div>
+        <PaginationControls
+          className="mt-4"
+          totalItems={filtered.length}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="comensal(is)"
+        />
       </section>
 
       {modalOpen && (

@@ -125,50 +125,45 @@ export default function AdminCaixaPage() {
   );
 
   return (
-    <div className="theme-light-page min-h-screen bg-slate-50 text-slate-900 p-6 md:p-10 space-y-8">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin"
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition"
-              title="Voltar ao painel administrativo"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-3">
-                Gestão e Auditoria de Caixa (PDV)
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  {shifts.length} Caixas
-                </span>
-              </h1>
-              <p className="text-xs md:text-sm text-slate-400 mt-1">
-                Controle de abertura de turnos, sangrias, suprimentos de troco e conferência cega de valores.
+    <div className="theme-light-page min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section
+          className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8"
+          style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
+        >
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
+                Auditoria operacional de PDV
               </p>
+              <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                {shifts.length} caixas
+              </span>
             </div>
+            <h1 className="mt-2 text-3xl font-black">Caixas e Turnos</h1>
+            <p className="mt-2 max-w-2xl text-sm text-white/80">
+              Controle de abertura de turnos, sangrias, suprimentos de troco e conferência cega de valores.
+            </p>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white font-medium text-xs transition"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
-            <span>Atualizar</span>
-          </button>
-          <Link
-            href="/terminal"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition"
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Atualizar</span>
+            </button>
+            <Link
+              href="/terminal"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95"
           >
             <Unlock className="w-4 h-4" />
             <span>Ir para o Terminal</span>
           </Link>
         </div>
-      </div>
+      </section>
 
       {/* Alerta de Erro */}
       {errorMsg && (
@@ -680,6 +675,7 @@ export default function AdminCaixaPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

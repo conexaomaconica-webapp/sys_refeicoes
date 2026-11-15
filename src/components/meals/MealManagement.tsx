@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { formatBRL, parseCurrencyString } from '@/lib/currency';
 import type { MealRule, MealType, UnitMealType } from '@/types/meal';
 
 interface StudentCategoryOption {
@@ -259,29 +261,23 @@ export function MealManagement({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="full-price-input" className="block text-xs font-medium text-slate-300 mb-1">Preço Cheio (R$)</label>
-                <input
+                <CurrencyInput
                   id="full-price-input"
-                  type="number"
-                  step="0.01"
-                  min="0"
                   value={inputFullPrice}
-                  onChange={(e) => setInputFullPrice(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500"
+                  onValueChange={setInputFullPrice}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white focus:ring-2 focus:ring-emerald-500"
                   required
                 />
               </div>
 
               <div>
                 <label htmlFor="student-price-input" className="block text-xs font-medium text-slate-300 mb-1">Preço Aluno (R$)</label>
-                <input
+                <CurrencyInput
                   id="student-price-input"
-                  type="number"
-                  step="0.01"
-                  min="0"
                   value={isIntegralCategory ? '0.00' : inputStudentPrice}
-                  onChange={(e) => setInputStudentPrice(e.target.value)}
+                  onValueChange={setInputStudentPrice}
                   disabled={isIntegralCategory}
-                  className={`w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 ${
+                  className={`w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm font-bold text-white focus:ring-2 focus:ring-emerald-500 ${
                     isIntegralCategory ? 'opacity-60 cursor-not-allowed text-emerald-400 font-bold' : ''
                   }`}
                   required
@@ -293,7 +289,7 @@ export function MealManagement({
             <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-xs flex justify-between items-center text-slate-300">
               <span>Subsídio Calculado:</span>
               <span className="font-bold text-emerald-400 text-sm">
-                R$ {(Math.max(0, parseFloat(inputFullPrice || '0') - (isIntegralCategory ? 0 : parseFloat(inputStudentPrice || '0')))).toFixed(2)}
+                {formatBRL(Math.max(0, parseCurrencyString(inputFullPrice) - (isIntegralCategory ? 0 : parseCurrencyString(inputStudentPrice))))}
               </span>
             </div>
 

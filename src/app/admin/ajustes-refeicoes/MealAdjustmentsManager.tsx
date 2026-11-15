@@ -23,6 +23,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { MealAdjustmentsWorkspaceData } from '@/server/adjustments/smart-adjustment.service';
+import { PaginationControls } from '@/components/ui/PaginationControls';
 import type {
   ContingencyBatchItem,
   ContingencyBatchType,
@@ -259,6 +260,14 @@ export function MealAdjustmentsManager({ data }: Props) {
   const [viewItemsBatch, setViewItemsBatch] = useState<ContingencyMealBatch | null>(null);
   const [batchItems, setBatchItems] = useState<ContingencyBatchItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+
+  // --- PAGINAÇÃO DAS LISTAS NOMINAIS DE ESTUDANTES ---
+  const [dayNominalPage, setDayNominalPage] = useState(1);
+  const [dayNominalPageSize, setDayNominalPageSize] = useState(10);
+  const [summaryPage, setSummaryPage] = useState(1);
+  const [summaryPageSize, setSummaryPageSize] = useState(10);
+  const [submodeBPage, setSubmodeBPage] = useState(1);
+  const [submodeBPageSize, setSubmodeBPageSize] = useState(10);
 
   const singleEnabledMealTypes = useMemo(
     () => getEnabledMealTypesForUnit(singleUnitId),
@@ -2100,102 +2109,144 @@ export function MealAdjustmentsManager({ data }: Props) {
                             Todos os alunos desta categoria já possuem consumo/lote registrado em {selectedDayObj.date} ou não há comensais elegíveis nesta data.
                           </div>
                         ) : (
-                          <div className="max-h-60 overflow-y-auto rounded-xl border border-blue-200 bg-white">
-                            <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-                              <thead className="bg-slate-50 font-bold uppercase text-slate-600 sticky top-0">
-                                <tr>
-                                  <th className="px-3 py-2">Matrícula</th>
-                                  <th className="px-3 py-2">Nome do Aluno</th>
-                                  <th className="px-3 py-2">Categoria na Data</th>
-                                  <th className="px-3 py-2">Classificação / Motivo</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100">
-                                {(selectedDayObj.eligible_non_consumers || selectedDayObj.gap_candidates).map((cand) => (
-                                  <tr key={cand.student_id}>
-                                    <td className="px-3 py-1.5 font-mono font-bold">{cand.registration_number}</td>
-                                    <td className="px-3 py-1.5 font-bold text-slate-900">{cand.full_name}</td>
-                                    <td className="px-3 py-1.5">{cand.category_name}</td>
-                                    <td className="px-3 py-1.5 text-[11px]">
-                                      <span
-                                        className={`mr-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                          cand.is_habitual
-                                            ? 'bg-indigo-100 text-indigo-800'
-                                            : 'bg-emerald-100 text-emerald-800'
-                                        }`}
-                                      >
-                                        {cand.is_habitual ? 'Habitual sem registro' : 'Apto s/ consumo'}
-                                      </span>
-                                      <span className="text-slate-600">{cand.confidence_reason}</span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                          (() => {
+                            const dayStudents = selectedDayObj.eligible_non_consumers || selectedDayObj.gap_candidates;
+                            const totalDayPages = Math.max(1, Math.ceil(dayStudents.length / dayNominalPageSize));
+                            const safeDayPage = Math.min(dayNominalPage, totalDayPages);
+                            const visibleDayStudents = dayStudents.slice(
+                              (safeDayPage - 1) * dayNominalPageSize,
+                              safeDayPage * dayNominalPageSize
+                            );
+                            return (
+                              <div className="space-y-2">
+                                <div className="overflow-x-auto rounded-xl border border-blue-200 bg-white">
+                                  <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+                                    <thead className="bg-slate-50 font-bold uppercase text-slate-600">
+                                      <tr>
+                                        <th className="px-3 py-2">Matrícula</th>
+                                        <th className="px-3 py-2">Nome do Aluno</th>
+                                        <th className="px-3 py-2">Categoria na Data</th>
+                                        <th className="px-3 py-2">Classificação / Motivo</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                      {visibleDayStudents.map((cand) => (
+                                        <tr key={cand.student_id}>
+                                          <td className="px-3 py-1.5 font-mono font-bold">{cand.registration_number}</td>
+                                          <td className="px-3 py-1.5 font-bold text-slate-900">{cand.full_name}</td>
+                                          <td className="px-3 py-1.5">{cand.category_name}</td>
+                                          <td className="px-3 py-1.5 text-[11px]">
+                                            <span
+                                              className={`mr-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                                cand.is_habitual
+                                                  ? 'bg-indigo-100 text-indigo-800'
+                                                  : 'bg-emerald-100 text-emerald-800'
+                                              }`}
+                                            >
+                                              {cand.is_habitual ? 'Habitual sem registro' : 'Apto s/ consumo'}
+                                            </span>
+                                            <span className="text-slate-600">{cand.confidence_reason}</span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <PaginationControls
+                                  compact
+                                  totalItems={dayStudents.length}
+                                  currentPage={safeDayPage}
+                                  pageSize={dayNominalPageSize}
+                                  onPageChange={setDayNominalPage}
+                                  onPageSizeChange={setDayNominalPageSize}
+                                  itemLabel="aluno(s)"
+                                />
+                              </div>
+                            );
+                          })()
                         )}
                       </div>
                     )}
 
                     {/* VISÃO CONSOLIDADA POR ALUNO NA COMPETÊNCIA */}
                     {(activeSmartLine.analysis.eligible_students_summary || []).length > 0 && (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <h4 className="text-xs font-black text-slate-800">
-                            Resumo por Estudante na Competência ({(activeSmartLine.analysis.eligible_students_summary || []).length} comensal(is) elegível(is) em {activeSmartLine.meal_type_name} • {activeSmartLine.category_name})
-                          </h4>
-                          <span className="text-[11px] text-slate-500">
-                            Consumo normal ou lote prévio nunca é duplicado
-                          </span>
-                        </div>
-                        <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white">
-                          <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
-                            <thead className="bg-slate-50 font-bold uppercase text-slate-600 sticky top-0">
-                              <tr>
-                                <th className="px-3 py-2">Matrícula</th>
-                                <th className="px-3 py-2">Nome do Aluno</th>
-                                <th className="px-3 py-2 text-right">Dias s/ Consumo (Aptos)</th>
-                                <th className="px-3 py-2 text-right">Já Consumidos (Bloq.)</th>
-                                <th className="px-3 py-2 text-right">Em Lotes (Bloq.)</th>
-                                <th className="px-3 py-2">Datas sem consumo disponíveis</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {(activeSmartLine.analysis.eligible_students_summary || []).map((st) => (
-                                <tr key={st.student_id}>
-                                  <td className="px-3 py-1.5 font-mono font-bold">{st.registration_number}</td>
-                                  <td className="px-3 py-1.5 font-bold text-slate-900">
-                                    {st.full_name}
-                                    {st.is_habitual && (
-                                      <span className="ml-1.5 rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800">
-                                        Habitual
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-1.5 text-right font-black text-emerald-700">
-                                    {st.available_dates.length}
-                                  </td>
-                                  <td className="px-3 py-1.5 text-right text-slate-600">
-                                    {st.consumed_dates.length}
-                                  </td>
-                                  <td className="px-3 py-1.5 text-right text-amber-700">
-                                    {st.batch_dates.length}
-                                  </td>
-                                  <td className="px-3 py-1.5 text-[11px] text-slate-600">
-                                    {st.available_dates.length === 0
-                                      ? 'Nenhum dia disponível (100% atendido)'
-                                      : `${st.available_dates.slice(0, 5).map((d) => d.slice(5)).join(', ')}${
-                                          st.available_dates.length > 5
-                                            ? ` (+${st.available_dates.length - 5} dias)`
-                                            : ''
-                                        }`}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
+                      (() => {
+                        const summaryStudents = activeSmartLine.analysis.eligible_students_summary || [];
+                        const totalSummaryPages = Math.max(1, Math.ceil(summaryStudents.length / summaryPageSize));
+                        const safeSummaryPage = Math.min(summaryPage, totalSummaryPages);
+                        const visibleSummaryStudents = summaryStudents.slice(
+                          (safeSummaryPage - 1) * summaryPageSize,
+                          safeSummaryPage * summaryPageSize
+                        );
+                        return (
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <h4 className="text-xs font-black text-slate-800">
+                                Resumo por Estudante na Competência ({summaryStudents.length} comensal(is) elegível(is) em {activeSmartLine.meal_type_name} • {activeSmartLine.category_name})
+                              </h4>
+                              <span className="text-[11px] text-slate-500">
+                                Consumo normal ou lote prévio nunca é duplicado
+                              </span>
+                            </div>
+                            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                              <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+                                <thead className="bg-slate-50 font-bold uppercase text-slate-600">
+                                  <tr>
+                                    <th className="px-3 py-2">Matrícula</th>
+                                    <th className="px-3 py-2">Nome do Aluno</th>
+                                    <th className="px-3 py-2 text-right">Dias s/ Consumo (Aptos)</th>
+                                    <th className="px-3 py-2 text-right">Já Consumidos (Bloq.)</th>
+                                    <th className="px-3 py-2 text-right">Em Lotes (Bloq.)</th>
+                                    <th className="px-3 py-2">Datas sem consumo disponíveis</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {visibleSummaryStudents.map((st) => (
+                                    <tr key={st.student_id}>
+                                      <td className="px-3 py-1.5 font-mono font-bold">{st.registration_number}</td>
+                                      <td className="px-3 py-1.5 font-bold text-slate-900">
+                                        {st.full_name}
+                                        {st.is_habitual && (
+                                          <span className="ml-1.5 rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800">
+                                            Habitual
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right font-black text-emerald-700">
+                                        {st.available_dates.length}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right text-slate-600">
+                                        {st.consumed_dates.length}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right text-amber-700">
+                                        {st.batch_dates.length}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-[11px] text-slate-600">
+                                        {st.available_dates.length === 0
+                                          ? 'Nenhum dia disponível (100% atendido)'
+                                          : `${st.available_dates.slice(0, 5).map((d) => d.slice(5)).join(', ')}${
+                                              st.available_dates.length > 5
+                                                ? ` (+${st.available_dates.length - 5} dias)`
+                                                : ''
+                                            }`}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            <PaginationControls
+                              compact
+                              totalItems={summaryStudents.length}
+                              currentPage={safeSummaryPage}
+                              pageSize={summaryPageSize}
+                              onPageChange={setSummaryPage}
+                              onPageSizeChange={setSummaryPageSize}
+                              itemLabel="comensal(is)"
+                            />
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 ) : (
@@ -2225,7 +2276,16 @@ export function MealAdjustmentsManager({ data }: Props) {
                       </select>
                     </div>
 
-                    {selectedDayObj && (
+                    {selectedDayObj && (() => {
+                      const submodeStudents = selectedDayObj.eligible_non_consumers || selectedDayObj.gap_candidates;
+                      const totalSubmodePages = Math.max(1, Math.ceil(submodeStudents.length / submodeBPageSize));
+                      const safeSubmodePage = Math.min(submodeBPage, totalSubmodePages);
+                      const visibleSubmodeStudents = submodeStudents.slice(
+                        (safeSubmodePage - 1) * submodeBPageSize,
+                        safeSubmodePage * submodeBPageSize
+                      );
+                      return (
+                      <div className="space-y-2">
                       <div className="overflow-x-auto rounded-2xl border border-slate-200">
                         <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
                           <thead className="bg-slate-50 font-bold uppercase text-slate-600">
@@ -2239,14 +2299,14 @@ export function MealAdjustmentsManager({ data }: Props) {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200">
-                            {(selectedDayObj.eligible_non_consumers || selectedDayObj.gap_candidates).length === 0 ? (
+                            {submodeStudents.length === 0 ? (
                               <tr>
                                 <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                                   Nenhum candidato elegível desta categoria sem consumo ou lote prévio neste turno/dia.
                                 </td>
                               </tr>
                             ) : (
-                              (selectedDayObj.eligible_non_consumers || selectedDayObj.gap_candidates).map((cand) => {
+                              visibleSubmodeStudents.map((cand) => {
                                 const dayMap =
                                   (confirmedByLine[activeSmartLine.line_id] || {})[selectedDayObj.date] || {};
                                 const current = dayMap[cand.student_id] || {
@@ -2328,7 +2388,18 @@ export function MealAdjustmentsManager({ data }: Props) {
                           </tbody>
                         </table>
                       </div>
-                    )}
+                      <PaginationControls
+                        compact
+                        totalItems={submodeStudents.length}
+                        currentPage={safeSubmodePage}
+                        pageSize={submodeBPageSize}
+                        onPageChange={setSubmodeBPage}
+                        onPageSizeChange={setSubmodeBPageSize}
+                        itemLabel="comensal(is)"
+                      />
+                      </div>
+                      );
+                    })()}
                   </div>
                 )}
 

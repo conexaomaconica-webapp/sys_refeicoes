@@ -24,6 +24,8 @@ import {
 import { useBrand } from '@/components/branding/brand-context';
 import { PrintDocument } from '@/components/printing/PrintDocument';
 import { openPrintDialog } from '@/lib/print-document';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { formatBRL } from '@/lib/currency';
 import type { CashShift, CashMovement, CashPartialSettlement } from '@/types/cash-shift';
 
 interface CashShiftModalProps {
@@ -523,21 +525,13 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                 <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                   Fundo de Troco Inicial (R$)
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-3 text-slate-400 font-bold">
-                    R$
-                  </span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    value={openInitialFloat}
-                    onChange={(e) => setOpenInitialFloat(e.target.value)}
-                    placeholder="0,00"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white text-lg font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
+                <CurrencyInput
+                  required
+                  value={openInitialFloat}
+                  onValueChange={setOpenInitialFloat}
+                  placeholder="R$ 0,00"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-white text-lg font-bold focus:outline-none focus:border-emerald-500"
+                />
               </div>
 
               {/* Botões rápidos de Troco */}
@@ -549,7 +543,7 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     onClick={() => setOpenInitialFloat(val)}
                     className="flex-1 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition"
                   >
-                    R$ {Number(val).toFixed(2)}
+                    {formatBRL(Number(val))}
                   </button>
                 ))}
               </div>
@@ -843,15 +837,10 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                           <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
                             Total contado na gaveta (R$)
                           </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                          <CurrencyInput
                             required
                             value={partialCountedAmount}
-                            onChange={(event) =>
-                              setPartialCountedAmount(event.target.value)
-                            }
+                            onValueChange={setPartialCountedAmount}
                             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg font-bold text-white outline-none focus:border-amber-500"
                           />
                         </div>
@@ -859,14 +848,9 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                           <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-300">
                             Recolher para o cofre (R$)
                           </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
+                          <CurrencyInput
                             value={partialWithdrawalAmount}
-                            onChange={(event) =>
-                              setPartialWithdrawalAmount(event.target.value)
-                            }
+                            onValueChange={setPartialWithdrawalAmount}
                             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg font-bold text-white outline-none focus:border-amber-500"
                           />
                         </div>
@@ -967,13 +951,10 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                       Valor da Sangria (R$)
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                    <CurrencyInput
                       value={movementAmount}
-                      onChange={(e) => setMovementAmount(e.target.value)}
-                      placeholder="0,00"
+                      onValueChange={setMovementAmount}
+                      placeholder="R$ 0,00"
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-white text-lg font-bold focus:outline-none focus:border-rose-500"
                     />
                   </div>
@@ -1021,13 +1002,10 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                     <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                       Valor do Suprimento (R$)
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                    <CurrencyInput
                       value={movementAmount}
-                      onChange={(e) => setMovementAmount(e.target.value)}
-                      placeholder="0,00"
+                      onValueChange={setMovementAmount}
+                      placeholder="R$ 0,00"
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-white text-lg font-bold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -1147,21 +1125,13 @@ export const CashShiftModal: React.FC<CashShiftModalProps> = ({
                         <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                           Valor Físico Apurado na Gaveta (R$)
                         </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-3 text-slate-400 font-bold">
-                            R$
-                          </span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            required
-                            value={countedAmount}
-                            onChange={(e) => setCountedAmount(e.target.value)}
-                            placeholder="0,00"
-                            className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white text-lg font-bold focus:outline-none focus:border-rose-500"
-                          />
-                        </div>
+                        <CurrencyInput
+                          required
+                          value={countedAmount}
+                          onValueChange={setCountedAmount}
+                          placeholder="R$ 0,00"
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-white text-lg font-bold focus:outline-none focus:border-rose-500"
+                        />
                       </div>
 
                       <button

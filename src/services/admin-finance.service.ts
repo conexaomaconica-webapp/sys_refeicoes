@@ -14,6 +14,56 @@ const VIEW_ROLES: UserRole[] = [
   'unit_manager',
 ];
 const MANAGE_ROLES: UserRole[] = ['admin_general', 'finance'];
+const POSTGREST_PAGE_SIZE = 1000;
+const MAX_PAGINATION_PAGES = 200;
+
+function sumCurrencyCents(values: Array<number | string | null | undefined>): number {
+  let cents = 0;
+  for (const val of values) {
+    const num = Number(val ?? 0);
+    if (Number.isFinite(num)) {
+      cents += Math.round(num * 100);
+    }
+  }
+  return cents / 100;
+}
+
+async function fetchAllPaginatedRows<T extends Record<string, unknown>>(
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  getKey?: (row: T) => string
+): Promise<{ rows: T[]; error?: string }> {
+  const rows: T[] = [];
+  const seenKeys = getKey ? new Set<string>() : null;
+
+  for (let page = 0; page < MAX_PAGINATION_PAGES; page++) {
+    const from = page * POSTGREST_PAGE_SIZE;
+    const to = from + POSTGREST_PAGE_SIZE - 1;
+    const { data, error } = await fetchPage(from, to);
+
+    if (error) {
+      return { rows: [], error: error.message };
+    }
+
+    const batch = data || [];
+    for (const row of batch) {
+      if (seenKeys && getKey) {
+        const key = getKey(row);
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+      }
+      rows.push(row);
+    }
+
+    if (batch.length < POSTGREST_PAGE_SIZE) {
+      return { rows };
+    }
+  }
+
+  return {
+    rows: [],
+    error: 'Limite de paginação excedido ao carregar totais financeiros; utilize agregação no banco.',
+  };
+}
 
 interface FinanceRequester {
   tenantId: string;
@@ -119,34 +169,41 @@ export async function getFinanceDashboardServer(
   if (!requester) return { data: null, error: 'Seu perfil não possui acesso ao módulo financeiro.' };
 
   const adminClient = getAdminClient();
-  let studentsQuery = adminClient
-    .from('students')
-    .select('id,institution_id,full_name,registration_number')
-    .eq('tenant_id', requester.tenantId)
-    .order('full_name');
-  if (requester.institutionIds) {
-    if (!requester.institutionIds.length) {
-      return {
-        data: {
-          wallets: [], transactions: [], payments: [], recharges: [],
-          canManage: false,
-          summary: { totalBalance: 0, activeWallets: 0, pendingPayments: 0, pendingAmount: 0, confirmedRechargesMonth: 0 },
-        },
-      };
-    }
-    studentsQuery = studentsQuery.in('institution_id', requester.institutionIds);
+  if (requester.institutionIds && !requester.institutionIds.length) {
+    return {
+      data: {
+        wallets: [], transactions: [], payments: [], recharges: [],
+        canManage: false,
+        summary: { totalBalance: 0, activeWallets: 0, pendingPayments: 0, pendingAmount: 0, confirmedRechargesMonth: 0 },
+      },
+    };
   }
 
-  const [{ data: students, error: studentError }, { data: institutions, error: institutionError }] =
-    await Promise.all([
-      studentsQuery,
-      adminClient.from('institutions').select('id,name').eq('tenant_id', requester.tenantId),
-    ]);
-  if (studentError || institutionError) {
-    return { data: null, error: studentError?.message || institutionError?.message };
+  const [studentsResult, { data: institutions, error: institutionError }] = await Promise.all([
+    fetchAllPaginatedRows(
+      (from, to) => {
+        let query = adminClient
+          .from('students')
+          .select('id,institution_id,full_name,registration_number')
+          .eq('tenant_id', requester.tenantId)
+          .order('full_name', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to);
+        if (requester.institutionIds) {
+          query = query.in('institution_id', requester.institutionIds);
+        }
+        return query;
+      },
+      (row) => row.id
+    ),
+    adminClient.from('institutions').select('id,name').eq('tenant_id', requester.tenantId),
+  ]);
+  if (studentsResult.error || institutionError) {
+    return { data: null, error: studentsResult.error || institutionError?.message };
   }
 
-  const studentIds = (students || []).map((student) => student.id);
+  const students = studentsResult.rows;
+  const studentIds = students.map((student) => student.id);
   const studentIdSet = new Set(studentIds);
   if (!studentIds.length) {
     return {
@@ -163,14 +220,9 @@ export async function getFinanceDashboardServer(
   monthStart.setHours(0, 0, 0, 0);
 
   // Evita URLs gigantes no PostgREST (?student_id=in.(...)) que geram 400 Bad Request em tenants com muitos alunos.
-  // Quando há filtro por instituição (unit_manager/supervisor) com <= 50 alunos usa .in(); caso contrário filtra por tenant_id e aplica o recorte em memória.
+  // Quando há filtro por instituição (unit_manager/supervisor) com <= 50 alunos usa .in(); caso contrário pagina por tenant_id e aplica o recorte em memória.
   const canUseDirectStudentIn = Boolean(requester.institutionIds) && studentIds.length <= 50;
 
-  let walletsQuery = adminClient
-    .from('wallets')
-    .select('id,student_id,balance,status,updated_at')
-    .eq('tenant_id', requester.tenantId)
-    .order('updated_at', { ascending: false });
   let transactionsQuery = adminClient
     .from('wallet_transactions')
     .select('id,student_id,type,amount,balance_before,balance_after,description,created_at')
@@ -189,36 +241,90 @@ export async function getFinanceDashboardServer(
     .eq('tenant_id', requester.tenantId)
     .order('created_at', { ascending: false })
     .limit(canUseDirectStudentIn ? 100 : 250);
-  let monthRechargeQuery = adminClient
-    .from('recharges')
-    .select('student_id,amount')
-    .eq('tenant_id', requester.tenantId)
-    .eq('status', 'confirmed')
-    .gte('confirmed_at', monthStart.toISOString());
 
   if (canUseDirectStudentIn) {
-    walletsQuery = walletsQuery.in('student_id', studentIds);
     transactionsQuery = transactionsQuery.in('student_id', studentIds);
     paymentsQuery = paymentsQuery.in('student_id', studentIds);
     rechargesQuery = rechargesQuery.in('student_id', studentIds);
-    monthRechargeQuery = monthRechargeQuery.in('student_id', studentIds);
   }
 
-  const [walletResult, transactionResult, paymentResult, rechargeResult, monthRechargeResult, providerResult] =
-    await Promise.all([
-      walletsQuery,
-      transactionsQuery,
-      paymentsQuery,
-      rechargesQuery,
-      monthRechargeQuery,
-      adminClient.from('payment_providers').select('id,name').eq('tenant_id', requester.tenantId),
-    ]);
+  const [
+    walletsResult,
+    transactionResult,
+    paymentResult,
+    rechargeResult,
+    monthRechargeResult,
+    pendingPaymentsResult,
+    providerResult,
+  ] = await Promise.all([
+    fetchAllPaginatedRows(
+      (from, to) => {
+        let query = adminClient
+          .from('wallets')
+          .select('id,student_id,balance,status,updated_at')
+          .eq('tenant_id', requester.tenantId)
+          .order('updated_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to);
+        if (canUseDirectStudentIn) {
+          query = query.in('student_id', studentIds);
+        }
+        return query;
+      },
+      (row) => row.id
+    ),
+    transactionsQuery,
+    paymentsQuery,
+    rechargesQuery,
+    fetchAllPaginatedRows(
+      (from, to) => {
+        let query = adminClient
+          .from('recharges')
+          .select('id,student_id,amount')
+          .eq('tenant_id', requester.tenantId)
+          .eq('status', 'confirmed')
+          .gte('confirmed_at', monthStart.toISOString())
+          .order('confirmed_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to);
+        if (canUseDirectStudentIn) {
+          query = query.in('student_id', studentIds);
+        }
+        return query;
+      },
+      (row) => row.id
+    ),
+    fetchAllPaginatedRows(
+      (from, to) => {
+        let query = adminClient
+          .from('payments')
+          .select('id,student_id,amount')
+          .eq('tenant_id', requester.tenantId)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to);
+        if (canUseDirectStudentIn) {
+          query = query.in('student_id', studentIds);
+        }
+        return query;
+      },
+      (row) => row.id
+    ),
+    adminClient.from('payment_providers').select('id,name').eq('tenant_id', requester.tenantId),
+  ]);
 
-  const firstError = walletResult.error || transactionResult.error || paymentResult.error ||
-    rechargeResult.error || monthRechargeResult.error || providerResult.error;
-  if (firstError) return { data: null, error: firstError.message };
+  const firstError =
+    walletsResult.error ||
+    transactionResult.error?.message ||
+    paymentResult.error?.message ||
+    rechargeResult.error?.message ||
+    monthRechargeResult.error ||
+    pendingPaymentsResult.error ||
+    providerResult.error?.message;
+  if (firstError) return { data: null, error: firstError };
 
-  const studentsById = new Map((students || []).map((student) => [student.id, student]));
+  const studentsById = new Map(students.map((student) => [student.id, student]));
   const institutionsById = new Map((institutions || []).map((institution) => [institution.id, institution.name]));
   const providersById = new Map((providerResult.data || []).map((provider) => [provider.id, provider.name]));
   const canManage = MANAGE_ROLES.includes(requester.role);
@@ -228,12 +334,12 @@ export async function getFinanceDashboardServer(
       : rows || [];
     return max ? filtered.slice(0, max) : filtered;
   };
-  const wallets = scopeFilter(walletResult.data);
+  const wallets = scopeFilter(walletsResult.rows);
   const scopedTransactions = scopeFilter(transactionResult.data, 200);
   const scopedPayments = scopeFilter(paymentResult.data, 100);
   const scopedRecharges = scopeFilter(rechargeResult.data, 100);
-  const scopedMonthRecharges = scopeFilter(monthRechargeResult.data);
-  const pendingPayments = scopedPayments.filter((payment) => payment.status === 'pending');
+  const scopedMonthRecharges = scopeFilter(monthRechargeResult.rows);
+  const scopedPendingPayments = scopeFilter(pendingPaymentsResult.rows);
 
   return {
     data: {
@@ -281,11 +387,11 @@ export async function getFinanceDashboardServer(
       })),
       canManage,
       summary: {
-        totalBalance: wallets.reduce((sum, wallet) => sum + Number(wallet.balance), 0),
+        totalBalance: sumCurrencyCents(wallets.map((wallet) => wallet.balance)),
         activeWallets: wallets.filter((wallet) => wallet.status === 'active').length,
-        pendingPayments: pendingPayments.length,
-        pendingAmount: pendingPayments.reduce((sum, payment) => sum + Number(payment.amount), 0),
-        confirmedRechargesMonth: scopedMonthRecharges.reduce((sum, recharge) => sum + Number(recharge.amount), 0),
+        pendingPayments: scopedPendingPayments.length,
+        pendingAmount: sumCurrencyCents(scopedPendingPayments.map((payment) => payment.amount)),
+        confirmedRechargesMonth: sumCurrencyCents(scopedMonthRecharges.map((recharge) => recharge.amount)),
       },
     },
   };

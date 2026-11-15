@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
-import { ArrowLeft, CheckCircle2, Download, Loader2, ShieldAlert, Upload, XCircle } from 'lucide-react';
+import { CheckCircle2, Download, Loader2, ShieldAlert, Upload, XCircle } from 'lucide-react';
+import { PaginationControls } from '@/components/ui/PaginationControls';
 import type { ImportPreviewResult, ImportRowAction } from '@/types/import';
 import { cancelImportAction, confirmImportAction, createImportPreviewAction } from '../actions';
 
@@ -23,6 +23,8 @@ export function ImportWorkspace({ institutions, units, recentImports }: { instit
   const today = new Date().toISOString().slice(0, 10);
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -31,15 +33,18 @@ export function ImportWorkspace({ institutions, units, recentImports }: { instit
   const [isPending, startTransition] = useTransition();
   const availableUnits = units.filter((unit) => unit.institution_id === institutionId);
 
-  const visibleRows = useMemo(() => {
+  const filteredRows = useMemo(() => {
     if (!preview) return [];
-    const rows = filter === 'all'
+    return filter === 'all'
       ? preview.rows
       : filter === 'valid'
         ? preview.rows.filter((row) => ['insert', 'update', 'reclassify_partial'].includes(row.action))
         : preview.rows.filter((row) => row.action === filter);
-    return rows.slice(0, 250);
   }, [filter, preview]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   function submitPreview(formData: FormData) {
     setMessage(null);
@@ -50,6 +55,7 @@ export function ImportWorkspace({ institutions, units, recentImports }: { instit
       setPreview(result.data);
       setCompleted(false);
       setFilter('all');
+      setPage(1);
     });
   }
 
@@ -90,23 +96,28 @@ export function ImportWorkspace({ institutions, units, recentImports }: { instit
   ] : [];
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-900 md:px-8">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 md:px-8 md:py-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <section
+          className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8"
+          style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
+        >
           <div>
-            <Link href="/admin" className="mb-3 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900">
-              <ArrowLeft className="h-4 w-4" /> Voltar ao painel
-            </Link>
-            <h1 className="text-3xl font-black">Importação de comensais</h1>
-            <p className="mt-2 text-sm text-slate-500">Importe ou atualize alunos, servidores e outros públicos, isolando somente as linhas inválidas.</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
+              Integração em lote
+            </p>
+            <h1 className="mt-2 text-3xl font-black">Importação de Comensais</h1>
+            <p className="mt-2 max-w-2xl text-sm text-white/80">
+              Importe ou atualize alunos, servidores e outros públicos, isolando somente as linhas inválidas.
+            </p>
           </div>
           <a
             href="/admin/importacoes/modelo"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-black text-emerald-800 transition hover:bg-emerald-100"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95"
           >
             <Download className="h-4 w-4" /> Baixar modelo XLSX
           </a>
-        </div>
+        </section>
 
         {!preview && (
           <form action={submitPreview} className="grid gap-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
@@ -175,7 +186,7 @@ export function ImportWorkspace({ institutions, units, recentImports }: { instit
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
               {cards.map(([label, value, target]) => (
-                <button key={label as string} onClick={() => setFilter(target as Filter)} className={`rounded-2xl border bg-white p-4 text-left shadow-sm ${filter === target ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'}`}>
+                <button key={label as string} onClick={() => { setFilter(target as Filter); setPage(1); }} className={`rounded-2xl border bg-white p-4 text-left shadow-sm ${filter === target ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'}`}>
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
                   <p className="mt-1 text-2xl font-black">{value}</p>
                 </button>
@@ -186,7 +197,7 @@ export function ImportWorkspace({ institutions, units, recentImports }: { instit
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
                 <div>
                   <h2 className="font-black">Preview — {preview.original_filename}</h2>
-                  <p className="text-xs text-slate-500">Exibindo até 250 linhas · unidade {units.find((unit) => unit.id === preview.unit_id)?.name || 'não identificada'} · vigência {new Date(`${preview.effective_date}T12:00:00`).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-xs text-slate-500">unidade {units.find((unit) => unit.id === preview.unit_id)?.name || 'não identificada'} · vigência {new Date(`${preview.effective_date}T12:00:00`).toLocaleDateString('pt-BR')}</p>
                 </div>
                 {summary.error_rows > 0 && <div className="flex gap-2">
                   <a href={`/admin/importacoes/${preview.import_id}/rejeicoes?format=xlsx`} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-black"><Download className="h-4 w-4" /> XLSX</a>
@@ -207,6 +218,15 @@ export function ImportWorkspace({ institutions, units, recentImports }: { instit
                   </tbody>
                 </table>
               </div>
+              <PaginationControls
+                className="px-5 pb-4"
+                totalItems={filteredRows.length}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="linha(s)"
+              />
             </section>
 
             <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
