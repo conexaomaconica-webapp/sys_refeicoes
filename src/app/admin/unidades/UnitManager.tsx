@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import { Building2, Clock3, Edit3, Loader2, MapPin, Plus, Search, Store, X } from 'lucide-react';
 import type {
   ManagedUnit,
@@ -207,14 +208,32 @@ export function UnitManager({ units, institutions, canCreate, canManageLifecycle
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-8">
-      <section className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8" style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}>
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Estrutura operacional</p>
-          <h1 className="mt-2 text-3xl font-black">Unidades</h1>
-          <p className="mt-2 max-w-2xl text-sm text-white/80">Consulte e configure os restaurantes vinculados às instituições do tenant.</p>
-        </div>
-        {canCreate && <div className="flex flex-col gap-3 sm:flex-row"><button type="button" onClick={openInstitutionCreate} className="flex items-center justify-center gap-2 rounded-xl border border-white/40 bg-white/10 px-5 py-3 text-sm font-black text-white shadow-lg hover:bg-white/20"><Building2 className="h-5 w-5" /> Nova instituição</button><button type="button" onClick={openCreate} disabled={!institutions.some((item) => item.status === 'active')} className="flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black shadow-lg disabled:opacity-50" style={{ color: 'var(--admin-primary)' }}><Plus className="h-5 w-5" /> Nova unidade</button></div>}
-      </section>
+      <AdminPageHero
+        eyebrow="Estrutura operacional"
+        title="Unidades"
+        description="Consulte e configure os restaurantes vinculados às instituições do tenant."
+        actions={
+          canCreate ? (
+            <>
+              <button
+                type="button"
+                onClick={openInstitutionCreate}
+                className="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-white/20"
+              >
+                <Building2 className="h-5 w-5" /> Nova instituição
+              </button>
+              <button
+                type="button"
+                onClick={openCreate}
+                disabled={!institutions.some((item) => item.status === 'active')}
+                className="flex items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 disabled:opacity-50"
+              >
+                <Plus className="h-5 w-5" /> Nova unidade
+              </button>
+            </>
+          ) : undefined
+        }
+      />
 
       {message && <div className={`rounded-2xl border px-4 py-3 text-sm font-bold ${message.kind === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>{message.text}</div>}
 

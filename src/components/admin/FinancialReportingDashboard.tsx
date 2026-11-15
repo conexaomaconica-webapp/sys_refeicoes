@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import {
   AlertTriangle,
   Building2,
@@ -19,6 +20,8 @@ import type {
   ReportingInitialData,
 } from '@/types/financial-reporting';
 import { getConsolidatedFinancialReportAction } from '@/app/admin/relatorios/actions';
+import { useBrand } from '@/components/branding/brand-context';
+import { buildFinancialReportPdfHtml } from '@/lib/reports/financial-pdf-template';
 
 interface FinancialReportingDashboardProps {
   initialData: ReportingInitialData;
@@ -29,6 +32,7 @@ export function FinancialReportingDashboard({
   initialData,
   initialReport,
 }: FinancialReportingDashboardProps) {
+  const { branding } = useBrand();
   const [startDate, setStartDate] = useState(initialReport.period.start_date);
   const [endDate, setEndDate] = useState(initialReport.period.end_date);
   const [institutionId, setInstitutionId] = useState(
@@ -101,7 +105,65 @@ export function FinancialReportingDashboard({
   };
 
   const handlePrint = () => {
-    window.print();
+    if (typeof document === 'undefined') return;
+
+    const selectedInstitutionName = initialData.institutions.find(
+      (i) => i.id === institutionId
+    )?.name;
+    const selectedUnitName = initialData.units.find((u) => u.id === unitId)?.name;
+    const selectedCategoryName = initialData.categories.find(
+      (c) => c.id === categoryId
+    )?.name;
+
+    const html = buildFinancialReportPdfHtml(
+      report,
+      {
+        appName: branding.app_name || 'MA Refeições',
+        primaryColor: branding.primary_color || '#C5161D',
+        logoUrl: branding.logo_url,
+      },
+      {
+        institutionName: selectedInstitutionName,
+        unitName: selectedUnitName,
+        categoryName: selectedCategoryName,
+      }
+    );
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(iframe);
+
+    const cleanup = () => {
+      setTimeout(() => {
+        iframe.remove();
+      }, 1000);
+    };
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc || !iframe.contentWindow) {
+      iframe.remove();
+      window.print();
+      return;
+    }
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } finally {
+        cleanup();
+      }
+    };
   };
 
   const formatCurrency = (val: number) => {
@@ -115,32 +177,18 @@ export function FinancialReportingDashboard({
 
   return (
     <div className="space-y-6 text-slate-900 print:text-black">
-      {/* CABEÇALHO DO RELATÓRIO E AÇÕES */}
-      <header className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm print:border-none print:shadow-none print:p-0">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 text-red-700 print:hidden">
-                <Receipt className="h-5 w-5" />
-              </span>
-              <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900 print:text-xl">
-                  Relatório Fiscal e Faturamento Consolidado
-                </h1>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Prestação de contas contratual, subsídios e segregação de custódia
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Botões de Ação e Exportação */}
-          <div className="flex flex-wrap items-center gap-2.5 print:hidden">
+      <AdminPageHero
+        eyebrow="Faturamento e auditoria"
+        title="Relatório Fiscal e Faturamento Consolidado"
+        description="Prestação de contas contratual, subsídios e segregação de custódia."
+        className="print:hidden"
+        actions={
+          <>
             <button
               type="button"
               onClick={handleExportExcel}
               disabled={isPending || !initialData.userCanExport}
-              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-600 bg-emerald-600 px-4 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-4 py-2.5 text-xs font-black text-slate-950 shadow-lg transition hover:brightness-95 active:scale-95 disabled:opacity-50"
             >
               <FileSpreadsheet className="h-4 w-4" />
               Exportar Excel (.xlsx)
@@ -150,16 +198,18 @@ export function FinancialReportingDashboard({
               type="button"
               onClick={handlePrint}
               disabled={isPending}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-white/20 active:scale-95 disabled:opacity-50"
             >
               <Printer className="h-4 w-4" />
               Imprimir / Salvar PDF
             </button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* BARRA DE FILTROS FISCAIS */}
-        <div className="mt-6 border-t border-slate-100 pt-5 print:hidden">
+      {/* BARRA DE FILTROS FISCAIS */}
+      <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm print:hidden">
+        <div>
           <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
             <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
               <Filter className="h-3.5 w-3.5" />
@@ -306,7 +356,7 @@ export function FinancialReportingDashboard({
             <span>{errorMessage}</span>
           </div>
         )}
-      </header>
+      </section>
 
       {/* CABEÇALHO EXCLUSIVO PARA IMPRESSÃO (PDF/PRINT) */}
       <div className="hidden border-b-2 border-slate-900 pb-4 print:block">

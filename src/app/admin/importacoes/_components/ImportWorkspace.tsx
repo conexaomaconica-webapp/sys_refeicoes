@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { CheckCircle2, Download, Loader2, ShieldAlert, Upload, XCircle } from 'lucide-react';
 import { PaginationControls } from '@/components/ui/PaginationControls';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import type { ImportPreviewResult, ImportRowAction } from '@/types/import';
 import { cancelImportAction, confirmImportAction, createImportPreviewAction } from '../actions';
 
@@ -98,26 +99,19 @@ export function ImportWorkspace({ institutions, units, recentImports }: { instit
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 md:px-8 md:py-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section
-          className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8"
-          style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
-        >
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
-              Integração em lote
-            </p>
-            <h1 className="mt-2 text-3xl font-black">Importação de Comensais</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/80">
-              Importe ou atualize alunos, servidores e outros públicos, isolando somente as linhas inválidas.
-            </p>
-          </div>
-          <a
-            href="/admin/importacoes/modelo"
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95"
-          >
-            <Download className="h-4 w-4" /> Baixar modelo XLSX
-          </a>
-        </section>
+        <AdminPageHero
+          eyebrow="Integração em lote"
+          title="Importação de Comensais"
+          description="Importe ou atualize alunos, servidores e outros públicos, isolando somente as linhas inválidas."
+          actions={
+            <a
+              href="/admin/importacoes/modelo"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95"
+            >
+              <Download className="h-4 w-4" /> Baixar modelo XLSX
+            </a>
+          }
+        />
 
         {!preview && (
           <form action={submitPreview} className="grid gap-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Eye, Image as ImageIcon, Loader2, Moon, Palette, Save, Sun, UploadCloud } from 'lucide-react';
 import { useBrand } from '@/components/branding/brand-context';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import { LoginBrandingSettings } from '@/components/admin/LoginBrandingSettings';
 import { ConsumerCardBrandingSettings } from '@/components/admin/ConsumerCardBrandingSettings';
 import { TerminalPageBrandingSettings } from '@/components/admin/TerminalPageBrandingSettings';
@@ -128,18 +129,20 @@ export default function AdminIdentidadePage() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 p-5 md:p-9">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link href="/admin" className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 hover:text-slate-900">
-              <ArrowLeft className="h-5 w-5" />
+        <AdminPageHero
+          eyebrow="Identidade visual"
+          title="Configurações Master"
+          description="Portais de login, logomarca, cores, terminal e identidade institucional."
+          actions={
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/20"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao Hub
             </Link>
-            <div>
-              <h1 className="text-2xl font-black">Configurações Master</h1>
-              <p className="text-sm text-slate-500">Portais de login, logomarca, cores, terminal e identidade institucional.</p>
-            </div>
-          </div>
-          <Palette className="h-8 w-8" style={{ color: form.terminal_primary_color }} />
-        </header>
+          }
+        />
 
         <LoginBrandingSettings />
         <ConsumerCardBrandingSettings />

@@ -219,6 +219,7 @@ export type Database = {
           timezone: string;
           status: 'active' | 'inactive';
           cash_shift_mode: 'per_meal' | 'daily';
+          cash_require_change: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -232,6 +233,7 @@ export type Database = {
           timezone?: string;
           status?: 'active' | 'inactive';
           cash_shift_mode?: 'per_meal' | 'daily';
+          cash_require_change?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -245,6 +247,7 @@ export type Database = {
           timezone?: string;
           status?: 'active' | 'inactive';
           cash_shift_mode?: 'per_meal' | 'daily';
+          cash_require_change?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -1896,6 +1899,10 @@ export type Database = {
       };
       set_unit_cash_shift_mode: {
         Args: { p_unit_id: string; p_cash_shift_mode: 'per_meal' | 'daily' };
+        Returns: Json;
+      };
+      set_unit_cash_require_change: {
+        Args: { p_unit_id: string; p_require_change: boolean };
         Returns: Json;
       };
       record_operator_cash_partial_settlement: {

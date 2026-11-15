@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useTransition, useCallback, useRef } from 'react';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import {
   Activity,
   AlertOctagon,
@@ -172,38 +173,23 @@ export function OperationalDashboard({ initialData }: OperationalDashboardProps)
 
   return (
     <div className="space-y-6 text-slate-900">
-      {/* CABEÇALHO DO DASHBOARD E FILTROS */}
-      <header className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 text-red-700">
-                <Gauge className="h-5 w-5" />
-              </span>
-              <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900">
-                  Dashboard Operacional
-                </h1>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Monitoramento em tempo real de fluxo, picos e terminais
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Status Realtime & Atualização */}
-          <div className="flex flex-wrap items-center gap-3">
+      <AdminPageHero
+        eyebrow="Monitoramento em tempo real"
+        title="Dashboard Operacional"
+        description="Acompanhe em tempo real o fluxo de refeições, horários de pico e status dos terminais."
+        actions={
+          <>
             <div
-              className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-black transition ${
+              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-black transition ${
                 realtimeActive
-                  ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-                  : 'border border-amber-200 bg-amber-50 text-amber-800'
+                  ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-200'
+                  : 'border-amber-400/30 bg-amber-500/15 text-amber-200'
               }`}
             >
               {realtimeActive ? (
-                <Wifi className="h-3.5 w-3.5 text-emerald-600" />
+                <Wifi className="h-3.5 w-3.5 text-emerald-300" />
               ) : (
-                <WifiOff className="h-3.5 w-3.5 text-amber-600" />
+                <WifiOff className="h-3.5 w-3.5 text-amber-300" />
               )}
               <span className="relative flex h-2 w-2">
                 {realtimeActive && (
@@ -211,7 +197,7 @@ export function OperationalDashboard({ initialData }: OperationalDashboardProps)
                 )}
                 <span
                   className={`relative inline-flex h-2 w-2 rounded-full ${
-                    realtimeActive ? 'bg-emerald-500' : 'bg-amber-500'
+                    realtimeActive ? 'bg-emerald-400' : 'bg-amber-400'
                   }`}
                 />
               </span>
@@ -225,16 +211,18 @@ export function OperationalDashboard({ initialData }: OperationalDashboardProps)
               type="button"
               onClick={() => refreshSnapshot(false)}
               disabled={isRefreshing || isPending}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-4 py-2.5 text-xs font-black text-slate-950 shadow-lg transition hover:brightness-95 active:scale-95 disabled:opacity-50"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-red-600' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               Atualizar
             </button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* BARRA DE FILTROS */}
-        <div className="mt-6 grid grid-cols-1 gap-3.5 pt-5 border-t border-slate-100 sm:grid-cols-2 lg:grid-cols-4">
+      {/* BARRA DE FILTROS */}
+      <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {/* Seletor de Unidade */}
           <div>
             <label className="mb-1 block text-xs font-black uppercase tracking-wider text-slate-500">
@@ -312,7 +300,7 @@ export function OperationalDashboard({ initialData }: OperationalDashboardProps)
             <span>{errorMessage}</span>
           </div>
         )}
-      </header>
+      </section>
 
       {/* ALERTA DE TERMINAL OCIOSO EM HORÁRIO DE PICO (Requisito Sprint 14: > 2 minutos sem registros) */}
       {idleTerminals.length > 0 && (

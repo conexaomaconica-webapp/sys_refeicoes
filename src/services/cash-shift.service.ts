@@ -80,6 +80,18 @@ export const cashShiftService = {
     }
   },
 
+  async updateUnitRequireChange(unitId: string, requireChange: boolean): Promise<void> {
+    const supabase = getRpcClient();
+    const { error } = await supabase.rpc('set_unit_cash_require_change', {
+      p_unit_id: unitId,
+      p_require_change: requireChange,
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Erro ao atualizar o cálculo de troco da unidade.');
+    }
+  },
+
   /**
    * Abre um novo turno de caixa com fundo de troco inicial
    */

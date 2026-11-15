@@ -274,7 +274,7 @@ export function ConsumerDashboard({ initialData }: ConsumerDashboardProps) {
           ]
         : []),
       { id: 'card' as const, label: 'Minha carteirinha', icon: CreditCard },
-      { id: 'meals' as const, label: 'Histórico de refeições', icon: Utensils },
+      { id: 'meals' as const, label: 'Refeições de hoje', icon: Utensils },
       { id: 'profile' as const, label: 'Meus dados', icon: User },
     ],
     [isFinancial]
@@ -682,10 +682,10 @@ export function ConsumerDashboard({ initialData }: ConsumerDashboardProps) {
                       isDark ? 'text-slate-400' : 'text-slate-500'
                     }`}
                   >
-                    Última refeição
+                    Refeição de hoje
                   </p>
                   <p className="mt-1 text-lg font-black truncate">
-                    {initialData.consumptions[0]?.mealTypeName || 'Nenhum consumo registrado'}
+                    {initialData.consumptions[0]?.mealTypeName || 'Nenhum consumo hoje'}
                   </p>
                   {initialData.consumptions[0] && (
                     <p
@@ -990,6 +990,7 @@ export function ConsumerDashboard({ initialData }: ConsumerDashboardProps) {
                   card={initialData.card}
                   balance={initialData.wallet?.balance ?? null}
                   requiresWallet={isFinancial}
+                  allowFullscreen
                 />
               </div>
             </section>
@@ -999,9 +1000,9 @@ export function ConsumerDashboard({ initialData }: ConsumerDashboardProps) {
           {view === 'meals' && (
             <section className="space-y-5">
               <div>
-                <h1 className="text-2xl font-black">Histórico de refeições</h1>
+                <h1 className="text-2xl font-black">Refeições de hoje</h1>
                 <p className={`mt-1 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Consumos registrados nos terminais de atendimento.
+                  Consumos registrados hoje nos terminais de atendimento.
                 </p>
               </div>
               <div
@@ -1011,7 +1012,7 @@ export function ConsumerDashboard({ initialData }: ConsumerDashboardProps) {
               >
                 {initialData.consumptions.length === 0 ? (
                   <p className={`p-6 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Nenhuma refeição encontrada.
+                    Nenhuma refeição registrada hoje.
                   </p>
                 ) : (
                   initialData.consumptions.map((consumption) => (

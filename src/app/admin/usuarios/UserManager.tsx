@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import {
   Building2,
   Check,
@@ -239,35 +240,26 @@ export function UserManager({
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-8">
-      <section
-        className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8"
-        style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
-      >
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-white/20 px-3 py-0.5 text-xs font-black uppercase tracking-wider text-white">
-              {roleLabels[requesterRole]}
-            </span>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Segurança e equipe</p>
-          </div>
-          <h1 className="mt-2 text-3xl font-black">Usuários e acessos</h1>
-          <p className="mt-2 max-w-2xl text-sm text-white/80">
-            {requesterRole === 'unit_manager'
-              ? 'Cadastre e gerencie operadores vinculados às unidades sob sua gestão direta.'
-              : 'Gerencie perfis internos, situação das contas e escopos por unidade ou instituição.'}
-          </p>
-        </div>
-        {canManage && (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black shadow-lg transition-transform hover:scale-105 active:scale-95"
-            style={{ color: 'var(--admin-primary)' }}
-          >
-            <Plus className="h-5 w-5" /> Criar usuário
-          </button>
-        )}
-      </section>
+      <AdminPageHero
+        eyebrow={`Segurança e equipe · ${roleLabels[requesterRole]}`}
+        title="Usuários e acessos"
+        description={
+          requesterRole === 'unit_manager'
+            ? 'Cadastre e gerencie operadores vinculados às unidades sob sua gestão direta.'
+            : 'Gerencie perfis internos, situação das contas e escopos por unidade ou instituição.'
+        }
+        actions={
+          canManage ? (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95"
+            >
+              <Plus className="h-5 w-5" /> Criar usuário
+            </button>
+          ) : undefined
+        }
+      />
 
       {!canManage && (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-900">

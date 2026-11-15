@@ -134,6 +134,10 @@ export default async function ConsumerPage() {
       ])
     : Promise.resolve([{ data: null }, { data: [] }] as const);
 
+  const todayBr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date());
+
   const [financial, consumptionResult, cardResult, preferenceResult] = await Promise.all([
     financialQueries,
     supabase
@@ -142,8 +146,9 @@ export default async function ConsumerPage() {
         'id,consumed_at,consumption_date,student_price,subsidy_amount,status,meal_types(name),units(name)'
       )
       .eq('student_id', student.id)
+      .eq('consumption_date', todayBr)
       .order('consumed_at', { ascending: false })
-      .limit(100),
+      .limit(20),
     supabase
       .from('cards')
       .select('*')

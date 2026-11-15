@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { PaginationControls } from '@/components/ui/PaginationControls';
 import { parseCurrencyString } from '@/lib/currency';
@@ -156,11 +157,11 @@ export function FinanceManager({ wallets, transactions, payments, recharges, can
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-8">
-      <section className="rounded-3xl p-6 text-white shadow-xl md:p-8" style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}>
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Controle e conciliação</p>
-        <h1 className="mt-2 text-3xl font-black">Financeiro</h1>
-        <p className="mt-2 max-w-2xl text-sm text-white/80">Acompanhe saldos, pagamentos, recargas e o livro-razão imutável das carteiras.</p>
-      </section>
+      <AdminPageHero
+        eyebrow="Controle e conciliação"
+        title="Financeiro"
+        description="Acompanhe saldos, pagamentos, recargas e o livro-razão imutável das carteiras."
+      />
 
       {!canManage && <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-900">Seu perfil possui acesso financeiro somente para consulta.</div>}
       {message && <div className={`rounded-2xl border px-4 py-3 text-sm font-bold ${message.kind === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>{message.text}</div>}

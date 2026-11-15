@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -243,36 +244,26 @@ export function ContingencyManager({ data }: ContingencyManagerProps) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-lg bg-red-100 p-2 text-red-700">
-              <AlertTriangle className="h-6 w-6" />
-            </span>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight sm:text-3xl">
-              Contingência e Regularização Retroativa
-            </h1>
-          </div>
-          <p className="mt-1 text-sm text-slate-600">
-            Sprint 13 — Apuração de refeições servidas em pane ou apagão sem criação de comensais fictícios.
-          </p>
-        </div>
-
-        {data.canCreate && (
-          <button
-            type="button"
-            onClick={() => {
-              setIsNewModalOpen(true);
-              setFeedback(null);
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-red-800 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Lançar Lote de Contingência
-          </button>
-        )}
-      </div>
+      <AdminPageHero
+        eyebrow="Operação de contingência"
+        title="Contingência e Regularização Retroativa"
+        description="Apuração de refeições servidas em pane ou apagão sem criação de comensais fictícios."
+        actions={
+          data.canCreate ? (
+            <button
+              type="button"
+              onClick={() => {
+                setIsNewModalOpen(true);
+                setFeedback(null);
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              Lançar Lote de Contingência
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Alertas e feedback */}
       {feedback && (

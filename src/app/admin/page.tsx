@@ -142,7 +142,7 @@ export default async function AdminHomePage() {
       description: 'Retroativo por data específica e ajuste inteligente mensal com análise de lacunas.',
       href: '/admin/ajustes-refeicoes',
       icon: Layers,
-      enabled: canViewFinance,
+      enabled: canImportStudents,
     },
     {
       title: 'Contingência e ajustes',

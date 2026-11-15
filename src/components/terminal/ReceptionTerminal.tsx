@@ -83,6 +83,7 @@ export interface ReceptionTerminalProps {
   onMealTypeChange?: (mealTypeId: string) => void;
   studentPrice?: number;
   cashShiftMode?: 'per_meal' | 'daily';
+  cashRequireChange?: boolean;
   onSignOut?: () => void;
 }
 
@@ -170,6 +171,7 @@ export function ReceptionTerminal({
   onMealTypeChange,
   studentPrice = 0,
   cashShiftMode = 'per_meal',
+  cashRequireChange = true,
   onSignOut,
 }: ReceptionTerminalProps) {
   const { branding } = useBrand();
@@ -309,6 +311,7 @@ export function ReceptionTerminal({
   const [activeCashShift, setActiveCashShift] = useState<CashShift | null>(null);
   const [cashShiftChecked, setCashShiftChecked] = useState<boolean>(false);
   const [signOutRequested, setSignOutRequested] = useState<boolean>(false);
+  const rolloverInProgressRef = useRef<string | null>(null);
   const [cashReceived, setCashReceived] = useState<number>(0);
   const [pixReceived, setPixReceived] = useState<number>(0);
   const [cardReceived, setCardReceived] = useState<number>(0);
@@ -360,17 +363,6 @@ export function ReceptionTerminal({
   const [visitantesCount, setVisitantesCount] = useState<number>(0);
   const [bloqueadasCount, setBloqueadasCount] = useState<number>(0);
   const [pendingTimeoutsCount, setPendingTimeoutsCount] = useState<number>(0);
-
-  // Controle de Caixa & PDV
-  useEffect(() => {
-    if (
-      cashShiftMode === 'per_meal' &&
-      activeCashShift?.meal_type_id &&
-      activeCashShift.meal_type_id !== mealTypeId
-    ) {
-      onMealTypeChange?.(activeCashShift.meal_type_id);
-    }
-  }, [activeCashShift, cashShiftMode, mealTypeId, onMealTypeChange]);
 
   // Relatórios de Refeições e Bloqueios do Turno (F7)
   const [showReportsModal, setShowReportsModal] = useState<boolean>(false);
@@ -433,6 +425,96 @@ export function ReceptionTerminal({
   useEffect(() => {
     if (isStaleCashShift) setShowCashModal(true);
   }, [isStaleCashShift]);
+
+  // Troca automática de turno quando o operador não fechou o caixa anterior
+  useEffect(() => {
+    if (
+      cashShiftMode !== 'per_meal' ||
+      !effectiveOnline ||
+      isStaleCashShift ||
+      !activeCashShift?.meal_type_id ||
+      !mealTypeId ||
+      activeCashShift.meal_type_id === mealTypeId
+    ) {
+      return;
+    }
+
+    const rolloverKey = `${activeCashShift.id}:${mealTypeId}`;
+    if (rolloverInProgressRef.current === rolloverKey) return;
+    rolloverInProgressRef.current = rolloverKey;
+
+    let cancelled = false;
+    const performAutomaticShiftRollover = async () => {
+      try {
+        const current = await cashShiftService.getActiveShift(unitId, terminalId);
+        if (
+          cancelled ||
+          !current.shift ||
+          current.shift.id !== activeCashShift.id ||
+          current.shift.meal_type_id === mealTypeId
+        ) {
+          return;
+        }
+
+        const hasMovements =
+          current.movements.some((m) => m.type !== 'initial_float') ||
+          current.partialSettlements.length > 0 ||
+          Number(current.shift.total_visitors_amount || 0) > 0 ||
+          Number(current.shift.counter_payments_amount || 0) > 0 ||
+          Number(current.shift.total_supplies_amount || 0) > 0 ||
+          Number(current.shift.total_bleed_amount || 0) > 0;
+
+        const expectedBalance = Number(
+          current.shift.expected_cash_balance ??
+            current.shift.system_expected_balance ??
+            current.shift.initial_float_amount ??
+            0
+        );
+
+        await cashShiftService.closeShift({
+          cashShiftId: current.shift.id,
+          countedAmount: expectedBalance,
+          closingNotes: hasMovements
+            ? 'Fechamento automático na troca automática de turno.'
+            : 'Fechamento automático por troca de turno sem movimentação.',
+        });
+
+        await cashShiftService.openShift({
+          unitId,
+          terminalId,
+          mealTypeId,
+          initialFloat: expectedBalance,
+        });
+
+        if (!cancelled) {
+          await loadActiveCashShift();
+        }
+      } catch {
+        if (!cancelled && activeCashShift.meal_type_id) {
+          onMealTypeChange?.(activeCashShift.meal_type_id);
+        }
+      } finally {
+        if (rolloverInProgressRef.current === rolloverKey) {
+          rolloverInProgressRef.current = null;
+        }
+      }
+    };
+
+    void performAutomaticShiftRollover();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCashShift,
+    cashShiftMode,
+    effectiveOnline,
+    isStaleCashShift,
+    loadActiveCashShift,
+    mealTypeId,
+    onMealTypeChange,
+    terminalId,
+    unitId,
+  ]);
 
   useEffect(() => {
     const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
@@ -957,7 +1039,11 @@ export function ReceptionTerminal({
         event.preventDefault();
         if (method === 'cash') {
           setVisitorPaymentMethod('cash');
-          setVisitorAmountReceived(visitorPrice.toFixed(2));
+          if (!cashRequireChange) {
+            void visitorPaymentHandlerRef.current('cash', visitorPrice);
+          } else {
+            setVisitorAmountReceived(visitorPrice.toFixed(2));
+          }
         } else {
           setVisitorPaymentMethod(method);
           void visitorPaymentHandlerRef.current(method);
@@ -971,13 +1057,15 @@ export function ReceptionTerminal({
 
     window.addEventListener('keydown', handleVisitorPaymentShortcut);
     return () => window.removeEventListener('keydown', handleVisitorPaymentShortcut);
-  }, [isProcessing, visitorPaymentPending, visitorPrice]);
+  }, [cashRequireChange, isProcessing, visitorPaymentPending, visitorPrice]);
 
-  const handleConfirmPayment = async () => {
+  const handleConfirmPayment = async (overrideMethod?: 'cash' | 'pix' | 'card') => {
     if (!paymentPending || isProcessing) return;
+    const methodToUse = overrideMethod ?? paymentMethod;
     const charged = Number(paymentPending.preview.financial?.student_price || 0);
-    const received = paymentMethod === 'cash' ? Number(amountReceived.replace(',', '.')) : charged;
-    if (paymentMethod === 'cash' && (!Number.isFinite(received) || received < charged)) {
+    const received =
+      methodToUse === 'cash' && cashRequireChange ? Number(amountReceived.replace(',', '.')) : charged;
+    if (methodToUse === 'cash' && cashRequireChange && (!Number.isFinite(received) || received < charged)) {
       setPaymentError('O valor recebido deve ser igual ou maior que o valor cobrado.');
       return;
     }
@@ -990,7 +1078,7 @@ export function ReceptionTerminal({
       meal_type_id: displayedMealTypeId,
       terminal_id: terminalId,
       idempotency_key: paymentPending.idempotencyKey,
-      payment_method: paymentMethod,
+      payment_method: methodToUse,
       amount_received: received,
     });
 
@@ -1094,11 +1182,11 @@ export function ReceptionTerminal({
               <span>· {terminalId} ·</span>
               <select
                 value={displayedMealTypeId}
-                disabled={Boolean(activeCashShift) && cashShiftMode === 'per_meal'}
+                disabled={Boolean(activeCashShift) && cashShiftMode === 'per_meal' && !effectiveOnline}
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) => onMealTypeChange?.(event.target.value)}
                 className={`max-w-36 rounded border px-1 py-0.5 font-semibold outline-none disabled:cursor-not-allowed disabled:opacity-80 ${isDark ? 'border-slate-600 bg-slate-800 text-white' : 'border-slate-300 bg-white text-slate-800'}`}
-                title={activeCashShift && cashShiftMode === 'per_meal' ? 'Feche o caixa atual antes de trocar o turno.' : 'Selecionar a refeição operacional'}
+                title={activeCashShift && cashShiftMode === 'per_meal' && !effectiveOnline ? 'Terminal offline: feche o caixa antes de trocar o turno.' : 'Selecionar a refeição operacional'}
               >
                 {!displayedMealTypeId && <option value="">Selecionar turno</option>}
                 {mealOptions.map((option) => (
@@ -1372,7 +1460,7 @@ export function ReceptionTerminal({
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value.toUpperCase())}
-                  disabled={isProcessing || isStaleCashShift || !mealTypeId}
+                  disabled={isProcessing || isStaleCashShift || !displayedMealTypeId}
                   placeholder="DIGITE A MATRÍCULA OU CÓDIGO"
                   autoFocus
                   className={`w-full border-2 text-center font-mono text-lg sm:text-xl 2xl:text-2xl font-bold tracking-widest placeholder:text-slate-400 rounded-2xl py-3 2xl:py-4 px-6 shadow-lg transition-all outline-none ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}
@@ -1383,7 +1471,7 @@ export function ReceptionTerminal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <button
                   type="submit"
-                  disabled={isProcessing || isStaleCashShift || !mealTypeId || !inputValue.trim()}
+                  disabled={isProcessing || isStaleCashShift || !displayedMealTypeId || !inputValue.trim()}
                   className="sm:col-span-2 py-3 px-6 rounded-2xl disabled:brightness-75 disabled:cursor-not-allowed text-white font-black text-sm uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                   style={{
                     backgroundColor: '#C5161D',
@@ -1400,7 +1488,7 @@ export function ReceptionTerminal({
                     setVisitorPaymentError(null);
                     setVisitorPaymentPending(true);
                   }}
-                  disabled={isProcessing || isStaleCashShift || !mealTypeId}
+                  disabled={isProcessing || isStaleCashShift || !displayedMealTypeId}
                   className="py-3 px-4 rounded-2xl disabled:brightness-75 disabled:cursor-not-allowed font-black text-xs uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border"
                   style={{
                     backgroundColor: '#F4C430',
@@ -1911,7 +1999,9 @@ export function ReceptionTerminal({
         >
           <div className={`w-full max-w-2xl rounded-3xl border p-6 shadow-2xl md:p-8 ${isDark ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
             <div className="mb-6 text-center">
-              <p className="text-xs font-black uppercase tracking-[0.22em]" style={{ color: branding.terminal_primary_color }}>Recebimento e troco</p>
+              <p className="text-xs font-black uppercase tracking-[0.22em]" style={{ color: branding.terminal_primary_color }}>
+                {cashRequireChange ? 'Recebimento e troco' : 'Recebimento direto'}
+              </p>
               <h2 className="mt-2 text-2xl font-black">{paymentPending.preview.student.full_name}</h2>
               <p className="text-sm opacity-60">{paymentPending.preview.student.registration_number} • {paymentPending.preview.student.category_code}</p>
             </div>
@@ -1926,10 +2016,17 @@ export function ReceptionTerminal({
                   <button
                     key={method}
                     type="button"
+                    disabled={isProcessing}
                     onClick={() => {
                       setPaymentMethod(method);
                       setPaymentError(null);
-                      if (method === 'cash') setAmountReceived(Number(paymentPending.preview.financial?.student_price || 0).toFixed(2));
+                      if (method === 'cash') {
+                        const chargedStr = Number(paymentPending.preview.financial?.student_price || 0).toFixed(2);
+                        setAmountReceived(chargedStr);
+                        if (!cashRequireChange) {
+                          void handleConfirmPayment('cash');
+                        }
+                      }
                     }}
                     className={`rounded-2xl border-2 p-4 text-center font-bold transition disabled:cursor-not-allowed disabled:opacity-35 ${paymentMethod === method ? 'scale-[1.02] shadow-lg ring-4 ring-slate-400/30' : 'opacity-70 hover:opacity-100'}`}
                     style={{
@@ -1945,24 +2042,36 @@ export function ReceptionTerminal({
               })}
             </div>
 
-            <div className={`grid gap-3 rounded-2xl p-5 sm:grid-cols-3 ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>
-              <div><p className="text-xs font-bold uppercase opacity-55">Valor da refeição</p><p className="mt-1 text-2xl font-black">{formatBRL(Number(paymentPending.preview.financial?.student_price || 0))}</p></div>
-              <label><span className="text-xs font-bold uppercase opacity-55">Valor recebido</span>
-                <CurrencyInput
-                  value={paymentMethod === 'cash' ? amountReceived : Number(paymentPending.preview.financial?.student_price || 0).toFixed(2)}
-                  onValueChange={setAmountReceived}
-                  disabled={paymentMethod !== 'cash'}
-                  autoFocus
-                  className={`mt-1 w-full rounded-xl border px-3 py-2 text-xl font-black outline-none disabled:opacity-60 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-300 bg-white'}`}
-                />
-              </label>
-              <div className="rounded-xl p-3" style={{ backgroundColor: branding.terminal_accent_color, color: '#3F2F00' }}><p className="text-xs font-bold uppercase opacity-70">Troco a devolver</p><p className="mt-1 text-2xl font-black">{formatBRL(Math.max(0, parseCurrencyString(amountReceived) - Number(paymentPending.preview.financial?.student_price || 0)))}</p></div>
-            </div>
+            {cashRequireChange ? (
+              <div className={`grid gap-3 rounded-2xl p-5 sm:grid-cols-3 ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>
+                <div><p className="text-xs font-bold uppercase opacity-55">Valor da refeição</p><p className="mt-1 text-2xl font-black">{formatBRL(Number(paymentPending.preview.financial?.student_price || 0))}</p></div>
+                <label><span className="text-xs font-bold uppercase opacity-55">Valor recebido</span>
+                  <CurrencyInput
+                    value={paymentMethod === 'cash' ? amountReceived : Number(paymentPending.preview.financial?.student_price || 0).toFixed(2)}
+                    onValueChange={setAmountReceived}
+                    disabled={paymentMethod !== 'cash'}
+                    autoFocus
+                    className={`mt-1 w-full rounded-xl border px-3 py-2 text-xl font-black outline-none disabled:opacity-60 ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-300 bg-white'}`}
+                  />
+                </label>
+                <div className="rounded-xl p-3" style={{ backgroundColor: branding.terminal_accent_color, color: '#3F2F00' }}><p className="text-xs font-bold uppercase opacity-70">Troco a devolver</p><p className="mt-1 text-2xl font-black">{formatBRL(Math.max(0, parseCurrencyString(amountReceived) - Number(paymentPending.preview.financial?.student_price || 0)))}</p></div>
+              </div>
+            ) : (
+              <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5 ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>
+                <div>
+                  <p className="text-xs font-bold uppercase opacity-55">Valor da refeição</p>
+                  <p className="mt-1 text-2xl font-black">{formatBRL(Number(paymentPending.preview.financial?.student_price || 0))}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  Dinheiro com confirmação direta (sem cálculo de troco)
+                </div>
+              </div>
+            )}
 
             {paymentError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{paymentError}</p>}
             <button
               type="button"
-              onClick={handleConfirmPayment}
+              onClick={() => void handleConfirmPayment()}
               disabled={isProcessing}
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black uppercase tracking-wider text-white disabled:opacity-60"
               style={{ backgroundColor: branding.terminal_primary_color }}
@@ -1992,6 +2101,10 @@ export function ReceptionTerminal({
                   onClick={() => {
                     if (method === 'cash') {
                       setVisitorPaymentMethod('cash');
+                      if (!cashRequireChange) {
+                        void handleRegisterVisitorDirect('cash', visitorPrice);
+                        return;
+                      }
                       setVisitorAmountReceived(visitorPrice.toFixed(2));
                       return;
                     }
@@ -2011,7 +2124,7 @@ export function ReceptionTerminal({
                 </button>
               ))}
             </div>
-            {visitorPaymentMethod === 'cash' && (
+            {cashRequireChange && visitorPaymentMethod === 'cash' && (
               <div className={`mt-4 grid gap-3 rounded-2xl p-4 sm:grid-cols-3 ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>
                 <div>
                   <p className="text-xs font-bold uppercase opacity-55">Valor da refeição</p>

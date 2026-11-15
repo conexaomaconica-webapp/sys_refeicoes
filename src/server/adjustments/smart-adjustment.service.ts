@@ -58,8 +58,30 @@ function addDaysIso(isoDate: string, deltaDays: number): string {
 }
 
 export async function getMealAdjustmentsWorkspaceData(): Promise<MealAdjustmentsWorkspaceData> {
-  const base = await getContingencyManagementData();
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('AUTH_REQUIRED: Sessão expirada. Faça login novamente.');
+  }
+  const { data: roleRow } = await supabase
+    .from('profiles')
+    .select('role,status')
+    .eq('id', user.id)
+    .single();
+  const userProfile = roleRow as { role: string; status: string } | null;
+  if (
+    !userProfile ||
+    userProfile.status !== 'active' ||
+    !['admin_general', 'operations_director'].includes(userProfile.role)
+  ) {
+    throw new Error(
+      'PERMISSION_DENIED: Acesso restrito a Master (admin_general) e Diretor Operacional (operations_director).'
+    );
+  }
+
+  const base = await getContingencyManagementData();
 
   const [institutionsRes, unitsMetaRes, unitMealTypesRes, mealRulesRes] = await Promise.all([
     supabase.from('institutions').select('id,name').eq('status', 'active').order('name'),
@@ -343,8 +365,8 @@ async function loadCompetenceAnalysisContext(
     throw new Error('ACTIVE_PROFILE_REQUIRED: Perfil inativo ou não autorizado.');
   }
 
-  if (!['admin_general', 'operations_director', 'finance', 'supervisor', 'unit_manager'].includes(profile.role)) {
-    throw new Error('PERMISSION_DENIED: Perfil sem permissão para análise de lacunas.');
+  if (!['admin_general', 'operations_director'].includes(profile.role)) {
+    throw new Error('PERMISSION_DENIED: Acesso restrito a Master e Diretor Operacional.');
   }
 
   if (!/^\d{4}-\d{2}$/.test(competenceMonth)) {

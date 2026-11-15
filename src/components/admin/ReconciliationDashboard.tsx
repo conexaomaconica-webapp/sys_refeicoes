@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -211,50 +212,41 @@ export function ReconciliationDashboard({ initialData }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Conciliação Financeira Automática</h1>
-            <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-bold text-amber-800 border border-amber-200">
-              Sprint 16 • Auditoria Contábil
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-gray-600">
-            Batimento contínuo entre pagamentos, créditos em carteira, consumo e livro-razão imutável.
-          </p>
-        </div>
+      <AdminPageHero
+        eyebrow="Auditoria contábil"
+        title="Conciliação Financeira Automática"
+        description="Batimento contínuo entre pagamentos, créditos em carteira, consumo e livro-razão imutável."
+        actions={
+          <>
+            <button
+              onClick={handleRunAudit}
+              disabled={isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-4 py-2.5 text-xs font-black text-slate-950 shadow-lg transition hover:brightness-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
+              Executar Auditoria
+            </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handleRunAudit}
-            disabled={isPending}
-            style={{ backgroundColor: 'var(--admin-primary, #b91c1c)' }}
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:opacity-50 transition"
-          >
-            <RefreshCw className={`h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
-            Executar Auditoria
-          </button>
+            <a
+              href={`/api/admin/conciliacao/export?startDate=${startDate}&endDate=${endDate}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-white/20"
+            >
+              <ArrowDownToLine className="h-4 w-4" />
+              Exportar Excel
+            </a>
 
-          <a
-            href={`/api/admin/conciliacao/export?startDate=${startDate}&endDate=${endDate}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 shadow-sm hover:bg-gray-50 transition"
-          >
-            <ArrowDownToLine className="h-4 w-4 text-emerald-600" />
-            Exportar Excel
-          </a>
-
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-xs font-bold text-gray-700 shadow-sm hover:bg-gray-50 transition"
-            title="Imprimir ou Salvar PDF"
-          >
-            <Printer className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-white/20"
+              title="Imprimir ou Salvar PDF"
+            >
+              <Printer className="h-4 w-4" />
+            </button>
+          </>
+        }
+      />
 
       {auditMessage && (
         <div
@@ -512,21 +504,21 @@ export function ReconciliationDashboard({ initialData }: Props) {
             </div>
           </div>
 
-          {/* Segregação de Contas */}
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6">
-            <h3 className="text-sm font-bold text-blue-900 flex items-center gap-2">
-              <Scale className="h-4 w-4 text-blue-700" />
-              Equação Contábil Homologada (Sprints 15 & 16)
+          {/* Critérios Contábeis da Conciliação */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <Scale className="h-4 w-4 text-[var(--brand-primary,#C5161D)]" />
+              Critérios Contábeis da Conciliação
             </h3>
-            <div className="mt-3 text-xs text-blue-800 space-y-2">
+            <div className="mt-3 space-y-2 text-xs text-slate-600">
               <p>
-                <strong>1. Receita Realizada:</strong> Reconhecida exclusivamente no consumo da refeição (<code className="bg-blue-100 px-1 py-0.5 rounded">student_price</code> debitado na catraca). Recargas financeiras são passivo circulante sob custódia.
+                <strong className="text-slate-900">1. Receita Realizada:</strong> Reconhecida exclusivamente no momento do consumo da refeição (valor pago pelo comensal no atendimento). Recargas financeiras permanecem como saldo sob custódia até o consumo.
               </p>
               <p>
-                <strong>2. Subsídios Faturáveis:</strong> Apurados por categoria contratual (<code className="bg-blue-100 px-1 py-0.5 rounded">subsidy_amount</code>) e somados aos lotes aprovados de contingência (<code className="bg-blue-100 px-1 py-0.5 rounded">total_subsidy_amount</code>).
+                <strong className="text-slate-900">2. Subsídios Faturáveis:</strong> Apurados conforme a categoria contratual de cada comensal e somados aos lotes de contingência devidamente aprovados.
               </p>
               <p>
-                <strong>3. Bloqueio de Compensações Automáticas:</strong> Proibido gerar créditos artificiais no ledger sem aprovação e auditoria formal prévia.
+                <strong className="text-slate-900">3. Controle de Ajustes:</strong> Nenhuma compensação ou crédito é gerado automaticamente no extrato contábil sem auditoria e aprovação formal prévia.
               </p>
             </div>
           </div>

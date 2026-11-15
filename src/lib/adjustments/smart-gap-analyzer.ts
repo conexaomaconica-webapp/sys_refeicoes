@@ -213,10 +213,12 @@ export function analyzeMonthlyMealGaps(input: SmartGapAnalyzerInput): SmartAnaly
     }
   }
 
-  // Contagens regulares na competência
+  // Contagens regulares na competência (no turno e em qualquer turno do mês na unidade)
   const regularByDate: Record<string, number> = {};
   const regularStudentDateSet = new Set<string>();
+  const monthMealsByStudent = new Map<string, number>();
   for (const c of input.monthRegularConsumptions) {
+    monthMealsByStudent.set(c.student_id, (monthMealsByStudent.get(c.student_id) || 0) + 1);
     if (c.meal_type_id !== input.mealTypeId) continue;
     regularByDate[c.consumption_date] = (regularByDate[c.consumption_date] || 0) + 1;
     regularStudentDateSet.add(`${c.student_id}|${c.consumption_date}`);
@@ -224,6 +226,7 @@ export function analyzeMonthlyMealGaps(input: SmartGapAnalyzerInput): SmartAnaly
 
   const otherShiftSet = new Set<string>();
   for (const c of input.monthOtherShiftConsumptions || []) {
+    monthMealsByStudent.set(c.student_id, (monthMealsByStudent.get(c.student_id) || 0) + 1);
     otherShiftSet.add(`${c.student_id}|${c.consumption_date}`);
   }
 
@@ -357,6 +360,7 @@ export function analyzeMonthlyMealGaps(input: SmartGapAnalyzerInput): SmartAnaly
 
       const isHabitual = habitualStudentIds.has(s.id);
       const priorMeals = lookbackCountByStudent.get(s.id) || 0;
+      const monthMeals = monthMealsByStudent.get(s.id) || 0;
       const freq = Number((priorMeals / lookbackDaysTotal).toFixed(2));
       const resolvedCatName = input.categoryNamesById?.[resolvedCatId] || s.category_name;
 
@@ -369,6 +373,7 @@ export function analyzeMonthlyMealGaps(input: SmartGapAnalyzerInput): SmartAnaly
           category_name: resolvedCatName,
           historical_frequency: freq,
           prior_meals_count: priorMeals,
+          month_meals_count: monthMeals,
           is_habitual: isHabitual,
           available_dates: [],
           consumed_dates: [],
@@ -391,13 +396,14 @@ export function analyzeMonthlyMealGaps(input: SmartGapAnalyzerInput): SmartAnaly
 
       summaryEntry.available_dates.push(d);
       const sameDayOtherShift = otherShiftSet.has(`${s.id}|${d}`);
-      const reasonText = isHabitual
-        ? sameDayOtherShift
-          ? `Frequência ${Math.round(freq * 100)}% e presença em outro turno no mesmo dia`
-          : `Frequência histórica de ${Math.round(freq * 100)}% no turno`
-        : sameDayOtherShift
-        ? 'Presença em outro turno no dia (sem consumo neste turno)'
-        : 'Elegível na data sem registro de consumo ou lote';
+      const reasonText =
+        monthMeals > 0
+          ? isHabitual
+            ? `Ativo com ${monthMeals} refeição(ões) no mês · Frequência ${Math.round(freq * 100)}%`
+            : `Ativo com ${monthMeals} refeição(ões) no mês na unidade`
+          : sameDayOtherShift
+          ? 'Ativo com presença em outro turno no dia'
+          : 'Ativo sem refeição registrada no mês (opção reserva)';
 
       const entry: GapCandidate = {
         student_id: s.id,
@@ -407,6 +413,7 @@ export function analyzeMonthlyMealGaps(input: SmartGapAnalyzerInput): SmartAnaly
         category_name: resolvedCatName,
         historical_frequency: freq,
         prior_meals_count: priorMeals,
+        month_meals_count: monthMeals,
         attended_other_shift_same_day: sameDayOtherShift,
         is_habitual: isHabitual,
         confidence_reason: reasonText,
@@ -419,11 +426,19 @@ export function analyzeMonthlyMealGaps(input: SmartGapAnalyzerInput): SmartAnaly
     }
 
     const sortCandidates = (a: GapCandidate, b: GapCandidate) => {
+      const aHasMonthMeal = (a.month_meals_count || 0) > 0;
+      const bHasMonthMeal = (b.month_meals_count || 0) > 0;
+      if (aHasMonthMeal !== bHasMonthMeal) {
+        return aHasMonthMeal ? -1 : 1;
+      }
       if (Boolean(a.is_habitual) !== Boolean(b.is_habitual)) {
         return a.is_habitual ? -1 : 1;
       }
       if (a.attended_other_shift_same_day !== b.attended_other_shift_same_day) {
         return a.attended_other_shift_same_day ? -1 : 1;
+      }
+      if ((b.month_meals_count || 0) !== (a.month_meals_count || 0)) {
+        return (b.month_meals_count || 0) - (a.month_meals_count || 0);
       }
       if (b.historical_frequency !== a.historical_frequency) {
         return b.historical_frequency - a.historical_frequency;
@@ -515,7 +530,13 @@ export function analyzeMonthlyMealGaps(input: SmartGapAnalyzerInput): SmartAnaly
   }
 
   const eligibleStudentsSummary = Array.from(studentSummaryMap.values()).sort((a, b) => {
+    const aHasMonthMeal = (a.month_meals_count || 0) > 0;
+    const bHasMonthMeal = (b.month_meals_count || 0) > 0;
+    if (aHasMonthMeal !== bHasMonthMeal) return aHasMonthMeal ? -1 : 1;
     if (a.is_habitual !== b.is_habitual) return a.is_habitual ? -1 : 1;
+    if ((b.month_meals_count || 0) !== (a.month_meals_count || 0)) {
+      return (b.month_meals_count || 0) - (a.month_meals_count || 0);
+    }
     if (b.available_dates.length !== a.available_dates.length) {
       return b.available_dates.length - a.available_dates.length;
     }

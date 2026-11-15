@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import { Check, Copy, Edit3, Eye, EyeOff, KeyRound, Plus, Search, Sparkles, UserCheck, Users, UserX, X } from 'lucide-react';
 import { PaginationControls } from '@/components/ui/PaginationControls';
 import {
@@ -216,18 +217,21 @@ export function CommensalManager({ students, categories, institutions }: Props) 
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-8">
-      <section className="flex flex-col justify-between gap-5 rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 p-6 text-white shadow-xl md:flex-row md:items-end md:p-8">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">Cadastro operacional</p>
-          <h1 className="mt-2 text-3xl font-black">Comensais</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-300">
-            Consulte e corrija individualmente alunos, servidores, funcionários e outros públicos identificados.
-          </p>
-        </div>
-        <button type="button" onClick={openCreate} disabled={!institutions.length || !categories.length} className="flex items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 disabled:opacity-50">
-          <Plus className="h-5 w-5" /> Novo comensal
-        </button>
-      </section>
+      <AdminPageHero
+        eyebrow="Cadastro operacional"
+        title="Comensais"
+        description="Consulte e corrija individualmente alunos, servidores, funcionários e outros públicos identificados."
+        actions={
+          <button
+            type="button"
+            onClick={openCreate}
+            disabled={!institutions.length || !categories.length}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 disabled:opacity-50"
+          >
+            <Plus className="h-5 w-5" /> Novo comensal
+          </button>
+        }
+      />
 
       {message && (
         <div className={`rounded-2xl border px-4 py-3 text-sm font-bold ${message.kind === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>

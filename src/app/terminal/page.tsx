@@ -79,6 +79,7 @@ interface TerminalContextState {
   mealTypeName: string;
   studentPrice: number;
   cashShiftMode: 'per_meal' | 'daily';
+  cashRequireChange: boolean;
 }
 
 export default function TerminalPage() {
@@ -110,6 +111,7 @@ export default function TerminalPage() {
     mealTypeName: 'Selecionar turno',
     studentPrice: 0,
     cashShiftMode: 'per_meal',
+    cashRequireChange: true,
   });
 
   useEffect(() => {
@@ -123,8 +125,9 @@ export default function TerminalPage() {
   const loadUnitTerminalContext = useCallback(async (profile: ProfileRecord, unit: UnitRecord) => {
     const supabase = createBrowserClient();
     const unitCashSettings = await cashShiftService.listUnitSettings().catch(() => []);
-    const cashShiftMode =
-      unitCashSettings.find((setting) => setting.unit_id === unit.id)?.cash_shift_mode || 'per_meal';
+    const matchedUnitSetting = unitCashSettings.find((setting) => setting.unit_id === unit.id);
+    const cashShiftMode = matchedUnitSetting?.cash_shift_mode || 'per_meal';
+    const cashRequireChange = matchedUnitSetting?.cash_require_change ?? true;
 
     // Carregar turnos habilitados da unidade selecionada
     const { data: unitMealData, error: unitMealError } = await supabase
@@ -173,7 +176,7 @@ export default function TerminalPage() {
     const savedMealId = window.localStorage.getItem(storageKey);
     const scheduledMeal = options.find(isCurrentMealWindow);
     const savedMeal = options.find((item) => item.id === savedMealId);
-    const mealType = scheduledMeal || savedMeal || null;
+    const mealType = scheduledMeal || savedMeal || options[0] || null;
 
     let resolvedPrice = 0;
     if (mealType?.id) {
@@ -206,6 +209,7 @@ export default function TerminalPage() {
       mealTypeName: mealType?.name || 'Selecionar turno',
       studentPrice: resolvedPrice,
       cashShiftMode,
+      cashRequireChange,
     });
   }, [physicalTerminalId]);
 
@@ -375,7 +379,7 @@ export default function TerminalPage() {
   }, [context.unitId, mealOptions]);
 
   useEffect(() => {
-    if (!isAuthenticated || context.cashShiftMode !== 'daily') return;
+    if (!isAuthenticated) return;
 
     const selectScheduledMeal = () => {
       const scheduledMeal = mealOptions.find(isCurrentMealWindow);
@@ -525,6 +529,7 @@ export default function TerminalPage() {
       onMealTypeChange={handleMealTypeChange}
       studentPrice={context.studentPrice}
       cashShiftMode={context.cashShiftMode}
+      cashRequireChange={context.cashRequireChange}
       onSignOut={handleOperatorSignOut}
     />
   );

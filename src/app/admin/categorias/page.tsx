@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import {
   adminListCategories,
   adminSaveCategory,
@@ -126,50 +127,41 @@ export default function AdminCategoriesPage() {
   return (
     <div className="theme-light-page min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <div className="mx-auto w-full max-w-7xl px-4 pt-6 md:px-8 md:pt-8">
-        <section
-          className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8"
-          style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
-        >
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
-              Regras tarifárias e turnos
-            </p>
-            <h1 className="mt-2 text-3xl font-black">Categorias e Valores</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/80">
-              Configure regras de subsídio, porcentagem, valor fixo, recarga e refeições liberadas.
-            </p>
-          </div>
-
-          {activeTab === 'categories' && (
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={loadData}
-                disabled={loading}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 cursor-pointer"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                <span>Atualizar</span>
-              </button>
-              <button
-                onClick={handleOpenCreateModal}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Nova Categoria</span>
-              </button>
-            </div>
-          )}
-        </section>
+        <AdminPageHero
+          eyebrow="Regras tarifárias e turnos"
+          title="Categorias e Valores"
+          description="Configure regras de subsídio, porcentagem, valor fixo, recarga e refeições liberadas."
+          actions={
+            activeTab === 'categories' ? (
+              <>
+                <button
+                  onClick={loadData}
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 cursor-pointer"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  <span>Atualizar</span>
+                </button>
+                <button
+                  onClick={handleOpenCreateModal}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nova Categoria</span>
+                </button>
+              </>
+            ) : undefined
+          }
+        />
       </div>
 
       {/* FEEDBACK BANNER */}
       {feedback && (
         <div
-          className={`px-6 py-3 text-xs font-semibold flex items-center justify-between border-b ${
-            feedback.type === 'success'
+          className={`px-6 py-3 text-xs font-semibold flex items-center justify-between border-b ${feedback.type === 'success'
               ? 'bg-emerald-950/80 border-emerald-500/30 text-emerald-200'
               : 'bg-red-950/80 border-red-500/30 text-red-200'
-          }`}
+            }`}
         >
           <span>{feedback.message}</span>
           <button onClick={() => setFeedback(null)} className="opacity-70 hover:opacity-100 cursor-pointer">
@@ -198,194 +190,193 @@ export default function AdminCategoriesPage() {
         </div>
 
         {activeTab === 'categories' ? <>
-        {/* KPI CARDS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
-            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-sky-400" />
-              <span>Categorias Ativas</span>
-            </p>
-            <p className="text-2xl font-black text-white font-mono">
-              {categories.filter((c) => c.status === 'active').length}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
-            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-emerald-400" />
-              <span>Comensais Vinculados</span>
-            </p>
-            <p className="text-2xl font-black text-emerald-400 font-mono">
-              {categories.reduce((acc, c) => acc + (c.total_students || 0), 0)}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
-            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
-              <Wallet className="w-4 h-4 text-amber-400" />
-              <span>Com Carteira Ativa</span>
-            </p>
-            <p className="text-2xl font-black text-amber-400 font-mono">
-              {categories.filter((c) => c.requires_wallet).length}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
-            <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
-              <Repeat className="w-4 h-4 text-purple-400" />
-              <span>Multi-Refeição</span>
-            </p>
-            <p className="text-2xl font-black text-purple-400 font-mono">
-              {categories.filter((c) => c.allow_multi_meal).length}
-            </p>
-          </div>
-        </div>
-
-        {/* BUSCA E TABELA */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-          <div className="p-4 sm:p-6 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
-            <div className="relative flex-1 min-w-[240px] max-w-md">
-              <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por nome ou código..."
-                className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-sky-500"
-              />
+          {/* KPI CARDS */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+              <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-sky-400" />
+                <span>Categorias Ativas</span>
+              </p>
+              <p className="text-2xl font-black text-white font-mono">
+                {categories.filter((c) => c.status === 'active').length}
+              </p>
             </div>
 
-            <div className="text-xs text-slate-400">
-              Mostrando <span className="text-white font-bold font-mono">{filteredCategories.length}</span> categoria(s)
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+              <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-emerald-400" />
+                <span>Comensais Vinculados</span>
+              </p>
+              <p className="text-2xl font-black text-emerald-400 font-mono">
+                {categories.reduce((acc, c) => acc + (c.total_students || 0), 0)}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+              <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+                <Wallet className="w-4 h-4 text-amber-400" />
+                <span>Com Carteira Ativa</span>
+              </p>
+              <p className="text-2xl font-black text-amber-400 font-mono">
+                {categories.filter((c) => c.requires_wallet).length}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+              <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+                <Repeat className="w-4 h-4 text-purple-400" />
+                <span>Multi-Refeição</span>
+              </p>
+              <p className="text-2xl font-black text-purple-400 font-mono">
+                {categories.filter((c) => c.allow_multi_meal).length}
+              </p>
             </div>
           </div>
 
-          {/* LISTA / TABELA */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
-                <tr>
-                  <th className="px-6 py-4">Categoria</th>
-                  <th className="px-6 py-4">Cobrança / Subsídio</th>
-                  <th className="px-6 py-4">Pagamento & Carteira</th>
-                  <th className="px-6 py-4">Multi-Refeição</th>
-                  <th className="px-6 py-4">Refeições Permitidas</th>
-                  <th className="px-6 py-4">Comensais</th>
-                  <th className="px-6 py-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {filteredCategories.length === 0 ? (
+          {/* BUSCA E TABELA */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+            <div className="p-4 sm:p-6 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+              <div className="relative flex-1 min-w-[240px] max-w-md">
+                <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por nome ou código..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+
+              <div className="text-xs text-slate-400">
+                Mostrando <span className="text-white font-bold font-mono">{filteredCategories.length}</span> categoria(s)
+              </div>
+            </div>
+
+            {/* LISTA / TABELA */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-500">
-                      Nenhuma categoria encontrada.
-                    </td>
+                    <th className="px-6 py-4">Categoria</th>
+                    <th className="px-6 py-4">Cobrança / Subsídio</th>
+                    <th className="px-6 py-4">Pagamento & Carteira</th>
+                    <th className="px-6 py-4">Multi-Refeição</th>
+                    <th className="px-6 py-4">Refeições Permitidas</th>
+                    <th className="px-6 py-4">Comensais</th>
+                    <th className="px-6 py-4 text-right">Ações</th>
                   </tr>
-                ) : (
-                  filteredCategories.map((cat) => (
-                    <tr key={cat.id} className="hover:bg-slate-800/30 transition-all">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-slate-100 flex items-center gap-2">
-                          <span>{cat.name}</span>
-                          <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold">
-                            {cat.code}
-                          </span>
-                        </div>
-                        {cat.description && (
-                          <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs truncate">{cat.description}</p>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {cat.pricing_type === 'percentage' ? (
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold ${
-                                cat.charge_percentage === 0
-                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                  : cat.charge_percentage === 100
-                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              }`}
-                            >
-                              {cat.charge_percentage === 0 ? '0% (Isento)' : `${cat.charge_percentage}% Cobrado`}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 font-mono font-bold text-xs border border-sky-500/30">
-                            {formatBRL(cat.fixed_price)} Fixo
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 space-y-1">
-                        <div>
-                          {cat.payment_mode === 'on_entry' ? (
-                            <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[10px] font-bold">
-                              Pago na Entrada (Avulso)
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-bold">
-                              Débito em Carteira
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-slate-500">
-                          {cat.requires_wallet ? '✓ Permite recarga' : '✗ Sem recarga de saldo'}
-                        </p>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {cat.allow_multi_meal ? (
-                          <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-bold text-[10px] flex items-center gap-1 w-fit">
-                            <Repeat className="w-3 h-3" />
-                            <span>Múltiplas Refeições</span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-500 text-[11px]">1 refeição por turno</span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {!cat.allowed_meal_types || cat.allowed_meal_types.length === 0 ? (
-                          <span className="text-[11px] text-emerald-400 font-semibold">Todas as Refeições</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1 max-w-xs">
-                            {cat.allowed_meal_types.map((mtId) => {
-                              const mt = mealTypes.find((m) => m.id === mtId);
-                              return (
-                                <span
-                                  key={mtId}
-                                  className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[9px]"
-                                >
-                                  {mt ? mt.name : 'Refeição'}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-slate-200 font-bold">{cat.total_students || 0}</span>
-                      </td>
-
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleOpenEditModal(cat)}
-                          className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold cursor-pointer transition-all inline-flex items-center gap-1.5"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 text-sky-400" />
-                          <span>Editar</span>
-                        </button>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredCategories.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-slate-500">
+                        Nenhuma categoria encontrada.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredCategories.map((cat) => (
+                      <tr key={cat.id} className="hover:bg-slate-800/30 transition-all">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-100 flex items-center gap-2">
+                            <span>{cat.name}</span>
+                            <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-semibold">
+                              {cat.code}
+                            </span>
+                          </div>
+                          {cat.description && (
+                            <p className="text-[11px] text-slate-500 mt-0.5 max-w-xs truncate">{cat.description}</p>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          {cat.pricing_type === 'percentage' ? (
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold ${cat.charge_percentage === 0
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    : cat.charge_percentage === 100
+                                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  }`}
+                              >
+                                {cat.charge_percentage === 0 ? '0% (Isento)' : `${cat.charge_percentage}% Cobrado`}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 font-mono font-bold text-xs border border-sky-500/30">
+                              {formatBRL(cat.fixed_price)} Fixo
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 space-y-1">
+                          <div>
+                            {cat.payment_mode === 'on_entry' ? (
+                              <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[10px] font-bold">
+                                Pago na Entrada (Avulso)
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-bold">
+                                Débito em Carteira
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500">
+                            {cat.requires_wallet ? '✓ Permite recarga' : '✗ Sem recarga de saldo'}
+                          </p>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          {cat.allow_multi_meal ? (
+                            <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-bold text-[10px] flex items-center gap-1 w-fit">
+                              <Repeat className="w-3 h-3" />
+                              <span>Múltiplas Refeições</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 text-[11px]">1 refeição por turno</span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          {!cat.allowed_meal_types || cat.allowed_meal_types.length === 0 ? (
+                            <span className="text-[11px] text-emerald-400 font-semibold">Todas as Refeições</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {cat.allowed_meal_types.map((mtId) => {
+                                const mt = mealTypes.find((m) => m.id === mtId);
+                                return (
+                                  <span
+                                    key={mtId}
+                                    className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[9px]"
+                                  >
+                                    {mt ? mt.name : 'Refeição'}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <span className="font-mono text-slate-200 font-bold">{cat.total_students || 0}</span>
+                        </td>
+
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleOpenEditModal(cat)}
+                            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold cursor-pointer transition-all inline-flex items-center gap-1.5"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-sky-400" />
+                            <span>Editar</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
         </> : <MealScheduleTab />}
       </main>
 
@@ -479,11 +470,10 @@ export default function AdminCategoriesPage() {
                         charge_percentage: editingCategory.charge_percentage ?? 100,
                       })
                     }
-                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                      editingCategory.pricing_type === 'percentage'
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${editingCategory.pricing_type === 'percentage'
                         ? 'bg-sky-500/20 border-sky-500 text-white shadow-lg'
                         : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 font-bold">
                       <Percent className="w-4 h-4" />
@@ -500,11 +490,10 @@ export default function AdminCategoriesPage() {
                       const fixedPrice = editingCategory.fixed_price ?? 3.5;
                       setEditingCategory({ ...editingCategory, pricing_type: 'fixed', fixed_price: fixedPrice });
                     }}
-                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                      editingCategory.pricing_type === 'fixed'
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${editingCategory.pricing_type === 'fixed'
                         ? 'bg-sky-500/20 border-sky-500 text-white shadow-lg'
                         : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 font-bold">
                       <DollarSign className="w-4 h-4" />
@@ -553,9 +542,8 @@ export default function AdminCategoriesPage() {
                         {editingCategory.charge_percentage === 0
                           ? '👉 100% Subsidiado (Bolsista Isento - R$ 0,00)'
                           : editingCategory.charge_percentage === 100
-                          ? '👉 Valor Integral (Sem subsídio público)'
-                          : `👉 Paga ${editingCategory.charge_percentage}% da refeição, instituição subsidia ${
-                              100 - (editingCategory.charge_percentage || 0)
+                            ? '👉 Valor Integral (Sem subsídio público)'
+                            : `👉 Paga ${editingCategory.charge_percentage}% da refeição, instituição subsidia ${100 - (editingCategory.charge_percentage || 0)
                             }%`}
                       </span>
                     </div>
@@ -597,11 +585,10 @@ export default function AdminCategoriesPage() {
                         requires_wallet: true,
                       })
                     }
-                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                      editingCategory.payment_mode === 'wallet'
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${editingCategory.payment_mode === 'wallet'
                         ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-lg'
                         : 'bg-slate-900 border-slate-800 text-slate-400'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 font-bold">
                       <Wallet className="w-4 h-4 text-emerald-400" />
@@ -622,11 +609,10 @@ export default function AdminCategoriesPage() {
                         allow_multi_meal: true,
                       })
                     }
-                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                      editingCategory.payment_mode === 'on_entry'
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${editingCategory.payment_mode === 'on_entry'
                         ? 'bg-rose-500/20 border-rose-500 text-white shadow-lg'
                         : 'bg-slate-900 border-slate-800 text-slate-400'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 font-bold">
                       <DollarSign className="w-4 h-4 text-rose-400" />
@@ -690,11 +676,10 @@ export default function AdminCategoriesPage() {
                     return (
                       <label
                         key={mt.id}
-                        className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
-                          isChecked
+                        className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${isChecked
                             ? 'bg-amber-500/20 border-amber-500/40 text-amber-200'
                             : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                        }`}
+                          }`}
                       >
                         <input
                           type="checkbox"

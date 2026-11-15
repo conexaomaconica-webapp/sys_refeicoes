@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import Link from 'next/link';
 import {
   DollarSign,
@@ -87,6 +88,31 @@ export default function AdminCaixaPage() {
     }
   };
 
+  const handleUpdateUnitRequireChange = async (setting: UnitCashShiftSetting, requireChange: boolean) => {
+    const currentVal = setting.cash_require_change ?? true;
+    if (!setting.can_manage || currentVal === requireChange) return;
+    setSavingUnitId(setting.unit_id);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      await cashShiftService.updateUnitRequireChange(setting.unit_id, requireChange);
+      setUnitSettings((current) =>
+        current.map((item) =>
+          item.unit_id === setting.unit_id ? { ...item, cash_require_change: requireChange } : item
+        )
+      );
+      setSuccessMsg(
+        `Recebimento em dinheiro de ${setting.unit_name} atualizado para ${
+          requireChange ? 'calcular troco antes de confirmar' : 'confirmar direto sem cálculo de troco'
+        }.`
+      );
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Não foi possível atualizar o cálculo de troco.');
+    } finally {
+      setSavingUnitId(null);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -127,43 +153,30 @@ export default function AdminCaixaPage() {
   return (
     <div className="theme-light-page min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 space-y-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section
-          className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8"
-          style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
-        >
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
-                Auditoria operacional de PDV
-              </p>
-              <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white">
-                {shifts.length} caixas
-              </span>
-            </div>
-            <h1 className="mt-2 text-3xl font-black">Caixas e Turnos</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/80">
-              Controle de abertura de turnos, sangrias, suprimentos de troco e conferência cega de valores.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Atualizar</span>
-            </button>
-            <Link
-              href="/terminal"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95"
-          >
-            <Unlock className="w-4 h-4" />
-            <span>Ir para o Terminal</span>
-          </Link>
-        </div>
-      </section>
+        <AdminPageHero
+          eyebrow={`Auditoria operacional de PDV · ${shifts.length} caixas`}
+          title="Caixas e Turnos"
+          description="Controle de abertura de turnos, sangrias, suprimentos de troco e conferência cega de valores."
+          actions={
+            <>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>Atualizar</span>
+              </button>
+              <Link
+                href="/terminal"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95"
+              >
+                <Unlock className="w-4 h-4" />
+                <span>Ir para o Terminal</span>
+              </Link>
+            </>
+          }
+        />
 
       {/* Alerta de Erro */}
       {errorMsg && (
@@ -221,6 +234,32 @@ export default function AdminCaixaPage() {
               <p className="mt-3 text-xs text-slate-500">
                 Feche todos os caixas abertos desta unidade antes de trocar o modo.
               </p>
+
+              <div className="mt-4 border-t border-slate-200 pt-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Pagamento em dinheiro no terminal
+                </p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    disabled={!setting.can_manage || savingUnitId === setting.unit_id}
+                    onClick={() => handleUpdateUnitRequireChange(setting, true)}
+                    className={`rounded-xl border p-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${(setting.cash_require_change ?? true) ? 'border-emerald-600 bg-emerald-50 text-emerald-900' : 'border-slate-300 bg-white text-slate-700 hover:border-emerald-300'}`}
+                  >
+                    <span className="block text-xs font-black">Calcular troco</span>
+                    <span className="mt-0.5 block text-[11px] opacity-80">Pede valor recebido e exibe troco antes de liberar.</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!setting.can_manage || savingUnitId === setting.unit_id}
+                    onClick={() => handleUpdateUnitRequireChange(setting, false)}
+                    className={`rounded-xl border p-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${!(setting.cash_require_change ?? true) ? 'border-red-600 bg-red-50 text-red-900' : 'border-slate-300 bg-white text-slate-700 hover:border-red-300'}`}
+                  >
+                    <span className="block text-xs font-black">Confirmar direto (sem troco)</span>
+                    <span className="mt-0.5 block text-[11px] opacity-80">Ao selecionar Dinheiro, confirma e libera na hora.</span>
+                  </button>
+                </div>
+              </div>
             </div>
           ))}
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import {
   AlertTriangle,
   CalendarClock,
@@ -165,34 +166,26 @@ export function BackupManager({
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 md:px-8 md:py-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section
-          className="flex flex-col justify-between gap-5 rounded-3xl p-6 text-white shadow-xl md:flex-row md:items-end md:p-8"
-          style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
-        >
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
-              Proteção e contingência de dados
-            </p>
-            <h1 className="mt-2 text-3xl font-black">Backup de Dados</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/80">
-              Exporte periodicamente uma cópia íntegra dos dados de <strong>{tenantName}</strong>{' '}
-              com verificação SHA-256 para guarda externa.
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={downloading}
-            onClick={handleDownloadBackup}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 disabled:opacity-60"
-          >
-            {downloading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {downloading ? 'Gerando backup...' : 'Gerar e baixar backup agora'}
-          </button>
-        </section>
+        <AdminPageHero
+          eyebrow="Proteção e contingência de dados"
+          title="Backup de Dados"
+          description={`Exporte periodicamente uma cópia íntegra dos dados de ${tenantName} com verificação SHA-256 para guarda externa.`}
+          actions={
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={handleDownloadBackup}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4C430] px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:brightness-95 disabled:opacity-60"
+            >
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {downloading ? 'Gerando backup...' : 'Gerar e baixar backup agora'}
+            </button>
+          }
+        />
 
         {feedback && (
           <div

@@ -5,6 +5,7 @@ export interface UnitCashShiftSetting {
   unit_id: string;
   unit_name: string;
   cash_shift_mode: CashShiftMode;
+  cash_require_change?: boolean;
   can_manage: boolean;
 }
 

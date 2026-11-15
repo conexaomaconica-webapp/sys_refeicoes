@@ -1,6 +1,7 @@
 'use client';
 
-import { ShieldCheck, User, WalletCards } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Maximize2, Minimize2, ShieldCheck, User, WalletCards, X } from 'lucide-react';
 import { useBrand } from '@/components/branding/brand-context';
 import {
   getConsumerCardBackgroundImageStyle,
@@ -23,6 +24,7 @@ interface ConsumerVirtualCardProps {
   card?: Card | null;
   balance?: number | null;
   requiresWallet: boolean;
+  allowFullscreen?: boolean;
 }
 
 const formatCurrency = (value: number) =>
@@ -31,8 +33,16 @@ const formatCurrency = (value: number) =>
 const getInitials = (name: string) =>
   name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
 
-export function ConsumerVirtualCard({ student, card, balance, requiresWallet }: ConsumerVirtualCardProps) {
+export function ConsumerVirtualCard({
+  student,
+  card,
+  balance,
+  requiresWallet,
+  allowFullscreen = false,
+}: ConsumerVirtualCardProps) {
   const { branding } = useBrand();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullscreenContainerRef = useRef<HTMLDivElement | null>(null);
   const isActive = student.status === 'active' && card?.status === 'active';
   const backgroundUrl = branding.consumer_card_background_url?.replace(/["'\\\r\n]/g, '');
   const backgroundImageStyle =
@@ -43,9 +53,73 @@ export function ConsumerVirtualCard({ student, card, balance, requiresWallet }: 
         )
       : null;
 
-  return (
-    <article className="mx-auto w-full max-w-[410px] select-none">
-      <div className="relative aspect-[9/16] min-h-[650px] overflow-hidden rounded-[2.25rem] border border-white/20 text-white shadow-2xl" style={{ backgroundColor: branding.consumer_card_background_color }}>
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+
+    const handleNativeFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('fullscreenchange', handleNativeFullscreenChange);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('fullscreenchange', handleNativeFullscreenChange);
+    };
+  }, [isFullscreen]);
+
+  const openFullscreen = () => {
+    setIsFullscreen(true);
+    requestAnimationFrame(() => {
+      const el = fullscreenContainerRef.current;
+      if (el && typeof el.requestFullscreen === 'function' && !document.fullscreenElement) {
+        void el.requestFullscreen().catch(() => {
+          // Fallback silencioso para navegadores mobile (ex.: iOS Safari) usando o overlay fixo
+        });
+      }
+    });
+  };
+
+  const closeFullscreen = () => {
+    if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+      void document.exitFullscreen().catch(() => {});
+    }
+    setIsFullscreen(false);
+  };
+
+  const renderCardBody = (fullMode: boolean) => (
+    <article
+      className={
+        fullMode
+          ? 'mx-auto w-full max-w-[430px] select-none'
+          : 'mx-auto w-full max-w-[410px] select-none'
+      }
+    >
+      <div
+        className={`relative aspect-[9/16] overflow-hidden rounded-[2.25rem] border border-white/20 text-white shadow-2xl ${
+          fullMode ? 'max-h-[calc(100dvh-5rem)] w-full' : 'min-h-[650px]'
+        }`}
+        style={{ backgroundColor: branding.consumer_card_background_color }}
+      >
+        {allowFullscreen && !fullMode && (
+          <button
+            type="button"
+            onClick={openFullscreen}
+            aria-label="Ver cartão em tela cheia"
+            className="absolute right-3.5 top-3.5 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/45 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur-md transition hover:bg-black/65 active:scale-95"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+            <span>Tela cheia</span>
+          </button>
+        )}
         {backgroundImageStyle && (
           <div className="pointer-events-none absolute inset-0" style={backgroundImageStyle} />
         )}
@@ -121,5 +195,34 @@ export function ConsumerVirtualCard({ student, card, balance, requiresWallet }: 
         </footer>
       </div>
     </article>
+  );
+
+  return (
+    <>
+      {renderCardBody(false)}
+
+      {allowFullscreen && isFullscreen && (
+        <div
+          ref={fullscreenContainerRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cartão virtual em tela cheia"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 p-3 backdrop-blur-md"
+        >
+          <div className="mb-3 flex w-full max-w-[430px] items-center justify-end">
+            <button
+              type="button"
+              onClick={closeFullscreen}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
+            >
+              <Minimize2 className="h-3.5 w-3.5" />
+              <span>Sair da tela cheia</span>
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {renderCardBody(true)}
+        </div>
+      )}
+    </>
   );
 }

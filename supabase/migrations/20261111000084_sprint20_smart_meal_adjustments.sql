@@ -724,7 +724,7 @@ BEGIN
     CASE WHEN p_meal_type_id IS NOT NULL THEN ARRAY[p_meal_type_id] ELSE ARRAY[]::uuid[] END
   );
 
-  IF pg_catalog.coalesce(pg_catalog.array_length(v_selected_meal_type_ids, 1), 0) = 0 THEN
+  IF COALESCE(pg_catalog.array_length(v_selected_meal_type_ids, 1), 0) = 0 THEN
     RAISE EXCEPTION 'MEAL_TYPE_REQUIRED: Selecione ao menos um turno/refeição habilitado na unidade.';
   END IF;
 

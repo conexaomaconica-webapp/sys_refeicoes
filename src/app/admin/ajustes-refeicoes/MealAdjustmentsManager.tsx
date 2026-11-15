@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useTransition } from 'react';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import {
   AlertCircle,
   AlertTriangle,
@@ -330,22 +331,23 @@ export function MealAdjustmentsManager({ data }: Props) {
       const next = prev.includes(mealTypeId) ? prev.filter((id) => id !== mealTypeId) : [...prev, mealTypeId];
       setSingleRows((rows) => {
         const filtered = rows.filter((r) => next.includes(r.meal_type_id));
-        if (next.length > 0 && filtered.length === 0) {
-          const cats = getPermittedCategoriesForUnitShift(singleUnitId, next[0], singleDate);
-          if (cats.length > 0) {
-            return [
-              {
-                row_id: `single-row-${Date.now()}`,
-                meal_type_id: next[0],
+        const additions: typeof rows = [];
+        for (const mtId of next) {
+          if (!filtered.some((r) => r.meal_type_id === mtId)) {
+            const cats = getPermittedCategoriesForUnitShift(singleUnitId, mtId, singleDate);
+            if (cats.length > 0) {
+              additions.push({
+                row_id: `single-row-${Date.now()}-${mtId.slice(0, 6)}`,
+                meal_type_id: mtId,
                 category_id: cats[0].id,
                 batch_type: 'type_b_unidentified_count',
                 quantity: 1,
                 selectedStudents: [],
-              },
-            ];
+              });
+            }
           }
         }
-        return filtered;
+        return [...filtered, ...additions];
       });
       return next;
     });
@@ -525,20 +527,25 @@ export function MealAdjustmentsManager({ data }: Props) {
       const next = prev.includes(mealTypeId) ? prev.filter((id) => id !== mealTypeId) : [...prev, mealTypeId];
       setSmartLines((lines) => {
         const filtered = lines.filter((l) => next.includes(l.meal_type_id));
-        if (next.length > 0 && filtered.length === 0) {
-          const cats = getPermittedCategoriesForUnitShift(smartUnitId, next[0]);
-          if (cats.length > 0) {
-            return [
-              {
-                line_id: `smart-line-${Date.now()}`,
-                meal_type_id: next[0],
+        const additions: typeof lines = [];
+        const currentAllocated = filtered.reduce((sum, l) => sum + (Number(l.quantity) || 0), 0);
+        let remaining = Math.max(1, smartProvenTotal - currentAllocated);
+        for (const mtId of next) {
+          if (!filtered.some((l) => l.meal_type_id === mtId)) {
+            const cats = getPermittedCategoriesForUnitShift(smartUnitId, mtId);
+            if (cats.length > 0) {
+              const qty = filtered.length === 0 && additions.length === 0 ? remaining : Math.max(1, Math.min(remaining, Math.floor(smartProvenTotal / next.length) || 1));
+              remaining = Math.max(1, remaining - qty);
+              additions.push({
+                line_id: `smart-line-${Date.now()}-${mtId.slice(0, 6)}`,
+                meal_type_id: mtId,
                 category_id: cats[0].id,
-                quantity: smartProvenTotal,
-              },
-            ];
+                quantity: qty,
+              });
+            }
           }
         }
-        return filtered;
+        return [...filtered, ...additions];
       });
       return next;
     });
@@ -619,10 +626,41 @@ export function MealAdjustmentsManager({ data }: Props) {
       setActiveLineId(res.analysis.lines[0]?.line_id || '');
       const nextAlloc: Record<string, Record<string, number>> = {};
       const nextDates: Record<string, string> = {};
+      const nextConfirmed: Record<
+        string,
+        Record<string, Record<string, { checked: boolean; notes: string; registration_number: string }>>
+      > = {};
+      const usedStudentShiftDate = new Set<string>();
+
       for (const line of res.analysis.lines) {
         nextAlloc[line.line_id] = {};
+        nextConfirmed[line.line_id] = {};
+        let lineRemaining = line.requested_quantity;
+
         for (const day of line.analysis.days) {
+          const dayTarget = day.auto_allocatable_qty > 0 ? day.auto_allocatable_qty : day.suggested_conference_qty;
+          const allocQty = Math.min(lineRemaining, Math.max(0, dayTarget));
           nextAlloc[line.line_id][day.date] = day.auto_allocatable_qty;
+
+          if (allocQty > 0 && !day.is_closed_period) {
+            const pool = day.eligible_non_consumers || day.gap_candidates;
+            const picked: Record<string, { checked: boolean; notes: string; registration_number: string }> = {};
+            for (const cand of pool) {
+              if (Object.keys(picked).length >= allocQty) break;
+              const dedupKey = `${cand.student_id}|${line.meal_type_id}|${day.date}`;
+              if (usedStudentShiftDate.has(dedupKey)) continue;
+              usedStudentShiftDate.add(dedupKey);
+              picked[cand.student_id] = {
+                checked: true,
+                notes: smartJustification.trim() || 'Conferência automática por análise de competência',
+                registration_number: cand.registration_number || '',
+              };
+            }
+            if (Object.keys(picked).length > 0) {
+              nextConfirmed[line.line_id][day.date] = picked;
+              lineRemaining -= Object.keys(picked).length;
+            }
+          }
         }
         const firstWithStudents = line.analysis.days.find(
           (d) => (d.eligible_non_consumers || d.gap_candidates).length > 0
@@ -631,7 +669,7 @@ export function MealAdjustmentsManager({ data }: Props) {
       }
       setLineDateAllocations(nextAlloc);
       setSelectedDateByLine(nextDates);
-      setConfirmedByLine({});
+      setConfirmedByLine(nextConfirmed);
     });
   };
 
@@ -920,41 +958,27 @@ export function MealAdjustmentsManager({ data }: Props) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 text-slate-900">
-      {/* CABEÇALHO UNIFICADO */}
-      <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
-                <Layers className="h-5 w-5" />
-              </span>
-              <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900">
-                  Ajustes e Regularizações de Refeições
-                </h1>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Retroativo por Data • Ajuste Inteligente Mensal • Dupla Aprovação Auditável
-                </p>
-              </div>
-            </div>
-          </div>
+      <AdminPageHero
+        eyebrow="Regularização e auditoria"
+        title="Ajustes e Regularizações de Refeições"
+        description="Retroativo por data, ajuste inteligente mensal e dupla aprovação auditável."
+        actions={
+          data.canCreate ? (
+            <button
+              type="button"
+              onClick={() => setShowCalendarModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#F4C430] px-4 py-2.5 text-xs font-black text-slate-950 shadow-lg transition hover:brightness-95"
+            >
+              <CalendarOff className="h-4 w-4" />
+              Calendário Operacional ({data.calendarOverrides.length})
+            </button>
+          ) : undefined
+        }
+      />
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {data.canCreate && (
-              <button
-                type="button"
-                onClick={() => setShowCalendarModal(true)}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                <CalendarOff className="h-4 w-4 text-amber-600" />
-                Calendário Operacional ({data.calendarOverrides.length})
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ABAS DAS DUAS MODALIDADES */}
-        <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+      {/* ABAS DAS DUAS MODALIDADES */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('single_date')}
@@ -997,7 +1021,7 @@ export function MealAdjustmentsManager({ data }: Props) {
             <span>{feedback.message}</span>
           </div>
         )}
-      </header>
+      </section>
 
       {/* ABA 1: RETROATIVO POR DATA ESPECÍFICA */}
       {activeTab === 'single_date' && (
@@ -1498,12 +1522,29 @@ export function MealAdjustmentsManager({ data }: Props) {
               <label className="block text-xs font-bold text-slate-700">
                 Justificativa Operacional Obrigatória (mínimo 10 caracteres)
               </label>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {[
+                  'Queda de energia ou pane no terminal de atendimento',
+                  'Atendimento offline sem leitura de cartão/QR',
+                  'Divergência de contagem física em planilha',
+                  'Regularização operacional validada pela diretoria',
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setSingleJustification(preset)}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
               <textarea
                 rows={3}
                 value={singleJustification}
                 onChange={(e) => setSingleJustification(e.target.value)}
                 placeholder="Descreva o motivo operacional, documento de conferência e turnos regularizados..."
-                className="mt-1 w-full rounded-xl border border-slate-300 p-3 text-xs"
+                className="mt-1.5 w-full rounded-xl border border-slate-300 p-3 text-xs"
               />
             </div>
 
@@ -1934,7 +1975,7 @@ export function MealAdjustmentsManager({ data }: Props) {
                           : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      Submodo A: Distribuição Agregada por Data
+                      Contagem Agregada (Sem Nomes)
                     </button>
                     <button
                       type="button"
@@ -1945,7 +1986,7 @@ export function MealAdjustmentsManager({ data }: Props) {
                           : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      Submodo B: Reconciliação Individual Assistida
+                      Nominal por Aluno (Pré-sugerido)
                     </button>
                   </div>
 
@@ -2429,12 +2470,33 @@ export function MealAdjustmentsManager({ data }: Props) {
                     <label className="block text-xs font-bold text-slate-700">
                       Justificativa Contábil da Competência (mínimo 10 caracteres)
                     </label>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {[
+                        'Queda de energia ou pane no terminal de atendimento',
+                        'Atendimento offline sem leitura de cartão/QR',
+                        'Divergência de contagem física em planilha mensal',
+                        'Regularização operacional validada pela diretoria',
+                      ].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setSmartJustification(preset)}
+                          className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition ${
+                            smartJustification === preset
+                              ? 'border-slate-900 bg-slate-900 text-white'
+                              : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
                     <textarea
                       rows={2}
                       value={smartJustification}
                       onChange={(e) => setSmartJustification(e.target.value)}
-                      placeholder="Descreva a origem da diferença comprovada e os documentos conferidos..."
-                      className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-xs"
+                      placeholder="Selecione um motivo acima ou descreva a origem da diferença comprovada..."
+                      className="mt-1.5 w-full rounded-xl border border-slate-300 p-2.5 text-xs"
                     />
                   </div>
                 </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminPageHero } from '@/components/admin/AdminPageHero';
 import { CheckCircle2, FlaskConical, KeyRound, Loader2, PlugZap, ShieldAlert, Webhook } from 'lucide-react';
 import type { AsaasIntegrationSummary, PaymentEnvironment } from '@/services/admin-payment-integration.service';
 import { saveAsaasIntegrationAction, testAsaasApiAction, testAsaasWebhookAction } from './actions';
@@ -55,25 +56,16 @@ export function AsaasIntegrationManager({ tenantId, integrations, productionActi
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-8">
-      <section
-        className="overflow-hidden rounded-3xl p-6 text-white shadow-xl md:p-8"
-        style={{ background: 'linear-gradient(135deg, var(--admin-secondary), var(--admin-primary))' }}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
-              Configuração Master
-            </p>
-            <h1 className="mt-2 text-3xl font-black">Integrações e APIs (Asaas)</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/80">
-              Configure credenciais, valide a API e confira a autenticação do webhook sem revelar os segredos novamente.
-            </p>
-          </div>
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15 text-white backdrop-blur-sm">
+      <AdminPageHero
+        eyebrow="Configuração Master"
+        title="Integrações e APIs (Asaas)"
+        description="Configure credenciais, valide a API e confira a autenticação do webhook sem revelar os segredos novamente."
+        actions={
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-amber-300 backdrop-blur-sm">
             <PlugZap className="h-6 w-6" />
           </div>
-        </div>
-      </section>
+        }
+      />
 
       <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
         {(['sandbox', 'production'] as const).map((item) => (

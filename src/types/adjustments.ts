@@ -37,6 +37,7 @@ export interface GapCandidate {
   category_name: string;
   historical_frequency: number;
   prior_meals_count: number;
+  month_meals_count?: number;
   attended_other_shift_same_day: boolean;
   is_habitual?: boolean;
   confidence_reason: string;
@@ -49,6 +50,7 @@ export interface EligibleStudentCompetenceSummary {
   category_name: string;
   historical_frequency: number;
   prior_meals_count: number;
+  month_meals_count?: number;
   is_habitual: boolean;
   available_dates: string[];
   consumed_dates: string[];
