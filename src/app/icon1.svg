@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="maBg" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#C5161D" />
+      <stop offset="100%" stop-color="#7F1D1D" />
+    </linearGradient>
+    <linearGradient id="maGold" x1="16" y1="12" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#F4C430" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#maBg)" />
+  <rect x="3.5" y="3.5" width="57" height="57" rx="14.5" stroke="#FCA5A5" stroke-opacity="0.28" stroke-width="1.5" />
+
+  <!-- Subtle plate arc -->
+  <path
+    d="M14 47.5C19.5 51.5 25.5 53.5 32 53.5C38.5 53.5 44.5 51.5 50 47.5"
+    stroke="url(#maGold)"
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+
+  <!-- Stylized MA monogram -->
+  <path
+    d="M13.5 41V22.5H18.4L23.5 33.4L28.6 22.5H33.5V41H29.1V29.8L24.9 38.6H22.1L17.9 29.8V41H13.5Z"
+    fill="#FFFFFF"
+  />
+  <path
+    d="M36.5 41L42.8 22.5H47.6L53.9 41H49.1L47.9 37.1H42.4L41.2 41H36.5ZM43.5 33.4H46.8L45.15 27.9L43.5 33.4Z"
+    fill="#FFFFFF"
+  />
+
+  <!-- Gold accent dot -->
+  <circle cx="45.2" cy="15.5" r="3" fill="url(#maGold)" />
+</svg>
+

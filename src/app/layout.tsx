@@ -4,18 +4,16 @@ import { PwaRegistration } from '@/components/pwa/PwaRegistration';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Sistema de Refeições | Antigravity Platform',
-  description: 'Controle de acesso, recarga e consumo de refeições universitárias',
-  applicationName: 'SysRefeições',
+  title: 'MA Refeições | Sistema de Controle de Refeições',
+  description: 'Controle de acesso, recarga e consumo de refeições',
+  applicationName: 'MA Refeições',
   icons: {
-    icon: '/icons/icon-192.png',
-    shortcut: '/icons/icon-192.png',
     apple: '/icons/icon-192.png',
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'SysRefeições',
+    title: 'MA Refeições',
   },
   manifest: '/manifest.json',
 };
